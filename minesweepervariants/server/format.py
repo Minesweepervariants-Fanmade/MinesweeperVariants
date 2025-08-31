@@ -1,4 +1,5 @@
 from minesweepervariants.abs.board import AbstractBoard
+from minesweepervariants.abs.rule import AbstractValue
 from minesweepervariants.impl.summon.game import Mode, UMode, ValueAsterisk, MinesAsterisk
 from minesweepervariants.utils.impl_obj import VALUE_QUESS, MINES_TAG
 
@@ -118,7 +119,7 @@ def format_cell(_board, pos, label):
     if obj in [VALUE, MINES, None]:
         overlayText = ""
     else:
-        overlayText = obj.tag()
+        overlayText = obj.tag(_board)
     # hightlight = [{
     #             "x": pos.x,
     #             "y": pos.y,
