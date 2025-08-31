@@ -118,7 +118,7 @@ def format_cell(_board, pos, label):
     if obj in [VALUE, MINES, None]:
         overlayText = ""
     else:
-        overlayText = obj.type().decode("ascii")
+        overlayText = obj.tag()
     # hightlight = [{
     #             "x": pos.x,
     #             "y": pos.y,
