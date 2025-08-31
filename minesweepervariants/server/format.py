@@ -96,9 +96,6 @@ def format_cell(_board, pos, label):
             _board.get_type(pos) == "N"
         )
     ):
-        txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
-        txt += chr(65 + pos.y % 26)
-        txt += f"={pos.x}"
         cell_data = {
             "type": "container",
             "value": [
@@ -108,7 +105,7 @@ def format_cell(_board, pos, label):
                     "style": "",
                     "value": {
                         "name": "backgroundStr",
-                        "value": txt
+                        "value": _board.pos_label(pos)
                     },
                 }
             ],
