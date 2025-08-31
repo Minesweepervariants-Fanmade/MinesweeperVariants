@@ -1,3 +1,7 @@
 [submodule "minesweepervariants/impl/rule"]
 	path = minesweepervariants/impl/rule
 	url = https://github.com/Minesweepervariants-Fanmade/rule.git
+
+[submodule "minesweepervariants/server"]
+	path = minesweepervariants/server
+	url = https://github.com/Minesweepervariants-Fanmade/server.git
