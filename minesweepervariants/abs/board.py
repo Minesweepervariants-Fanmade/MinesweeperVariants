@@ -183,7 +183,7 @@ class AbstractBoard(ABC):
     ]
 
     @abstractmethod
-    def __init__(self, size: int = 5, code: bytes = None):
+    def __init__(self, size, code):
         """
         :param size: 题板尺寸
         :param code: 题板代码
@@ -325,6 +325,12 @@ class AbstractBoard(ABC):
         若未翻开则返回N, 题板外则返回空字符串
         :param pos: 位置
         :return: 位置类型字符串
+        """
+
+    def used_type(self) -> bool:
+        """
+        返回在此之前的过程中是否使用过get_type()接口
+        调用该接口后状态将会重置
         """
 
     @abstractmethod

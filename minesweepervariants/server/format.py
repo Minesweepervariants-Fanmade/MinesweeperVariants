@@ -116,10 +116,11 @@ def format_cell(_board, pos, label):
         }
     VALUE = _board.get_config(pos.board_key, "VALUE")
     MINES = _board.get_config(pos.board_key, "MINES")
+    obj: AbstractValue
     if obj in [VALUE, MINES, None]:
         overlayText = ""
     else:
-        overlayText = obj.tag(_board)
+        overlayText = obj.tag(_board).decode()
     # hightlight = [{
     #             "x": pos.x,
     #             "y": pos.y,

@@ -132,7 +132,7 @@ class AbstractValue(ABC):
         返回标签
         默认使用type
         """
-        return type(self).type()
+        return self.type()
 
     def code(self) -> bytes:
         """
