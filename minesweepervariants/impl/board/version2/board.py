@@ -624,5 +624,5 @@ class Board(AbstractBoard):
         txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
         txt += chr(pos.y % 26 + 65)
         txt += '='
-        txt += labels[pos.x] if pos.x < len(labels) else str(pos.x + 1)
+        txt += labels[pos.x] if pos.x < len(labels) else str(pos.x)
         return txt
