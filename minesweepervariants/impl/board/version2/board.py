@@ -300,7 +300,8 @@ class Board(AbstractBoard):
             *size, flag_byte = config
             size = (size[0], size[1])
             mask = decode_bytes_7bit(mask)
-            labels = labels_code.decode("ascii").split(";")
+            if labels_code != b"\x00":
+                labels = labels_code.decode("ascii").split(";")
             true_tag = get_value(pos=POSITION_TAG, code=ture_code)
             false_tag = get_value(pos=POSITION_TAG, code=false_code)
         data = dict()
@@ -387,8 +388,8 @@ class Board(AbstractBoard):
             board_bytes.extend(bytes([255]))
             board_bytes.extend(mines.type() + b"|" + mines.code())
             board_bytes.extend(bytes([255]))
-            board_bytes.extend((";".join(label for label in labels)).encode("ascii"))
-            # key | sizex | sizey | config
+            board_bytes.extend((";".join(label for label in labels)).encode("ascii") if len(labels) > 0 else b"\x00")
+            # key | sizex | sizey | config | ValueCode | MinesCode | labels
             for pos, obj in self(key=board_key):
                 board_bytes.extend(b"\xff")
                 if self.get_dyed(pos):
