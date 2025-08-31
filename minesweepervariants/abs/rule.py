@@ -127,6 +127,13 @@ class AbstractValue(ABC):
         """
         ...
 
+    def tag(self, board) -> bytes:
+        """
+        返回标签
+        默认使用type
+        """
+        return type(self).type()
+
     def code(self) -> bytes:
         """
         返回为当前对象的格式化值 返回为str

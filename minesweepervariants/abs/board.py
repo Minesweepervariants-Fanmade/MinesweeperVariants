@@ -266,9 +266,9 @@ class AbstractBoard(ABC):
                 if self.get_config(k, "interactive")]
 
     @abstractmethod
-    def generate_board(self, board_key: str, size: tuple = (), code: bytes = None) -> None:
+    def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = None) -> None:
         """
-        创建一块副板 board_key为名称 size为尺寸
+        创建一块副板 board_key为名称 size为尺寸 labels 为 X=N 的 N 可能取值
         """
 
     @abstractmethod
@@ -449,6 +449,14 @@ class AbstractBoard(ABC):
         """
         展示可视化调整的界面，如可选展示线索类型
         :param show_tag: 是否展示标签
+        """
+
+    @abstractmethod
+    def pos_label(self, pos: 'AbstractPosition') -> str:
+        """
+        返回位置的标签
+        :param pos: 位置
+        :return: 标签字符串
         """
 
 

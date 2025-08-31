@@ -192,9 +192,6 @@ def format_board(_board: AbstractBoard):
         for pos, obj in _board(key=key):
             if obj is None:
                 if _board.get_config(key, "pos_label"):
-                    txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
-                    txt += chr(65 + pos.y % 26)
-                    txt += f"={pos.x}"
                     cells.append({
                         "type": "",
                         "position": {
@@ -206,7 +203,7 @@ def format_board(_board: AbstractBoard):
                             "style": "",
                             "value": {
                                 "name": "backgroundStr",
-                                "value": txt
+                                "value": _board.pos_label(pos)
                             },
                         },
                         "highlight": {},

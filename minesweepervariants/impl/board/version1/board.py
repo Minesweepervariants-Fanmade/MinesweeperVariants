@@ -233,7 +233,7 @@ class Board(AbstractBoard):
                     return True
         return False
 
-    def generate_board(self, board_key: str, size: tuple = (), code: bytes = None) -> None:
+    def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = None) -> None:
         get_logger().error("请使用其他版本的题板 该题板不支持副板")
         raise ValueError("ERROR BOARD")
 
@@ -414,3 +414,7 @@ class Board(AbstractBoard):
 
     def get_board_keys(self) -> list[str]:
         return [MASTER_BOARD]
+    
+    def pos_label(self, pos: 'AbstractPosition'):
+        get_logger().error("请使用其他版本的题板 该题板不支持副板")
+        raise ValueError("ERROR BOARD")

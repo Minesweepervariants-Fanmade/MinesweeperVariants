@@ -360,7 +360,7 @@ def draw_board(
                 txt = chr(64 + c // 26) if c > 25 else ''
                 txt += chr(65 + c % 26)
                 txt += f"={r}"
-                draw.text((x, y), txt, fill=pos_label_color, font=label_font, anchor="mm")
+                draw.text((x, y), board.pos_label(pos), fill=pos_label_color, font=label_font, anchor="mm")
 
         # 内容渲染 - 使用ElementRenderer
         for pos, obj in board(mode="object", key=key):
@@ -401,7 +401,7 @@ def draw_board(
 
                 mini_font = load_font(int(cell_size * mini_ratio))
                 draw.text((x1_cell - cell_size * 0.02, y1_cell + cell_size * 0.05),
-                          value.type().decode('utf-8', 'ignore'),
+                          value.tag(board).decode('utf-8', 'ignore'),
                           fill=text_color, font=mini_font, anchor="rd")
 
         x_offset += cols * cell_size + margin

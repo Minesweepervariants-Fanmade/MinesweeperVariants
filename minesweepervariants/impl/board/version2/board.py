@@ -274,6 +274,7 @@ class Board(AbstractBoard):
     def generate_board(
             self, board_key: str,
             size: tuple = (),
+            labels: list[str] = [],
             code: bytes = None,
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
@@ -291,12 +292,13 @@ class Board(AbstractBoard):
         flag_byte = 0
         mask = 0
         if code is not None:
-            config, mask, ture_code, false_code, *code\
-                = code.split(b"\xff", 4)
+            config, mask, ture_code, false_code, labels_code, *code\
+                = code.split(b"\xff", 5)
             code = b''.join(code)
             *size, flag_byte = config
             size = (size[0], size[1])
             mask = decode_bytes_7bit(mask)
+            labels = labels_code.decode("ascii").split(";")
             true_tag = get_value(pos=POSITION_TAG, code=ture_code)
             false_tag = get_value(pos=POSITION_TAG, code=false_code)
         data = dict()
@@ -307,6 +309,7 @@ class Board(AbstractBoard):
             "VALUE": true_tag,
             "MINES": false_tag,
             "mask": [],
+            "labels": labels
         }
         for key in self.CONFIG_FLAGS:
             data["config"].update({key: False})
@@ -364,6 +367,7 @@ class Board(AbstractBoard):
             size = self.board_data[board_key]["config"]["size"]
             value = self.board_data[board_key]["config"]["VALUE"]
             mines = self.board_data[board_key]["config"]["MINES"]
+            labels = self.board_data[board_key]["config"]["labels"]
             flags = 0
             mask = 0
             for name in self.CONFIG_FLAGS:
@@ -380,6 +384,8 @@ class Board(AbstractBoard):
             board_bytes.extend(value.type() + b"|" + value.code())
             board_bytes.extend(bytes([255]))
             board_bytes.extend(mines.type() + b"|" + mines.code())
+            board_bytes.extend(bytes([255]))
+            board_bytes.extend((";".join(label for label in labels) if len(labels) > 0 else ";").encode("ascii"))
             # key | sizex | sizey | config
             for pos, obj in self(key=board_key):
                 board_bytes.extend(b"\xff")
@@ -612,3 +618,11 @@ class Board(AbstractBoard):
                 r += "\n"
             r += "\n\n"
         return r[:-2]
+    
+    def pos_label(self, pos: 'AbstractPosition') -> str:
+        labels = self.get_config(pos.board_key, "labels")
+        txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
+        txt += chr(pos.y % 26 + 65)
+        txt += '='
+        txt += labels[pos.x] if pos.x < len(labels) else str(pos.x + 1)
+        return txt
