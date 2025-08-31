@@ -62,8 +62,8 @@ def decode_bytes_7bit(data: bytes) -> int:
 
 class Position(AbstractPosition):
     def __repr__(self):
-        return (f"{self.board_key+':' if self.board_key != MASTER_BOARD else ''}"
-                f"{alpha(self.y)}{self.x+1}")
+        return (f"{self.board_key + ':' if self.board_key != MASTER_BOARD else ''}"
+                f"{alpha(self.y)}{self.x + 1}")
 
     def _up(self, n: int = 1):
         self.x -= n
@@ -169,6 +169,7 @@ class Board(AbstractBoard):
     version = 1
 
     def __init__(self, size: tuple = None, code: bytes = None):
+        self.__used_type = False      # 使Summon检查是否使用了类型判断
         self._model = None
         self.board_data = dict()
 
@@ -194,9 +195,9 @@ class Board(AbstractBoard):
         Tuple[
             'Position',
             Union[
-            'AbstractClueValue',
-            'AbstractMinesValue',
-            str, IntVar, bool, None
+                'AbstractClueValue',
+                'AbstractMinesValue',
+                str, IntVar, bool, None
             ]],
         Any, None
     ]:
@@ -230,16 +231,14 @@ class Board(AbstractBoard):
                     pos = Position(posx, posy, key)
                     if pos in self.get_config(pos.board_key, "mask"):
                         continue
-                    pos_type = self.get_type(pos)
-
                     # 检查是否符合目标类型
-                    if target == "always" or pos_type in target:
+                    if target == "always" or self.get_type(pos) in target:
                         if mode == "object":
                             yield pos, self.get_value(pos)
                         elif mode == "obj":
                             yield pos, self.get_value(pos)
                         elif mode == "type":
-                            yield pos, pos_type
+                            yield pos, self.get_type(pos)
                         elif mode == "var":
                             yield pos, self.get_variable(pos)
                         elif mode == "variable":
@@ -274,7 +273,7 @@ class Board(AbstractBoard):
     def generate_board(
             self, board_key: str,
             size: tuple = (),
-            labels: list[str] = [],
+            labels: list[str] = None,
             code: bytes = None,
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
@@ -284,15 +283,18 @@ class Board(AbstractBoard):
         :param board_key: 题板名称
         :param size: 题板的尺寸 (与code二选一)
         :param code: 题板的代码 (与size二选一)
+        :param labels: X=N的N字符串列表
         :param true_tag: 题板默认非雷对象
         :param false_tag:题板默认雷对象
         """
+        if labels is None:
+            labels = []
         if board_key in self.board_data:
             return
         flag_byte = 0
         mask = 0
         if code is not None:
-            config, mask, ture_code, false_code, labels_code, *code\
+            config, mask, ture_code, false_code, labels_code, *code \
                 = code.split(b"\xff", 5)
             code = b''.join(code)
             *size, flag_byte = config
@@ -385,7 +387,7 @@ class Board(AbstractBoard):
             board_bytes.extend(bytes([255]))
             board_bytes.extend(mines.type() + b"|" + mines.code())
             board_bytes.extend(bytes([255]))
-            board_bytes.extend((";".join(label for label in labels) if len(labels) > 0 else ";").encode("ascii"))
+            board_bytes.extend((";".join(label for label in labels)).encode("ascii"))
             # key | sizex | sizey | config
             for pos, obj in self(key=board_key):
                 board_bytes.extend(b"\xff")
@@ -449,10 +451,16 @@ class Board(AbstractBoard):
         raise ValueError(f"unknown type: {value}, type{type(value)}")
 
     def get_type(self, pos: 'Position') -> str:
+        self.__used_type = True
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["type"][pos.y][pos.x]
         return ""
+
+    def used_type(self) -> bool:
+        t = self.__used_type
+        self.__used_type = False
+        return t
 
     def get_value(self, pos: 'Position') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
@@ -618,7 +626,7 @@ class Board(AbstractBoard):
                 r += "\n"
             r += "\n\n"
         return r[:-2]
-    
+
     def pos_label(self, pos: 'AbstractPosition') -> str:
         labels = self.get_config(pos.board_key, "labels")
         txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
