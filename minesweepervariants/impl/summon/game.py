@@ -830,6 +830,12 @@ class GameSession:
         self.board = _board
         return clue_freq
 
+    def get_generation_progress(self) -> tuple[float, float, float]:
+        # returns (progress(0..1), used_time(s), total_time(s))
+        # if not generating: raise RuntimeError
+
+        raise NotImplementedError
+
 
 def main():
     get_logger(log_lv="TRACE")
