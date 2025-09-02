@@ -465,6 +465,16 @@ class AbstractBoard(ABC):
         :return: 标签字符串
         """
 
+    def serialize(self):
+        from ..impl.impl_obj import encode_board
+        return encode_board(self.encode())
+
+    @classmethod
+    def from_str(cls, data: str):
+        from ..impl.impl_obj import decode_board
+        return decode_board(data)
+
+
 
 # --------实例类-------- #
 

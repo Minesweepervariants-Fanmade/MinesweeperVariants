@@ -21,7 +21,7 @@ from ...abs.board import AbstractBoard
 from ...abs.board import AbstractPosition
 from . import Summon
 from .solver import solver_by_csp, hint_by_csp, Switch, deduced_by_csp, solver_model
-from ...utils.impl_obj import MINES_TAG, VALUE_QUESS, POSITION_TAG
+from ...utils.impl_obj import MINES_TAG, VALUE_QUESS, POSITION_TAG, serialize as tag_serialize, decode as tag_decode
 from ...utils.tool import get_logger, get_random
 
 from minesweepervariants.config.config import DEFAULT_CONFIG
@@ -836,6 +836,32 @@ class GameSession:
 
         raise NotImplementedError
 
+    def serialize(self):
+        data = {
+            'mode': self.mode.value,
+            'drop_r': self.drop_r,
+            'ultimate_mode': self.ultimate_mode.value,
+            'flag_tag': tag_serialize(self.flag_tag),
+            'clue_tag': tag_serialize(self.clue_tag),
+            'answer_board': self.answer_board.serialize(),
+            'board': self.board.serialize(),
+        }
+        return data
+
+
+    @classmethod
+    def from_dict(cls, data):
+        self = cls(
+            mode=Mode(data['mode']),
+            drop_r=data['drop_r'],
+            ultimate_mode=UMode(data['ultimate_mode']),
+        )
+        self.flag_tag = tag_decode(data['flag_tag'])
+        self.clue_tag = tag_decode(data['clue_tag'])
+        self.answer_board = AbstractBoard.from_str(data['answer_board'])
+        self.board = AbstractBoard.from_str(data['board'])
+
+        return self
 
 def main():
     get_logger(log_lv="TRACE")
