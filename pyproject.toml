@@ -25,10 +25,11 @@ flask = { version = ">=3.1.2,<4.0.0", extras = ["async"], optional = true }
 flask-cors = { version = ">=6.0.1,<7.0.0", optional = true }
 waitress = { version = ">=3.0.2,<3.1.0", optional = true }
 orjson = { version = ">=3.11.2,<4.0.0", optional = true }
+requests = { version = ">=2.28.0,<3.0.0", optional = true }
 
 [tool.poetry.extras]
 image = ["pillow"]
-server = ["flask", "flask-cors", "waitress", "orjson"]
+server = ["flask", "flask-cors", "waitress", "orjson", "requests"]
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
