@@ -87,6 +87,7 @@ def main(
         if attempts != -1 and attempt_index >= attempts:
             break
         attempt_index += 1
+        logger.info(f"尝试第{attempt_index}次minesweepervariants..", end="\r")
         game = GameSession(s, mode=PUZZLE, drop_r=drop_r)
         try:
             game.board = s.create_puzzle()

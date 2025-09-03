@@ -10,7 +10,7 @@ import queue
 from re import A
 import threading
 import time
-from typing import Any, Union, Callable, List
+from typing import Any, Union, Callable, List, Tuple, Optional
 
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -157,6 +157,8 @@ class GameSession:
         self.flag_tag = MinesAsterisk(POSITION_TAG)
         self.clue_tag = ValueAsterisk(POSITION_TAG)
 
+        self.create_schedule_data = [0, time.time()]
+
     @property
     def answer_board(self):
         result = self.__dict__["answer_board"]
@@ -256,6 +258,86 @@ class GameSession:
     def thread_deduced(self):
         threading.Thread(target=self.deducedManger.wait).start()
 
+    def create_schedule(self) -> Tuple[float, float, float]:
+        """
+        生成题板的进度
+        返回: 进度(0-1), 已用时间(seconds), 预估总用时(seconds)
+        """
+        schedule, start_time = self.create_schedule_data
+        elapsed = time.time() - start_time
+        total = elapsed / schedule if schedule > 0 else float('inf')
+        return schedule, elapsed, total
+
+    def _create_board(self) -> Optional["AbstractBoard"]:
+        board = self.answer_board.clone()
+        random = get_random()
+        board: AbstractBoard
+        model = board.get_model()
+
+        for rule in self.summon.mines_rules.rules + [
+            self.summon.clue_rule, self.summon.mines_clue_rule
+        ]:
+            rule.init_clear(board)
+
+        # 尝试直接初始化所有未使用类型检查的规则
+        used_type_rule = []     # 使用了类型检查的规则
+        board.used_type()
+        for rule in self.summon.mines_rules.rules + [
+            self.summon.clue_rule, self.summon.mines_clue_rule
+        ]:
+            if isinstance(rule, Rule0R):
+                continue
+            switch = Switch()
+            rule.create_constraints(board, switch)
+            if board.used_type():
+                used_type_rule.append((rule, switch.get_all_vars()))
+            else:
+                # 直接强制实现所有左线
+                model.AddBoolAnd(switch.get_all_vars())
+
+        # 尝试直接初始化所有未使用类型检查的线索
+        used_type_pos = []      # 使用了类型检查的对象
+        pos_switchs = {}
+        for key in board.get_board_keys():
+            for pos, obj in board(key=key):
+                if obj is None:
+                    continue
+                switch = Switch()
+                obj.create_constraints(board, switch)
+                pos_switch = model.NewBoolVar(f"{pos}:{obj}(switch)")
+                model.AddBoolAnd(
+                    switch.get_all_vars()
+                ).OnlyEnforceIf(pos_switch)
+                model.AddBoolAnd(
+                    [v.Not() for v in switch.get_all_vars()]
+                ).OnlyEnforceIf(pos_switch.Not())
+                if board.used_type():
+                    used_type_pos.append((pos, pos_switch))
+                pos_switchs[pos] = pos_switch
+
+        # if not used_type_pos + used_type_rule:
+        #     # 如果全部没有使用过type检查 就走untype生成
+        #     return self.create_board_by_untype()
+
+        positions = [pos for pos, _ in board()]
+        random.shuffle(positions)
+
+        while positions:
+            pos = positions.pop()
+            if pos in pos_switchs:
+                # 如果在里面代表未使用类型检查
+                ...
+
+        self.board = board
+        return board
+
+    def create_board_by_untype(
+            self
+    ) -> Union["AbstractBoard", None]:
+        """
+        未使用任何type检查的生成题板
+        """
+
     def create_board(self) -> Union["AbstractBoard", None]:
         """
         一层具象
@@ -273,20 +355,13 @@ class GameSession:
                         self.summon.mines_clue_rule]):
             rule.init_clear(board)
         clues = [i for i in board("CF")]
+        all_schedule = len(clues)
+        self.create_schedule_data = [0.0, time.time()]
         print("game init:", board.show_board(), clues)
         get_random().shuffle(clues)
-        r_flag = True
         while clues:
-            if r_flag and self.drop_r:
-                r_flag = solver_by_csp(
-                    self.summon.mines_rules,
-                    self.summon.clue_rule,
-                    self.summon.mines_clue_rule,
-                    board.clone(),
-                    answer_board=self.answer_board,
-                    drop_r=not r_flag
-                ) == 1
             while True:
+                self.create_schedule_data[0] = (all_schedule - len(clues)) / all_schedule
                 if not clues:
                     break
                 pos, clue = clues.pop()
@@ -298,12 +373,20 @@ class GameSession:
                         self.summon.mines_rules,
                         self.summon.clue_rule,
                         self.summon.mines_clue_rule,
-                        board.clone(), drop_r=not r_flag) == 0:
+                        board.clone(), drop_r=False) == 0:
                     board.set_value(pos, None)
                     break
                 board.set_value(pos, clue)
-        if r_flag and self.drop_r:
-            return None
+        if solver_by_csp(
+            self.summon.mines_rules,
+            self.summon.clue_rule,
+            self.summon.mines_clue_rule,
+            board.clone(),
+            answer_board=self.answer_board,
+            drop_r=True
+        ) == 1:
+            # 不使用R推会导致多解
+            self.drop_r = False
         self.board = board
         self.origin_board = board.clone()
         return board
