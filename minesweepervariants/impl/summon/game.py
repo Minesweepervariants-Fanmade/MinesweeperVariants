@@ -891,7 +891,7 @@ class GameSession:
             [self.logger.debug(str(i[0]) + " -> " + str(i[1])) for i in grouped_hints]
             pos_clues = {}
             for hints, deduceds in grouped_hints:
-                if "R" in hints:
+                if ("R", None) in hints:
                     hints_length = 1 + (len(hints) // 4)
                 else:
                     hints_length = len(hints)
