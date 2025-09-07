@@ -14,6 +14,7 @@ from minesweepervariants.impl.summon.summon import GenerateError
 from minesweepervariants.utils import timer
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.tool import get_logger, get_random
+from minesweepervariants.utils import tool
 from minesweepervariants.utils.impl_obj import get_seed
 
 from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
@@ -41,6 +42,7 @@ def main(
         file_name: str,  # 文件已什么开头
 ):
     rule_code = rules[:]
+    tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     s = Summon(size=size, total=total, rules=rules, board=board_class,

@@ -15,6 +15,7 @@ from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board, enc
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, PUZZLE
 from minesweepervariants.impl.summon.summon import GenerateError
+from minesweepervariants.utils import tool
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.utils.tool import get_logger, get_random
@@ -46,6 +47,7 @@ def main(
         image: bool = True,  # 是否生成图片
 ):
     rule_code = rules[:]
+    tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     s = Summon(size=size, total=total, rules=rules, board=board_class,
@@ -139,7 +141,7 @@ def main(
 
         rule_code = [base64.urlsafe_b64encode(rule.encode("utf-8")).decode("utf-8") for rule in rule_code]
 
-        with (open(os.path.join(CONFIG["output_path"], f"{file_name}.txt"), "a", encoding="utf-8") as f):
+        with (open(os.path.join(CONFIG["output_path"], f"{file_name}.txt" if file_name else "demo.txt"), "a", encoding="utf-8") as f):
             f.write("\n" + ("=" * 100) + "\n\n生成时间" + logger.get_time() + "\n")
             f.write(f'线索表\n')
             if 0 in clue_freq:
