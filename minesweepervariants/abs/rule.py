@@ -36,9 +36,10 @@ class AbstractRule(ABC):
         :param info:
             `info (dict)`：上下文信息字典，包含以下关键字段：
                 * `size (dict[str, tuple[int, int]])` 其键为题板的字符串索引 值为size元组
+                * `total (dict[str, int])`其键为题板的字符串索引 值为该题板的所有格子的数量
                 * `interactive (list[str])`：题板交互权，列表内为题板索引，所有键均为允许求解器主动交互。
                 * `hard_fns (list[Callable[[CpModel, IntVar], None]])`：硬约束函数列表。
-                    * 规则通过定义函数的形式添加硬约束（如调用 `model.Add(...)`），
+                    * 规则通过定义函数的形式添加硬约束（如调用 `model.Add(...)`）
                     * 需要将该函数追加到此列表，生成器后续会统一调用执行，确保所有硬约束生效。
                     * 函数签名应为 `(model: CpModel, total: IntVar) -> None`，不返回值。
                 * `soft_fn (Callable[[int, int], None])`：软约束函数。

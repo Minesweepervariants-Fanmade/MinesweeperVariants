@@ -154,6 +154,7 @@ if args.test:
         mask_dye=args.mask,
         board_class=args.board_class,
         unseed=not args.onseed,
+        image=not args.no_image,
     )
 elif args.query == defaults.get("query"):
     if not args.no_image and find_spec("PIL") is None:

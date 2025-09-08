@@ -12,6 +12,7 @@ from minesweepervariants.impl.summon import Summon
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.utils.tool import get_logger, get_random
+from minesweepervariants.utils import tool
 
 from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
 
@@ -30,8 +31,10 @@ def main(
         dye: str,  # 染色规则
         mask_dye: str,   # 异形题板
         board_class: str,  # 题板的名称
-        unseed: bool
+        unseed: bool,   # 是否不启用种子
+        image: bool     # 是否生成图片
 ):
+    tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     attempt_index = 0
@@ -81,11 +84,12 @@ def main(
             else:
                 f.write(f"-{get_seed()}\" ")
             f.write("-o answer\n")
-
-        def d():
-            draw_board(board=_board, cell_size=100, output="answer",
-                       bottom_text=rule_text + f"-R{total}-{get_seed()}\n")
-        threading.Thread(target=d, daemon=True).start()
+        
+        if image:
+            def d():
+                draw_board(board=_board, cell_size=100, output="answer",
+                        bottom_text=rule_text + f"-R{total}-{get_seed()}\n")
+            threading.Thread(target=d, daemon=True).start()
 
         logger.info("\n\n" + "=" * 20 + "\n")
         logger.info("\n生成时间" + logger.get_time() + "\n")

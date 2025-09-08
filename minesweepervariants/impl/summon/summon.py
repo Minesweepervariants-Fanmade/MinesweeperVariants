@@ -175,6 +175,8 @@ class Summon:
         info = {
             "size": {key: (size[0], size[1]) for key in self.board.get_board_keys()
                      for size in [self.board.get_config(key, "size")]},
+            "total": {key: len([_ for _, _ in self.board(key=key)]) 
+                      for key in self.board.get_board_keys()},
             "interactive": [key for key in self.board.get_board_keys() if
                             self.board.get_config(key, "interactive")],
             "hard_fns": [],
@@ -214,10 +216,15 @@ class Summon:
             solver = cp_model.CpSolver()
             status = timer(solver.Solve)(model)
 
+            self.logger.debug(f"total try: {n}")
+
             if status in (cp_model.FEASIBLE, cp_model.OPTIMAL):
+                self.logger.debug(f"total set to: {n}")
                 self.total = n
                 set_total(total=n)
                 return
+            
+            self.logger.debug(f"total {n} fail, status: {status}")
 
             att_index += 1
             symbol = not symbol

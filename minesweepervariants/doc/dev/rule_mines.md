@@ -219,6 +219,7 @@ class RuleR(...):
 
 * `info (dict)`：上下文信息字典，包含以下关键字段：
   * `size (dict[str, tuple[int, int]])` 其键为题板的字符串索引 值为size元组
+  * `total (dict[str, int])`其键为题板的字符串索引 值为该题板的所有格子的数量
   * `interactive (list[str])`：题板交互权，列表内为题板索引，所有键均为允许求解器主动交互。
   * `hard_fns (list[Callable[[CpModel, IntVar], None]])`：硬约束函数列表。
     * 规则通过定义函数的形式添加硬约束（如调用 `model.Add(...)`），

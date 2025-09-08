@@ -64,6 +64,6 @@ class Rule0R(AbstractMinesRule):
     def suggest_total(self, info: dict):
         ub = 0
         for key in info["interactive"]:
-            size = info["size"][key]
-            ub += size[0] * size[1]
+            total = info["total"][key]
+            ub += total
         info["soft_fn"](ub * 0.4, -1)
