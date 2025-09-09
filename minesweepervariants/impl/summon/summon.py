@@ -248,7 +248,9 @@ class Summon:
             _board = self.fill_valid(self.board, self.total)
         if _board is None:
             return None
-        [_board.set_value(pos, None) for pos, _ in _board("C")]
+        for key in _board.get_board_keys():
+            for pos, _ in _board("C", key=key):
+                _board.set_value(pos, None)
         _board = self.clue_rule.fill(_board)
         _board = self.mines_clue_rule.fill(_board)
         for rule in self.mines_rules.rules:
