@@ -311,10 +311,7 @@ class Summon:
             ]:
                 rule.create_constraints(board, switch)
             model.AddBoolAnd(switch.get_all_vars())
-        positions = [
-            pos for key in board.get_board_keys()
-            for pos, _ in self.board("N", key=key)
-        ]
+        positions = [pos for pos, _ in self.board("N")]
         random.shuffle(positions)
         for index in range(len(positions)):
             if total <= 0:
@@ -340,7 +337,7 @@ class Summon:
                 del model
                 model = _model
         if solver_model(model):
-            return board
+            return self.random_fill(board, 0)
         while history:
             code, model = history.pop()
             board = type(board)(code=code)
