@@ -274,11 +274,17 @@ class Summon:
             self.mines_clue_rule, self.clue_rule
         ]:
             rule.create_constraints(board, switch)
+        for key in board.get_board_keys():
+            for pos, var in board(mode="variable", key=key):
+                if board.get_type(pos) == "F":
+                    model.Add(var == 1)
+                elif board.get_type(pos) == "C":
+                    model.Add(var == 0)
         var_list = [v for _, v in board(mode="variable")]
         model.AddBoolAnd(switch.get_all_vars())
         __count = 0
         random_total = int(total * (2 ** (1 - len(self.mines_rules.rules))))
-        while True:
+        while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)", end="\r", flush=True)
             _model = model.clone()
@@ -292,6 +298,8 @@ class Summon:
             del model
             model = _model
             random_total = int(0.5 * random_total)
+        else:
+            status, solver = solver_model(model, True)
         for key in board.get_board_keys():
             for pos, var in board(mode="variable", key=key):
                 if solver.Value(var):
