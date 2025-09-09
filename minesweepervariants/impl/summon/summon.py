@@ -251,17 +251,11 @@ class Summon:
         [_board.set_value(pos, None) for pos, _ in _board("C")]
         _board = self.clue_rule.fill(_board)
         _board = self.mines_clue_rule.fill(_board)
-        if any([_board.has("N", key=key)
-                for key in self.board.get_board_keys()]):
-            for rule in self.mines_rules.rules:
-                rule.init_board(_board)
-            self.answer_board_str = "\n" + _board.show_board()
-            self.answer_board_code = _board.encode()
-            self.answer_board = _board.clone()
-        else:
-            self.answer_board_str = "\n" + _board.show_board()
-            self.answer_board_code = _board.encode()
-            self.answer_board = _board.clone()
+        for rule in self.mines_rules.rules:
+            rule.init_board(_board)
+        self.answer_board_str = "\n" + _board.show_board()
+        self.answer_board_code = _board.encode()
+        self.answer_board = _board.clone()
         self.logger.debug("题板生成完毕:\n" + _board.show_board())
         self.logger.debug(_board.encode())
         self.answer_board = _board
@@ -296,11 +290,12 @@ class Summon:
             del model
             model = _model
             random_total = int(0.5 * random_total)
-        for pos, var in board(mode="variable"):
-            if solver.Value(var):
-                board[pos] = MINES_TAG
-            else:
-                board[pos] = VALUE_QUESS
+        for key in board.get_board_keys():
+            for pos, var in board(mode="variable", key=key):
+                if solver.Value(var):
+                    board[pos] = board.get_config(key, "MINES")
+                else:
+                    board[pos] = board.get_config(key, "VALUE")
         print("\n\n", board)
         print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
         return board
@@ -316,7 +311,10 @@ class Summon:
             ]:
                 rule.create_constraints(board, switch)
             model.AddBoolAnd(switch.get_all_vars())
-        positions = [pos for pos, _ in self.board("N")]
+        positions = [
+            pos for key in board.get_board_keys()
+            for pos, _ in self.board("N", key=key)
+        ]
         random.shuffle(positions)
         for index in range(len(positions)):
             if total <= 0:
@@ -329,7 +327,7 @@ class Summon:
             _model = model.clone()
             _model.Add(board.get_variable(pos) == 0)
             code = board.encode()
-            board[pos] = MINES_TAG
+            board[pos] = board.get_config(pos.board_key, "MINES")
             model.Add(board.get_variable(pos) == 1)
             if len(self.mines_rules.rules) == 1:
                 total -= 1
@@ -338,7 +336,7 @@ class Summon:
                 total -= 1
             else:
                 board: AbstractBoard = type(board)(code=code)
-                board[pos] = VALUE_QUESS
+                board[pos] = board.get_config(pos.board_key, "VALUE")
                 del model
                 model = _model
         if solver_model(model):
