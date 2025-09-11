@@ -865,14 +865,27 @@ class GameSession:
 
         return results
 
-    def check_difficulty(self, q=1000, br=False):
-        clue_freq = {1: 0}
+    def check_difficulty(self, diff=None):
+        """
+        diff: (min, max) or None
+        如果diff为None则返回所有线索线索数
+        min为n的时候表示线索数至少包含n线索推理
+        max为n的时候表示线索数至多包含n线索推理
+        """
+        clue_freq = {-1: 0}
         _board = self.board.clone()
         n_num = len([None for key in _board.get_board_keys()
                      for _ in _board('N', key=key)])
         while self.board.has("N"):
-            if br and max(clue_freq.keys()) >= q:
-                return clue_freq
+            if diff is not None:
+                if diff[1] is not None:
+                    if max(clue_freq.keys()) > diff[1]:
+                        return clue_freq
+                elif diff[0] is not None:
+                    if max(clue_freq.keys()) >= diff[0]:
+                        return clue_freq
+                else:
+                    return clue_freq
 
             print(f"{n_num - len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])}"
                   f"/{n_num}", end="\r")
