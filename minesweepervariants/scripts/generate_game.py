@@ -34,7 +34,7 @@ def main(
         size: tuple[int, int],  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 所有的规则集合
-        query: int,  # 至少有几线索推理
+        query: str,  # 最高线索数范围 x-y表示
         attempts: int,  # 尝试次数
         dye: str,  # 染色规则
         mask_dye: str,  # 异形题板
@@ -46,6 +46,15 @@ def main(
         file_name: str = "",
         image: bool = True,  # 是否生成图片
 ):
+    if "-" in query:
+        a, b, *_ = query.split("-")
+        a = int(a) if a.isdigit() else None
+        b = int(b) if b.isdigit() else None
+        query = [a, b]
+    else:
+        query = [int(query), None]
+    if query[0] is not None and query[1] is not None and query[0] > query[1]:
+        raise ValueError(f"范围从{query[0]}到{query[1]}吗? 你在干什么?")
     rule_code = rules[:]
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
@@ -106,7 +115,7 @@ def main(
         game.logger.info("board: " + str(game.board.encode()))
         game.logger.info("answer: " + str(game.answer_board.encode()))
         try:
-            clue_freq = game.check_difficulty(diff=[query, None] if early_stop else None)
+            clue_freq = game.check_difficulty(diff=query if early_stop else None)
         except ModelGenerateError:
             continue
         if not clue_freq:
@@ -120,7 +129,9 @@ def main(
         board_code = _board.encode()
         answer_code = game.answer_board.encode()
 
-        if not any(k >= query for k in clue_freq):
+        if query[0] is not None and max(clue_freq.keys()) < query[0]:
+            continue
+        if query[1] is not None and max(clue_freq.keys()) > query[1]:
             continue
 
         if not os.path.exists(CONFIG["output_path"]):

@@ -42,8 +42,8 @@ parser.add_argument("-r", "--used-r", action="store_true", default=defaults.get(
                     help="推理是否加R")
 parser.add_argument("-a", "--attempts", type=int, default=defaults.get("attempts"),
                     help="尝试生成题板次数")
-parser.add_argument("-q", "--query", type=int, default=defaults.get("query"),
-                    help="生成题板的至少有几线索推理")
+parser.add_argument("-q", "--query", default="",
+                    help="生成题板的最高线索数范围 使用x-y表示(包含), 例如 5-8 表示线索数在5到8之间, -8表示不超过8, 5表示不少于5")
 parser.add_argument("-e", "--early-stop", action="store_true", default=False,
                     help="生成题板的时候达到指定线索数量推理的时候 直接退出 这会导致线索图不正确")
 parser.add_argument("-v", "--vice-board", action="store_true", default=False,
@@ -156,7 +156,7 @@ if args.test:
         unseed=not args.onseed,
         image=not args.no_image,
     )
-elif args.query == defaults.get("query"):
+elif not args.query:
     if not args.no_image and find_spec("PIL") is None:
         print("可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片.")
         exit(1)

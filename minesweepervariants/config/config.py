@@ -17,7 +17,6 @@ DEFAULT_CONFIG = {
     "seed": -1,                    # 随机种子
     "logger_lv": "INFO",           # 默认logger为info级别
     "attempts": -1,                # 默认无限次尝试（无-q参数默认20次）
-    "query": -1,                   # 如果非-1，则启用-1参数
     "total": -1,                   # 默认自动计算总雷数数量
     "dye": "",                     # 默认无染色
     "used_r": False,               # 默认不启用R推理
