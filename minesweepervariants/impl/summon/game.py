@@ -475,12 +475,14 @@ class GameSession:
                 return None
             self.board[pos] = self.answer_board[pos]
         elif self.mode in [EXPERT, ULTIMATE, PUZZLE]:
-            # 专家模式
+            # 非普通模式
             _board = self.board.clone()
             if pos not in self.last_deduced[1]:
                 print(f"apply {pos} 未命中 {self.last_deduced[1]}")
-                if pos not in self.deduced():
+                if self.unbelievable(pos, action) is not None:
                     return None
+                else:
+                    self.last_deduced[1].append(pos)
             if action and self.answer_board.get_type(pos) == "C":
                 return None
             if not action and self.answer_board.get_type(pos) == "F":
@@ -872,20 +874,20 @@ class GameSession:
         min为n的时候表示线索数至少包含n线索推理
         max为n的时候表示线索数至多包含n线索推理
         """
-        clue_freq = {-1: 0}
+        clue_freq = {}
         _board = self.board.clone()
         n_num = len([None for key in _board.get_board_keys()
                      for _ in _board('N', key=key)])
         while self.board.has("N"):
-            if diff is not None:
+            if diff is not None and clue_freq:
                 if diff[1] is not None:
                     if max(clue_freq.keys()) > diff[1]:
-                        return clue_freq
+                        break
                 elif diff[0] is not None:
                     if max(clue_freq.keys()) >= diff[0]:
-                        return clue_freq
+                        break
                 else:
-                    return clue_freq
+                    break
 
             print(f"{n_num - len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])}"
                   f"/{n_num}", end="\r")
@@ -899,7 +901,8 @@ class GameSession:
             if not grouped_hints:
                 self.logger.warn("hint无返回值")
                 self.logger.warn("\n" + self.board.show_board())
-                return
+                clue_freq = None
+                break
             self.logger.debug("\n" + self.board.show_board())
             [self.logger.debug(str(i[0]) + " -> " + str(i[1])) for i in grouped_hints]
             pos_clues = {}
@@ -924,7 +927,7 @@ class GameSession:
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
         self.board = _board
-        return clue_freq
+        return clue_freq if clue_freq else None
 
     def get_generation_progress(self) -> tuple[float, float, float]:
         # returns (progress(0..1), used_time(s), total_time(s))
