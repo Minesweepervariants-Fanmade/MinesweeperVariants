@@ -106,7 +106,7 @@ def main(
         game.logger.info("board: " + str(game.board.encode()))
         game.logger.info("answer: " + str(game.answer_board.encode()))
         try:
-            clue_freq = game.check_difficulty(query, br=[query, None] if early_stop else None)
+            clue_freq = game.check_difficulty(diff=[query, None] if early_stop else None)
         except ModelGenerateError:
             continue
         if not clue_freq:
