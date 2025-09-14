@@ -45,7 +45,7 @@ class Summon:
         drop_r: bool = False,
         mask: str = "",
         dye: str = "",
-        board: str = "Board1",
+        board: str = "Board2",
         vice_board: bool = False,
     ):
         """
@@ -175,7 +175,7 @@ class Summon:
         info = {
             "size": {key: (size[0], size[1]) for key in self.board.get_board_keys()
                      for size in [self.board.get_config(key, "size")]},
-            "total": {key: len([_ for _, _ in self.board(key=key)]) 
+            "total": {key: len([_ for _, _ in self.board(key=key)])
                       for key in self.board.get_board_keys()},
             "interactive": [key for key in self.board.get_board_keys() if
                             self.board.get_config(key, "interactive")],
@@ -223,7 +223,7 @@ class Summon:
                 self.total = n
                 set_total(total=n)
                 return
-            
+
             self.logger.debug(f"total {n} fail, status: {status}")
 
             att_index += 1

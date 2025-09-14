@@ -190,6 +190,7 @@ class Board(AbstractBoard):
             self, target: Union[str, None] = "always",
             mode: str = "object",
             key: str = None,
+            *args, **kwargs
     ) -> Generator[
         Tuple[
             'Position',
@@ -221,7 +222,7 @@ class Board(AbstractBoard):
         """
         if key is None:
             for key in self.get_interactive_keys():
-                for i in self(target=target, mode=mode, key=key):
+                for i in self(target=target, mode=mode, key=key, *args, **kwargs):
                     yield i
         else:
             size = self.board_data[key]["config"]["size"]
@@ -230,22 +231,22 @@ class Board(AbstractBoard):
                     pos = Position(posx, posy, key)
                     if pos in self.get_config(pos.board_key, "mask"):
                         continue
-                    pos_type = self.get_type(pos)
+                    pos_type = self.get_type(pos, *args, **kwargs)
 
                     # 检查是否符合目标类型
                     if target == "always" or pos_type in target:
                         if mode == "object":
-                            yield pos, self.get_value(pos)
+                            yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "obj":
-                            yield pos, self.get_value(pos)
+                            yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "type":
                             yield pos, pos_type
                         elif mode == "var":
-                            yield pos, self.get_variable(pos)
+                            yield pos, self.get_variable(pos, *args, **kwargs)
                         elif mode == "variable":
-                            yield pos, self.get_variable(pos)
+                            yield pos, self.get_variable(pos, *args, **kwargs)
                         elif mode == "dye":
-                            yield pos, self.get_dyed(pos)
+                            yield pos, self.get_dyed(pos, *args, **kwargs)
                         elif mode == "none":
                             yield pos, None
 
@@ -449,13 +450,13 @@ class Board(AbstractBoard):
         get_logger().error(f"unknown type: value{value}, type{type(value)}")
         raise ValueError(f"unknown type: {value}, type{type(value)}")
 
-    def get_type(self, pos: 'Position') -> str:
+    def get_type(self, pos: 'Position', *args, **kwargs) -> str:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["type"][pos.y][pos.x]
         return ""
 
-    def get_value(self, pos: 'Position') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
+    def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["obj"][pos.y][pos.x]
@@ -467,7 +468,7 @@ class Board(AbstractBoard):
             self.board_data[key]["obj"][pos.y][pos.x] = value
             self.board_data[key]["type"][pos.y][pos.x] = self.type_value(value)
 
-    def get_dyed(self, pos: 'Position') -> bool | None:
+    def get_dyed(self, pos: 'Position', *args, **kwargs) -> bool | None:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["dye"][pos.y][pos.x]
@@ -477,16 +478,29 @@ class Board(AbstractBoard):
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos.y][pos.x] = dyed
 
-    def get_variable(self, pos: 'Position') -> IntVar | None:
+    def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
         key = pos.board_key
         self.get_model()
         if self.is_valid(pos):
+            if special:
+                if "variable_special" not in self.board_data[key]:
+                    self.board_data[key]["variable_special"] = dict()
+
+                if special not in self.board_data[key]["variable_special"]:
+                    self.board_data[key]["variable_special"][special] = dict()
+
+                if (pos.x, pos.y) not in self.board_data[key]["variable_special"][special]:
+                    self.board_data[key]["variable_special"][special][(pos.x, pos.y)] = \
+                        self._model.NewBoolVar(f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
+                return self.board_data[key]["variable_special"][special][(pos.x, pos.y)]
             return self.board_data[key]["variable"][pos.x][pos.y]
 
     def clear_variable(self):
         for key in self.board_data.keys():
             if "variable" in self.board_data[key]:
                 del self.board_data[key]["variable"]
+            if "variable_special" in self.board_data[key]:
+                del self.board_data[key]["variable_special"]
         self._model = None
         gc.collect()
 
@@ -566,23 +580,23 @@ class Board(AbstractBoard):
         return result
 
     def batch(self, positions: List['Position'],
-              mode: str, drop_none: bool = False) -> List[Any]:
+              mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
         result = []
         for pos in positions:
             if drop_none and not self.in_bounds(pos):
                 continue
             if mode == "object":
-                result.append(self.get_value(pos))
+                result.append(self.get_value(pos, *args, **kwargs))
             elif mode == "obj":
-                result.append(self.get_value(pos))
+                result.append(self.get_value(pos, *args, **kwargs))
             elif mode == "variable":
-                result.append(self.get_variable(pos))
+                result.append(self.get_variable(pos, *args, **kwargs))
             elif mode == "var":
-                result.append(self.get_variable(pos))
+                result.append(self.get_variable(pos, *args, **kwargs))
             elif mode == "type":
-                result.append(self.get_type(pos))
+                result.append(self.get_type(pos, *args, **kwargs))
             elif mode == "dye":
-                result.append(self.get_dyed(pos))
+                result.append(self.get_dyed(pos, *args, **kwargs))
             else:
                 raise ValueError(f"Unsupported mode: {mode}")
         return result

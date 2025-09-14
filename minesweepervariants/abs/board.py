@@ -197,7 +197,8 @@ class AbstractBoard(ABC):
     def __call__(
             self, target: Union[str, None] = "always",
             mode: str = "object",
-            key: str | None = MASTER_BOARD
+            key: str | None = MASTER_BOARD,
+            *args, **kwargs
     ) -> Generator[Tuple['AbstractPosition', Any], Any, None]:
         """
         被调用时循环返回目标值
@@ -435,7 +436,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False) -> List[Any]:
+    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
         """
         批量获取指定位置上的信息。
         :param positions: 位置列表
