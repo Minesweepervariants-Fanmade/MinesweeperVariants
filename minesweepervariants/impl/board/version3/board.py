@@ -501,18 +501,18 @@ class Board(AbstractBoard):
 
     def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
         special = special or self.default_special
-        if special != 'raw':
-            s = "".join(traceback.format_stack())
-            if "V.py" not in s and "3I" not in s:
-                print(s)
-                print(f'-{special}------------------------------------------------------------------------------')
-                ...
-        if special == 'raw':
-            s = "".join(traceback.format_stack())
-            if "V.py" in s or "3I" in s:
-                print(s)
-                print(f'-raw------------------------------------------------------------------------------')
-                pass
+        # if special != 'raw':
+        #     s = "".join(traceback.format_stack())
+        #     if "V.py" not in s and "3I" not in s:
+        #         print(s)
+        #         print(f'-{special}------------------------------------------------------------------------------')
+        #         ...
+        # if special == 'raw':
+        #     s = "".join(traceback.format_stack())
+        #     if "V.py" in s or "3I" in s:
+        #         print(s)
+        #         print(f'-raw------------------------------------------------------------------------------')
+        #         pass
 
         key = pos.board_key
         self.get_model()
