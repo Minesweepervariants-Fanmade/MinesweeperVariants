@@ -244,7 +244,7 @@ class GameSession:
             return None
         mines_list = []
         for key in board.get_board_keys():
-            for pos, var in board(mode="var", key=key):
+            for pos, var in board(mode="var", key=key, special='raw'):
                 if self.board.get_type(pos, special='raw') != "N":
                     continue
                 if solver.Value(var) == 0:
@@ -706,10 +706,10 @@ class GameSession:
 
         # 3.获取所有变量并赋值已解完的部分
         for key in board.get_board_keys():
-            for _, var in board("C", mode="variable", key=key):
+            for _, var in board("C", mode="variable", key=key, special='raw'):
                 model.Add(var == 0)
                 self.logger.trace(f"var: {var} == 0")
-            for _, var in board("F", mode="variable", key=key):
+            for _, var in board("F", mode="variable", key=key, special='raw'):
                 model.Add(var == 1)
                 self.logger.trace(f"var: {var} == 1")
 
@@ -807,10 +807,10 @@ class GameSession:
 
         # 3.获取所有变量并赋值已解完的部分
         for key in board.get_board_keys():
-            for _, var in board("C", mode="variable", key=key):
+            for _, var in board("C", mode="variable", key=key, special='raw'):
                 model.Add(var == 0)
                 self.logger.trace(f"var: {var} == 0")
-            for _, var in board("F", mode="variable", key=key):
+            for _, var in board("F", mode="variable", key=key, special='raw'):
                 model.Add(var == 1)
                 self.logger.trace(f"var: {var} == 1")
 

@@ -243,10 +243,10 @@ def solver_by_csp(
 
         # 3.获取所有变量并赋值已解完的部分
         for key in board.get_board_keys():
-            for _, var in board("C", mode="variable", key=key):
+            for _, var in board("C", mode="variable", key=key, special='raw'):
                 model.Add(var == 0)
                 logger.trace(f"var: {var} == 0")
-            for _, var in board("F", mode="variable", key=key):
+            for _, var in board("F", mode="variable", key=key, special='raw'):
                 model.Add(var == 1)
                 logger.trace(f"var: {var} == 1")
 
@@ -264,7 +264,7 @@ def solver_by_csp(
         for key in board.get_interactive_keys():
             for pos, _ in board("N", key=key):
                 value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
-                val = board.get_variable(pos)
+                val = board.get_variable(pos, special='raw')
                 tmp = model.NewBoolVar(f"answer_tmp{pos}")
                 current_solution.append(tmp)
                 logger.trace(f"[{pos}]{val} != {value} ({answer_board.get_type(pos, special='raw')})")
@@ -327,7 +327,7 @@ def solver_by_csp(
     current_solution = []
     for key in board.get_interactive_keys():
         for pos, _ in board("N", key=key):
-            var = board.get_variable(pos)
+            var = board.get_variable(pos, special='raw')
             val = solver.Value(var)
             if val == 1:
                 current_solution.append(var.Not())  # 这个变量不能为1，取反
@@ -356,7 +356,7 @@ def deduced_by_csp(
     model = board.get_model().clone()
     model: cp_model.CpModel
 
-    target_var = board.get_variable(pos)
+    target_var = board.get_variable(pos, special='raw')
     model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
 
     solver = get_solver(False)
@@ -382,7 +382,7 @@ def hint_by_csp(
     model = board.get_model().clone()
     model: cp_model.CpModel
 
-    target_var = board.get_variable(pos)
+    target_var = board.get_variable(pos, special='raw')
     model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
     assumptions = switch.get_all_vars()
 
@@ -540,9 +540,9 @@ def solver_board(
 
     # 3.获取所有变量并赋值已解完的部分
     for key in board.get_board_keys():
-        for _, var in board("C", mode="variable", key=key):
+        for _, var in board("C", mode="variable", key=key, special='raw'):
             model.Add(var == 0)
-        for _, var in board("F", mode="variable", key=key):
+        for _, var in board("F", mode="variable", key=key, special='raw'):
             model.Add(var == 1)
 
     model.AddBoolAnd(switch.get_all_vars())
@@ -555,7 +555,7 @@ def solver_board(
         return None
 
     for key in board.get_board_keys():
-        for pos, var in board(key=key, mode="variable"):
+        for pos, var in board(key=key, mode="variable", special='raw'):
             if (
                 board.get_type(pos, special='raw') == "N" and
                 solver.Value(var)

@@ -4,6 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 
+import traceback
 from typing import List, Union, Tuple, Any, Generator, TYPE_CHECKING
 import heapq
 
@@ -168,10 +169,11 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, size: tuple = None, code: bytes = None):
+    def __init__(self, size: tuple = None, code: bytes = None, default_special: str = 'raw'):
+        # traceback.print_stack()
         self._model = None
         self.board_data = dict()
-        self.default_special = 'raw'
+        self.default_special = default_special
 
         if code is None:
             if size is None:
@@ -499,6 +501,18 @@ class Board(AbstractBoard):
 
     def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
         special = special or self.default_special
+        if special != 'raw':
+            s = "".join(traceback.format_stack())
+            if "V.py" not in s and "3I" not in s:
+                print(s)
+                print(f'-{special}------------------------------------------------------------------------------')
+                ...
+        if special == 'raw':
+            s = "".join(traceback.format_stack())
+            if "V.py" in s or "3I" in s:
+                print(s)
+                print(f'-raw------------------------------------------------------------------------------')
+                pass
 
         key = pos.board_key
         self.get_model()

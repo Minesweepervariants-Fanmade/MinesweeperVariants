@@ -275,12 +275,12 @@ class Summon:
         ]:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
-            for pos, var in board(mode="variable", key=key):
+            for pos, var in board(mode="variable", key=key, special='raw'):
                 if board.get_type(pos, special='raw') == "F":
                     model.Add(var == 1)
                 elif board.get_type(pos, special='raw') == "C":
                     model.Add(var == 0)
-        var_list = [v for _, v in board(mode="variable")]
+        var_list = [v for _, v in board(mode="variable", special='raw')]
         model.AddBoolAnd(switch.get_all_vars())
         __count = 0
         random_total = int(total * (2 ** (1 - len(self.mines_rules.rules))))
@@ -301,7 +301,7 @@ class Summon:
         else:
             status, solver = solver_model(model, True)
         for key in board.get_board_keys():
-            for pos, var in board(mode="variable", key=key):
+            for pos, var in board(mode="variable", key=key, special='raw'):
                 if solver.Value(var):
                     board[pos] = board.get_config(key, "MINES")
                 else:
@@ -332,10 +332,10 @@ class Summon:
                   end="\r", flush=True)
             pos = positions[index]
             _model = model.clone()
-            _model.Add(board.get_variable(pos) == 0)
+            _model.Add(board.get_variable(pos, special='raw') == 0)
             code = board.encode()
             board[pos] = board.get_config(pos.board_key, "MINES")
-            model.Add(board.get_variable(pos) == 1)
+            model.Add(board.get_variable(pos, special='raw') == 1)
             if len(self.mines_rules.rules) == 1:
                 total -= 1
             elif solver_model(model):

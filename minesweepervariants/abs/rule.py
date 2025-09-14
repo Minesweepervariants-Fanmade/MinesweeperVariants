@@ -84,6 +84,13 @@ class AbstractRule(ABC):
             return name
         return name + ":" + self.__data
 
+    def onboard_init(self, board: 'AbstractBoard'):
+        """
+        题板初始化时调用
+        :param board:
+        :return:
+        """
+
 
 class AbstractValue(ABC):
     @abstractmethod

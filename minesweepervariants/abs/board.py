@@ -185,7 +185,7 @@ class AbstractBoard(ABC):
     ]
 
     @abstractmethod
-    def __init__(self, size, code):
+    def __init__(self, size, code, default_special):
         """
         :param size: 题板尺寸
         :param code: 题板代码
@@ -255,7 +255,7 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        return self.__class__(code=self.encode())
+        return self.__class__(code=self.encode(), default_special=self.default_special)
 
     def get_model(self) -> cp_model.CpModel:
         """获取cp_model"""
@@ -329,7 +329,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_type(self, pos: 'AbstractPosition') -> str:
+    def get_type(self, pos: 'AbstractPosition', special: str='') -> str:
         """
         位置的类型
         返回 F:雷, C:线索, N:未赋值
