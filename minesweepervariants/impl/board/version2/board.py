@@ -485,16 +485,29 @@ class Board(AbstractBoard):
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos.y][pos.x] = dyed
 
-    def get_variable(self, pos: 'Position') -> IntVar | None:
+    def get_variable(self, pos: 'Position', special: str = '') -> IntVar | None:
         key = pos.board_key
         self.get_model()
         if self.is_valid(pos):
+            if special:
+                if "variable_special" not in self.board_data[key]:
+                    self.board_data[key]["variable_special"] = dict()
+
+                if special not in self.board_data[key]["variable_special"]:
+                    self.board_data[key]["variable_special"][special] = dict()
+
+                if (pos.x, pos.y) not in self.board_data[key]["variable_special"][special]:
+                    self.board_data[key]["variable_special"][special][(pos.x, pos.y)] = \
+                        self._model.NewBoolVar(f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
+                return self.board_data[key]["variable_special"][special][(pos.x, pos.y)]
             return self.board_data[key]["variable"][pos.x][pos.y]
 
     def clear_variable(self):
         for key in self.board_data.keys():
             if "variable" in self.board_data[key]:
                 del self.board_data[key]["variable"]
+            if "variable_special" in self.board_data[key]:
+                del self.board_data[key]["variable_special"]
         self._model = None
         gc.collect()
 

@@ -386,7 +386,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_variable(self, pos: 'AbstractPosition') -> IntVar:
+    def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar:
         """
         返回指定坐标的布尔变量
         :param pos: 位置
