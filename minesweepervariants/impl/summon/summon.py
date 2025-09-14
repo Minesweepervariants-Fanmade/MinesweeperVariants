@@ -276,9 +276,9 @@ class Summon:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
             for pos, var in board(mode="variable", key=key):
-                if board.get_type(pos) == "F":
+                if board.get_type(pos, special='raw') == "F":
                     model.Add(var == 1)
-                elif board.get_type(pos) == "C":
+                elif board.get_type(pos, special='raw') == "C":
                     model.Add(var == 0)
         var_list = [v for _, v in board(mode="variable")]
         model.AddBoolAnd(switch.get_all_vars())
@@ -466,7 +466,7 @@ class Summon:
 
             c_poses = [(i, t, key) for key in
                        [key for key in board.get_board_keys() if board.get_config(key, "interactive")]
-                       for i, t in board("CF", mode="type", key=key)]
+                       for i, t in board("CF", mode="type", key=key, special='raw')]
 
             get_random().shuffle(c_poses)
 

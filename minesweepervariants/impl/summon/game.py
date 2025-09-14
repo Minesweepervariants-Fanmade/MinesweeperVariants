@@ -191,19 +191,19 @@ class GameSession:
             0: 左键点击/翻开/设置非雷
             1: 右键点击/标雷/设置必雷
         """
-        if self.answer_board.get_type(pos) == "F" and action == 0:
+        if self.answer_board.get_type(pos, special='raw') == "F" and action == 0:
             return [
                 pos for key in self.answer_board.get_board_keys()
                 for pos, _ in self.answer_board(key=key)
-                if (self.board.get_type(pos) == "N" and
-                    self.answer_board.get_type(pos) == "F")
+                if (self.board.get_type(pos, special='raw') == "N" and
+                    self.answer_board.get_type(pos, special='raw') == "F")
             ]
-        if self.answer_board.get_type(pos) == "C" and action == 1:
+        if self.answer_board.get_type(pos, special='raw') == "C" and action == 1:
             return [
                 pos for key in self.answer_board.get_board_keys()
                 for pos, _ in self.answer_board(key=key)
-                if (self.board.get_type(pos) == "N" and
-                    self.answer_board.get_type(pos) == "F")
+                if (self.board.get_type(pos, special='raw') == "N" and
+                    self.answer_board.get_type(pos, special='raw') == "F")
             ]
         all_rules = self.summon.mines_rules.rules[:]
         all_rules += [self.summon.clue_rule, self.summon.mines_clue_rule]
@@ -225,8 +225,8 @@ class GameSession:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
             for pos, obj in board(key=key):
-                obj_type = board.get_type(pos)
-                var = board.get_variable(pos)
+                obj_type = board.get_type(pos, special='raw')
+                var = board.get_variable(pos, special='raw')
                 if obj_type == "F":
                     model.Add(var == 1)
                 if obj_type == "C":
@@ -245,7 +245,7 @@ class GameSession:
         mines_list = []
         for key in board.get_board_keys():
             for pos, var in board(mode="var", key=key):
-                if self.board.get_type(pos) != "N":
+                if self.board.get_type(pos, special='raw') != "N":
                     continue
                 if solver.Value(var) == 0:
                     continue
@@ -365,9 +365,9 @@ class GameSession:
                 if not clues:
                     break
                 pos, clue = clues.pop()
-                if board.get_type(pos) == "C":
+                if board.get_type(pos, special='raw') == "C":
                     board.set_value(pos, MINES_TAG)
-                elif board.get_type(pos) == "F":
+                elif board.get_type(pos, special='raw') == "F":
                     board.set_value(pos, self.clue_tag)
                 if solver_by_csp(
                         self.summon.mines_rules,
@@ -412,7 +412,7 @@ class GameSession:
                     chord_positions.append(pos)
             return chord_positions
 
-        for pos, obj_type in board(mode="type"):
+        for pos, obj_type in board(mode="type", special='raw'):
             if clue_pos == pos:
                 continue
             if obj_type == "C":
@@ -422,7 +422,7 @@ class GameSession:
 
         chord_positions = self._deduced(board, [
             self.summon.mines_clue_rule
-            if self.board.get_type(clue_pos) == "F" else
+            if self.board.get_type(clue_pos, special='raw') == "F" else
             self.summon.clue_rule,
         ])
 
@@ -447,7 +447,7 @@ class GameSession:
                 value_tag = self.board.get_config(pos.board_key, "VALUE")
                 self.board.set_value(pos, self.clue_tag if value_tag == VALUE_QUESS else value_tag)
             return self.board
-        if self.board.get_type(pos) != "N":
+        if self.board.get_type(pos, special='raw') != "N":
             # 点击了线索
             chord_positions = self.chord_clue(pos)
             if self.mode in [NORMAL, EXPERT]:
@@ -458,20 +458,20 @@ class GameSession:
                 # 如果是纸笔和专家就放标志
                 for _pos in chord_positions:
                     if _pos.board_key not in self.board.get_interactive_keys():
-                        if self.answer_board.get_type(_pos) == "C":
+                        if self.answer_board.get_type(_pos, special='raw') == "C":
                             self.board[_pos] = self.board.get_config(_pos.board_key, "VALUE")
-                        elif self.answer_board.get_type(_pos) == "F":
+                        elif self.answer_board.get_type(_pos, special='raw') == "F":
                             self.board[_pos] = self.board.get_config(_pos.board_key, "MINES")
-                    elif self.answer_board.get_type(_pos) == "F":
+                    elif self.answer_board.get_type(_pos, special='raw') == "F":
                         self.board[_pos] = self.flag_tag
-                    elif self.answer_board.get_type(_pos) == "C":
+                    elif self.answer_board.get_type(_pos, special='raw') == "C":
                         self.board[_pos] = self.clue_tag
 
         elif self.mode == NORMAL:
             # 普通模式
-            if not action and self.answer_board.get_type(pos) == "F":
+            if not action and self.answer_board.get_type(pos, special='raw') == "F":
                 return None
-            if action and self.answer_board.get_type(pos) == "C":
+            if action and self.answer_board.get_type(pos, special='raw') == "C":
                 return None
             self.board[pos] = self.answer_board[pos]
         elif self.mode in [EXPERT, ULTIMATE, PUZZLE]:
@@ -483,9 +483,9 @@ class GameSession:
                     return None
                 else:
                     self.last_deduced[1].append(pos)
-            if action and self.answer_board.get_type(pos) == "C":
+            if action and self.answer_board.get_type(pos, special='raw') == "C":
                 return None
-            if not action and self.answer_board.get_type(pos) == "F":
+            if not action and self.answer_board.get_type(pos, special='raw') == "F":
                 return None
             if self.mode in [ULTIMATE, PUZZLE]:
                 self.board[pos] = self.flag_tag if action else self.clue_tag
@@ -507,7 +507,7 @@ class GameSession:
                 flag = True
                 if self.ultimate_mode & ULTIMATE_F:
                     for pos in self.deduced():
-                        if self.answer_board.get_type(pos) != "F":
+                        if self.answer_board.get_type(pos, special='raw') != "F":
                             continue
                         if pos.board_key not in self.board.get_interactive_keys():
                             continue
@@ -522,7 +522,7 @@ class GameSession:
                 for pos in self.deduced():
                     if pos.board_key not in self.board.get_interactive_keys():
                         continue
-                    if self.answer_board.get_type(pos) == "F":
+                    if self.answer_board.get_type(pos, special='raw') == "F":
                         continue
                     flag = False
                     break
@@ -550,7 +550,7 @@ class GameSession:
         print("step")
         if self.ultimate_mode & ULTIMATE_F:
             for pos in self.deduced():
-                if self.answer_board.get_type(pos) != "F":
+                if self.answer_board.get_type(pos, special='raw') != "F":
                     continue
                 if pos.board_key not in self.board.get_interactive_keys():
                     continue
@@ -565,7 +565,7 @@ class GameSession:
         for pos in self.deduced():
             if pos.board_key not in self.board.get_interactive_keys():
                 continue
-            if self.answer_board.get_type(pos) == "F":
+            if self.answer_board.get_type(pos, special='raw') == "F":
                 continue
             print("[step]has clue")
             return False
@@ -593,7 +593,7 @@ class GameSession:
                     self.last_deduced[1].remove(pos)
             if self.ultimate_mode & ULTIMATE_F:
                 for pos in self.last_deduced[1]:
-                    if self.answer_board.get_type(pos) != "F":
+                    if self.answer_board.get_type(pos, special='raw') != "F":
                         continue
                     if pos.board_key not in self.board.get_interactive_keys():
                         continue
@@ -608,7 +608,7 @@ class GameSession:
             for pos in self.last_deduced[1]:
                 if pos.board_key not in self.board.get_interactive_keys():
                     continue
-                if self.answer_board.get_type(pos) == "F":
+                if self.answer_board.get_type(pos, special='raw') == "F":
                     continue
                 print("[deduced]has clue")
                 return self.last_deduced[1]
@@ -619,11 +619,11 @@ class GameSession:
             deduced = []
             board = self.board.clone()
             for pos in self.last_deduced[1]:
-                if board.get_type(pos) != "N":
+                if board.get_type(pos, special='raw') != "N":
                     continue
-                if self.answer_board.get_type(pos) == "F":
+                if self.answer_board.get_type(pos, special='raw') == "F":
                     board[pos] = self.flag_tag
-                elif self.answer_board.get_type(pos) == "C":
+                elif self.answer_board.get_type(pos, special='raw') == "C":
                     board[pos] = self.clue_tag
                 deduced.append(pos)
             all_rules = self.summon.mines_rules.rules[:]
@@ -919,7 +919,7 @@ class GameSession:
                 for deduced in deduceds:
                     pos_clues[deduced] = num_clues_used
             for pos in pos_clues:
-                imposs = self.answer_board.get_type(pos)
+                imposs = self.answer_board.get_type(pos, special='raw')
                 self.apply(pos, 0 if imposs == "C" else 1)
                 if pos_clues[pos] not in clue_freq:
                     clue_freq[pos_clues[pos]] = 0

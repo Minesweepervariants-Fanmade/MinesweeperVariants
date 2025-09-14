@@ -174,6 +174,8 @@ class AbstractBoard(ABC):
     version = -1
     name = ""
 
+    default_special = 'raw'
+
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
         "by_mini",      # 题板是否附带类角标
@@ -319,6 +321,14 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
+    def register_type_special(self, name: str, func):
+        """
+        注册一个类型特殊处理函数
+        :param name: 特殊名称
+        :param func: 函数
+        """
+
+    @abstractmethod
     def get_type(self, pos: 'AbstractPosition') -> str:
         """
         位置的类型
@@ -385,6 +395,13 @@ class AbstractBoard(ABC):
         """
         设置某个题板的设置
         """
+
+    def set_default_special(self, special: str = 'raw'):
+        """ 设置默认变量类型(只能设置一次)"""
+        if special == 'raw' or self.default_special == 'raw':
+            self.default_special = special
+        else:
+            raise ValueError("default_special was already set")
 
     @abstractmethod
     def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar:

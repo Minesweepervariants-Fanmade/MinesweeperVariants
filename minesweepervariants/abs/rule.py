@@ -8,6 +8,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Union, TYPE_CHECKING, Dict, Tuple, Optional
 
+from minesweepervariants.impl.board.dye import sp
+
 if TYPE_CHECKING:
     from minesweepervariants.abs.board import AbstractBoard, AbstractPosition
     from minesweepervariants.impl.summon.solver import Switch
@@ -112,7 +114,7 @@ class AbstractValue(ABC):
     def invalid(self, board: 'AbstractBoard'):
         if self.high_light(board) is not None:
             for _pos in self.high_light(board):
-                if board.get_type(_pos) == "N":
+                if board.get_type(_pos, special='raw') == "N":
                     return False
         else:
             return False

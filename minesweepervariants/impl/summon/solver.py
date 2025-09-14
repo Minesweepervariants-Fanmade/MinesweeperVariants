@@ -263,11 +263,11 @@ def solver_by_csp(
         logger.trace("设置预设不同值")
         for key in board.get_interactive_keys():
             for pos, _ in board("N", key=key):
-                value = 1 if answer_board.get_type(pos) == "F" else 0
+                value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
                 val = board.get_variable(pos)
                 tmp = model.NewBoolVar(f"answer_tmp{pos}")
                 current_solution.append(tmp)
-                logger.trace(f"[{pos}]{val} != {value} ({answer_board.get_type(pos)})")
+                logger.trace(f"[{pos}]{val} != {value} ({answer_board.get_type(pos, special='raw')})")
                 model.Add(val != value).OnlyEnforceIf(tmp)
         model.AddBoolOr(current_solution)  # 新增排除当前解约束（至少有一个变量取反）
 
@@ -304,9 +304,9 @@ def solver_by_csp(
 
         for key in board.get_board_keys():
             logger.trace(f"board key: {key}")
-            logger.trace("varlist:{}".format([(var.index, var) for _, var in board(mode="variable", key=key)]))
+            logger.trace("varlist:{}".format([(var.index, var) for _, var in board(mode="variable", key=key, special='raw')]))
             logger.trace("obj:{}".format([var for _, var in board(mode="object", key=key)]))
-            logger.trace("type:{}".format([var for _, var in board(mode="type", key=key)]))
+            logger.trace("type:{}".format([var for _, var in board(mode="type", key=key, special='raw')]))
             logger.trace("dye:{}".format([var for _, var in board(mode="dye", key=key)]))
 
         raise ModelGenerateError("model Error")
@@ -357,7 +357,7 @@ def deduced_by_csp(
     model: cp_model.CpModel
 
     target_var = board.get_variable(pos)
-    model.Add(target_var == (0 if answer_board.get_type(pos) == "F" else 1))
+    model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
 
     solver = get_solver(False)
     state = timer(solver.Solve)(model)
@@ -383,7 +383,7 @@ def hint_by_csp(
     model: cp_model.CpModel
 
     target_var = board.get_variable(pos)
-    model.Add(target_var == (0 if answer_board.get_type(pos) == "F" else 1))
+    model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
     assumptions = switch.get_all_vars()
 
     get_logger().trace(f"pos {pos}: start\n", end="")
@@ -557,7 +557,7 @@ def solver_board(
     for key in board.get_board_keys():
         for pos, var in board(key=key, mode="variable"):
             if (
-                board.get_type(pos) == "N" and
+                board.get_type(pos, special='raw') == "N" and
                 solver.Value(var)
             ):
                 positions.append(pos)

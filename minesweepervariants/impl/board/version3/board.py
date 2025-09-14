@@ -171,6 +171,7 @@ class Board(AbstractBoard):
     def __init__(self, size: tuple = None, code: bytes = None):
         self._model = None
         self.board_data = dict()
+        self.default_special = 'raw'
 
         if code is None:
             if size is None:
@@ -231,7 +232,7 @@ class Board(AbstractBoard):
                     pos = Position(posx, posy, key)
                     if pos in self.get_config(pos.board_key, "mask"):
                         continue
-                    pos_type = self.get_type(pos, *args, **kwargs)
+                    pos_type = self.get_type(pos, special='raw')
 
                     # 检查是否符合目标类型
                     if target == "always" or pos_type in target:
@@ -240,7 +241,7 @@ class Board(AbstractBoard):
                         elif mode == "obj":
                             yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "type":
-                            yield pos, pos_type
+                            yield pos, self.get_type(pos, *args, **kwargs)
                         elif mode == "var":
                             yield pos, self.get_variable(pos, *args, **kwargs)
                         elif mode == "variable":
@@ -450,10 +451,28 @@ class Board(AbstractBoard):
         get_logger().error(f"unknown type: value{value}, type{type(value)}")
         raise ValueError(f"unknown type: {value}, type{type(value)}")
 
-    def get_type(self, pos: 'Position', *args, **kwargs) -> str:
+    def register_type_special(self, name: str, func):
+        for key in self.board_data:
+            if "type_special" not in self.board_data[key]:
+                self.board_data[key]["type_special"] = dict()
+
+            self.board_data[key]["type_special"][name] = func
+
+    def get_type(self, pos: 'Position', special: str = '', *args, **kwargs) -> str:
+        special = special or self.default_special
+
         key = pos.board_key
+
         if self.is_valid(pos):
-            return self.board_data[key]["type"][pos.y][pos.x]
+            if special == 'raw':
+                return self.board_data[key]["type"][pos.y][pos.x]
+
+            if "type_special" not in self.board_data[key] or \
+                    special not in self.board_data[key]["type_special"]:
+                raise ValueError(f"unknown special type: {special}")
+
+            return self.board_data[key]["type_special"][special](self, pos, *args, **kwargs)
+
         return ""
 
     def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
@@ -479,21 +498,24 @@ class Board(AbstractBoard):
             self.board_data[key]["dye"][pos.y][pos.x] = dyed
 
     def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
+        special = special or self.default_special
+
         key = pos.board_key
         self.get_model()
         if self.is_valid(pos):
-            if special:
-                if "variable_special" not in self.board_data[key]:
-                    self.board_data[key]["variable_special"] = dict()
+            if special == 'raw':
+                return self.board_data[key]["variable"][pos.x][pos.y]
 
-                if special not in self.board_data[key]["variable_special"]:
-                    self.board_data[key]["variable_special"][special] = dict()
+            if "variable_special" not in self.board_data[key]:
+                self.board_data[key]["variable_special"] = dict()
 
-                if (pos.x, pos.y) not in self.board_data[key]["variable_special"][special]:
-                    self.board_data[key]["variable_special"][special][(pos.x, pos.y)] = \
-                        self._model.NewBoolVar(f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
-                return self.board_data[key]["variable_special"][special][(pos.x, pos.y)]
-            return self.board_data[key]["variable"][pos.x][pos.y]
+            if special not in self.board_data[key]["variable_special"]:
+                self.board_data[key]["variable_special"][special] = dict()
+
+            if (pos.x, pos.y) not in self.board_data[key]["variable_special"][special]:
+                self.board_data[key]["variable_special"][special][(pos.x, pos.y)] = \
+                    self._model.NewBoolVar(f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
+            return self.board_data[key]["variable_special"][special][(pos.x, pos.y)]
 
     def clear_variable(self):
         for key in self.board_data.keys():
