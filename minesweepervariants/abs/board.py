@@ -176,6 +176,8 @@ class AbstractBoard(ABC):
 
     default_special = 'raw'
 
+    rules: dict = None
+
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
         "by_mini",      # 题板是否附带类角标
@@ -185,7 +187,7 @@ class AbstractBoard(ABC):
     ]
 
     @abstractmethod
-    def __init__(self, size, code, default_special):
+    def __init__(self, *, rules, size, code, default_special):
         """
         :param size: 题板尺寸
         :param code: 题板代码
@@ -227,7 +229,7 @@ class AbstractBoard(ABC):
         if self.get_interactive_keys() != other.get_interactive_keys():
             return False
         for key in self.get_board_keys():
-            for pos, obj1 in self(key=key):
+            for pos, obj1 in self(key=key, special='raw'):
                 obj2 = other[pos]
                 if obj1 is None and obj2 is None:
                     continue
@@ -255,7 +257,7 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        return self.__class__(code=self.encode(), default_special=self.default_special)
+        return self.__class__(code=self.encode(), default_special=self.default_special, rules=self.rules)
 
     def get_model(self) -> cp_model.CpModel:
         """获取cp_model"""

@@ -67,7 +67,7 @@ class Summon:
         self.unseed = False
 
         # 题板初始化
-        self.board = get_board(board)(size)
+        self.board = get_board(board)(rules = None, size = size)
 
         clue_rules = []
         mines_rules = []
@@ -94,6 +94,8 @@ class Summon:
             else:
                 # 如果你不是左线不是中线也不是右线那你怎么混进来的?
                 raise ValueError("Unknown Rule")
+
+        self.board.rules = {"clue_rules": clue_rules, "mines_rules": mines_rules, "mines_clue_rules": mines_clue_rules}
 
         for rule in clue_rules + mines_rules + mines_clue_rules:
             rule.combine(rules_info)

@@ -407,7 +407,7 @@ class GameSession:
         board: AbstractBoard = self.board.clone()
         chord_positions = []
         if obj.deduce_cells(board) is not None:
-            for pos, obj in self.board():
+            for pos, obj in self.board(special='raw'):
                 if (obj is None) and (board[pos] is not None):
                     chord_positions.append(pos)
             return chord_positions
@@ -699,7 +699,7 @@ class GameSession:
             rule.create_constraints(board, switch)
 
         for key in board.get_board_keys():
-            for pos, obj in board(key=key):
+            for pos, obj in board(key=key, special='raw'):
                 if obj is None:
                     continue
                 obj.create_constraints(board, switch)
@@ -722,7 +722,7 @@ class GameSession:
         with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
             # 提交任务
             for key in board.get_board_keys():
-                for pos, _ in board("N", key=key):
+                for pos, _ in board("N", key=key, special='raw'):
                     fut = executor.submit(
                         deduced_by_csp,
                         board,

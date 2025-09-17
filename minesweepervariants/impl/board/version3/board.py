@@ -169,11 +169,17 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, size: tuple = None, code: bytes = None, default_special: str = 'raw'):
+    def __init__(self, *, rules, size: tuple = None, code: bytes = None, default_special: str = 'raw'):
         # traceback.print_stack()
         self._model = None
         self.board_data = dict()
         self.default_special = default_special
+        self.rules = rules
+
+        if rules:
+            for _rules in rules.values():
+                for rule in _rules:
+                    rule.onboard_init(self)
 
         if code is None:
             if size is None:
@@ -359,6 +365,11 @@ class Board(AbstractBoard):
                 self.set_value(pos, value)
                 continue
             raise ValueError(f"unknown type{code}")
+
+
+        for _rules in self.rules.values():
+            for rule in _rules:
+                rule.onboard_init(self)
 
     def encode(self) -> bytes:
         """
