@@ -50,6 +50,8 @@ def main(
         get_random(seed, new=True)
         a_time = time.time()
         _board = s.summon_board()
+        if _board is None and not unseed:
+            raise ValueError("左线/总雷数非法")
         if _board is None:
             continue
         logger.info(f"<{attempt_index}>生成用时:{(time_used := time.time() - a_time)}s")
