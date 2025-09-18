@@ -32,6 +32,8 @@ class ModelGenerateError(Exception):
 
 
 def recursive_import(module):
+    if module.__file__ is None:
+        return None
     base_path = Path(module.__file__).parent
     base_name = module.__name__
 
