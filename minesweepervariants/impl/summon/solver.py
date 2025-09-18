@@ -243,7 +243,7 @@ def solver_by_csp(
 
         # 3.获取所有变量并赋值已解完的部分
         for key in board.get_board_keys():
-            for _, var in board("C", mode="variable", key=key, special='raw'):
+            for _, var in board.core("C", mode="variable", key=key, special='raw'):
                 model.Add(var == 0)
                 logger.trace(f"var: {var} == 0")
             for _, var in board("F", mode="variable", key=key, special='raw'):

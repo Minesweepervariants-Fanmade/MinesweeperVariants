@@ -84,13 +84,6 @@ class AbstractRule(ABC):
             return name
         return name + ":" + self.__data
 
-    def onboard_init(self, board: 'AbstractBoard'):
-        """
-        题板初始化时调用
-        :param board:
-        :return:
-        """
-
 
 class AbstractValue(ABC):
     @abstractmethod
@@ -121,7 +114,7 @@ class AbstractValue(ABC):
     def invalid(self, board: 'AbstractBoard'):
         if self.high_light(board) is not None:
             for _pos in self.high_light(board):
-                if board.get_type(_pos, special='raw') == "N":
+                if board.get_type(_pos) == "N":
                     return False
         else:
             return False

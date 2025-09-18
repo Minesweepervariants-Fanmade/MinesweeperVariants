@@ -53,128 +53,10 @@ class AbstractPosition(ABC):
         """
         return self.__class__(self.x, self.y, self.board_key)
 
-    @abstractmethod
-    def _up(self, n: int = 1):
-        """
-        将自己向上移动n格
-        :param n: 向上n格
-        """
-
-    @abstractmethod
-    def _down(self, n: int = 1):
-        """
-        将自己向下移动n格
-        :param n: 向下n格
-        """
-
-    @abstractmethod
-    def _left(self, n: int = 1):
-        """
-        将自己向左移动n格
-        :param n: 向左n格
-        """
-
-    @abstractmethod
-    def _right(self, n: int = 1):
-        """
-        将自己向右移动n格
-        :param n: 向右n格
-        """
-
-    @abstractmethod
-    def _deviation(self, pos: 'AbstractPosition'):
-        """
-        对于输入位置进行偏移并赋值给自身
-        :param pos: 相对量
-        :return:
-        """
-
-    @abstractmethod
-    def neighbors(self, *args: int) -> list['AbstractPosition']:
-        """
-        按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
-
-        调用方式（类似 range）：
-            neighbors(end_layer)
-                返回所有欧几里得距离 ≤ √end_layer 的位置（从第 1 层开始）。
-            neighbors(start_layer, end_layer)
-                返回所有欧几里得距离 ∈ [√start_layer, √end_layer] 的位置。
-
-        :param args: 一个或两个整数
-            - 若提供一个参数 end_layer，视为从 √1 到 √end_layer。
-            - 若提供两个参数 start_layer 和 end_layer，视为从 √start_layer 到 √end_layer。
-            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
-
-        :return: 位置列表，按距离从近到远排序。
-        """
-
-    @abstractmethod
-    def in_bounds(self, bound_pos: 'AbstractPosition') -> bool:
-        """
-        判断是否在该表示范围边界的点的范围内
-        :param bound_pos:边界点
-        :return: True 在边界内 False 不在边界内
-        """
-
-    def deviation(self, pos: 'AbstractPosition') -> 'AbstractPosition':
-        """
-        对于输入位置进行偏移
-        :param pos: 相对量
-        :return: 偏移完成后的另外一个值
-        """
-        _pos = self.clone()
-        _pos._deviation(pos)
-        return _pos
-
-    def up(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向上n格的位置对象
-        :param n: 向上n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._up(n)
-        return _pos
-
-    def down(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向下n格的位置对象
-        :param n: 向上n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._down(n)
-        return _pos
-
-    def left(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向左n格的位置对象
-        :param n: 向上n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._left(n)
-        return _pos
-
-    def right(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向右n格的位置对象
-        :param n: 向上n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._right(n)
-        return _pos
-
-    def shift(self, x: int = 0, y: int = 0):
-        return self.up(x).right(y)
-
 
 class AbstractBoard(ABC):
     version = -1
     name = ""
-
-    default_special = 'raw'
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -185,7 +67,7 @@ class AbstractBoard(ABC):
     ]
 
     @abstractmethod
-    def __init__(self, size, code, default_special):
+    def __init__(self, size, code):
         """
         :param size: 题板尺寸
         :param code: 题板代码
@@ -255,7 +137,7 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        return self.__class__(code=self.encode(), default_special=self.default_special)
+        return self.__class__(code=self.encode())
 
     def get_model(self) -> cp_model.CpModel:
         """获取cp_model"""
@@ -289,6 +171,7 @@ class AbstractBoard(ABC):
         :return: 极限位置对象
         """
 
+    @abstractmethod
     def is_valid(self, pos: 'AbstractPosition') -> bool:
         """
         检测对象是否在borad的范围内
@@ -305,6 +188,7 @@ class AbstractBoard(ABC):
         """
         return self.is_valid(pos)
 
+    @abstractmethod
     def set_mask(self, pos):
         """
         挖去题板的指定位置
@@ -321,15 +205,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def register_type_special(self, name: str, func):
-        """
-        注册一个类型特殊处理函数
-        :param name: 特殊名称
-        :param func: 函数
-        """
-
-    @abstractmethod
-    def get_type(self, pos: 'AbstractPosition', special: str='') -> str:
+    def get_type(self, pos: 'AbstractPosition') -> str:
         """
         位置的类型
         返回 F:雷, C:线索, N:未赋值
@@ -396,15 +272,8 @@ class AbstractBoard(ABC):
         设置某个题板的设置
         """
 
-    def set_default_special(self, special: str = 'raw'):
-        """ 设置默认变量类型(只能设置一次)"""
-        if special == 'raw' or self.default_special == 'raw':
-            self.default_special = special
-        else:
-            raise ValueError("default_special was already set")
-
     @abstractmethod
-    def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar:
+    def get_variable(self, pos: 'AbstractPosition') -> IntVar:
         """
         返回指定坐标的布尔变量
         :param pos: 位置
@@ -440,6 +309,83 @@ class AbstractBoard(ABC):
         创建时需要遵守board实现的位置规则
         :return: 位置
         """
+    
+    @abstractmethod
+    def neighbors(self, root_pos: 'AbstractPosition', *args: int) -> list['AbstractPosition']:
+        """
+        按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
+
+        调用方式（类似 range）：
+            neighbors(end_layer)
+                返回所有欧几里得距离 ≤ √end_layer 的位置（从第 1 层开始）。
+            neighbors(start_layer, end_layer)
+                返回所有欧几里得距离 ∈ [√start_layer, √end_layer] 的位置。
+
+        :param args: 一个或两个整数
+            - 若提供一个参数 end_layer，视为从 √1 到 √end_layer。
+            - 若提供两个参数 start_layer 和 end_layer，视为从 √start_layer 到 √end_layer。
+            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
+
+        :return: 位置列表，按距离从近到远排序。
+        """
+
+    @abstractmethod
+    def deviation(
+            self, pos: 'AbstractPosition',
+            deviation_pos: 'AbstractPosition'
+        ) -> 'AbstractPosition':
+        """
+        对于输入位置进行偏移
+        :param pos: 相对量
+        :return: 偏移完成后的另外一个值
+        """
+
+    @abstractmethod
+    def up(
+        self, pos: 'AbstractPosition',
+        n: int = 1
+    ) -> 'AbstractPosition':
+        """
+        返回一个向上n格的位置对象
+        :param n: 向上n格
+        :return: 结果位置
+        """
+
+    @abstractmethod
+    def down(
+        self, pos: 'AbstractPosition', 
+        n: int = 1
+    ) -> 'AbstractPosition':
+        """
+        返回一个向下n格的位置对象
+        :param n: 向上n格
+        :return: 结果位置
+        """
+
+    @abstractmethod
+    def left(
+        self, pos: 'AbstractPosition',
+        n: int = 1
+    ) -> 'AbstractPosition':
+        """
+        返回一个向左n格的位置对象
+        :param n: 向上n格
+        :return: 结果位置
+        """
+
+    @abstractmethod
+    def right(
+        self, pos: 'AbstractPosition', 
+        n: int = 1
+    ) -> 'AbstractPosition':
+        """
+        返回一个向右n格的位置对象
+        :param n: 向上n格
+        :return: 结果位置
+        """
+
+    def shift(self, x: int, y: int):
+        return self.up(x).right(y)  # TODO xy顺序颠倒了
 
     @abstractmethod
     def get_pos_box(self, pos1: "AbstractPosition", pos2: "AbstractPosition") -> List["AbstractPosition"]:

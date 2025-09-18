@@ -82,7 +82,7 @@ class DyeC(AbstractDye):
         dye = True
         for key in board.get_interactive_keys():
             dye = not dye
-            for pos, _ in board(key=key, special='raw'):
+            for pos, _ in board(key=key):
                 a1 = (pos.x + self.x) // (self.w + self.px + self.bx) % 2
                 a2 = (pos.y + self.y) // (self.h + self.py + self.by) % 2
                 b1 = (pos.x + self.x) % (self.w + self.px + self.bx) < self.w

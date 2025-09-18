@@ -5,20 +5,20 @@
 # @FileName: summon.py
 import threading
 import time
-from typing import Union, List
+from typing import Union, List, Set, Dict
 
 from ortools.sat.python import cp_model
-from ortools.sat.python.cp_model import IntVar
 
+from ...abs.Lrule import MinesRules, AbstractMinesRule
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
+from ...abs.Brule import AbstractBoardRule
 from ...abs.rule import AbstractRule
 from ...utils.impl_obj import set_total, VALUE_QUESS, MINES_TAG
 from .solver import solver_by_csp, solver_model, Switch
 from ...utils.tool import get_random, get_logger
 
-from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
-from ...abs.board import AbstractBoard, AbstractPosition
+from ...abs.board import AbstractBoard
 
 from ..impl_obj import get_rule, get_board
 from ...impl.rule.Mrule.sharp import RuleSharp as RuleMinesSharp
@@ -69,34 +69,49 @@ class Summon:
         # 题板初始化
         self.board = get_board(board)(size)
 
-        clue_rules = []
-        mines_rules = []
-        mines_clue_rules = []
+        clue_rules: List[type] = []
+        mines_rules: List[type] = []
+        mines_clue_rules: List[type] = []
+        board_rules: List[type] = []
+        rule_board_rules_map: Dict[type['AbstractRule'], List[str]] = {}
 
         if "R" not in rules:
             rules.append("R")
 
-        rules_info = []
-        for rule_id in rules:
-            parts = rule_id.split(CONFIG["delimiter"], 1)
-            rule_id = parts[0]
-            data = parts[1] if len(parts) == 2 else None
-            rule: AbstractRule = get_rule(rule_id)(board=self.board, data=data)
-            rules_info.append((rule, data))
-            if rule is None:
+        # 获取所有的规则
+        while rules:
+            rule_id = rules.pop(0)
+            
+            
+            rule_type: type['AbstractRule'] = get_rule(rule_id)
+            rule_board_rules_map[rule_type]
+            if rule_type is None:
                 self.logger.error("键入了一个未知的规则")
-            elif isinstance(rule, AbstractClueRule):
-                clue_rules.append(rule)
-            elif isinstance(rule, AbstractMinesRule):
-                mines_rules.append(rule)
-            elif isinstance(rule, AbstractMinesClueRule):
-                mines_clue_rules.append(rule)
+            elif issubclass(rule_type, AbstractClueRule):
+                clue_rules.append(rule_type)
+            elif issubclass(rule_type, AbstractMinesRule):
+                mines_rules.append(rule_type)
+            elif issubclass(rule_type, AbstractMinesClueRule):
+                mines_clue_rules.append(rule_type)
+            elif issubclass(rule_type, AbstractBoardRule):
+                if rule_type in board_rules:
+                    continue
+                board_rules.append(rule_type)
             else:
                 # 如果你不是左线不是中线也不是右线那你怎么混进来的?
                 raise ValueError("Unknown Rule")
+        
+        # 初始化题板规则
+        for rule in board_rules:
+            rule: AbstractBoardRule
+            rule(board)
 
-        for rule in clue_rules + mines_rules + mines_clue_rules:
-            rule.combine(rules_info)
+        # 依次初始化
+        for rule in (
+            clue_rules + mines_rules +
+            mines_clue_rules
+        ):
+            ...
 
         # 清空列表来让他遍历所有规则名
         rules.clear()
@@ -136,6 +151,10 @@ class Summon:
         if not rules:
             rules.append("V")
 
+        # 题板规则初始化
+        if len(board_rules) > 0:
+            ...
+
         # 掩码规则
         if mask:
             _board: AbstractBoard = self.board.clone()
@@ -153,6 +172,10 @@ class Summon:
         else:
             self.total = total
         set_total(total=self.total)
+
+    def rule_boardRuleApply(self, rule):
+        self
+        ...
 
     def init_total(self):
         soft_conds = [-float("inf")]
@@ -275,12 +298,12 @@ class Summon:
         ]:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
-            for pos, var in board(mode="variable", key=key, special='raw'):
-                if board.get_type(pos, special='raw') == "F":
+            for pos, var in board.core(mode="variable", key=key):
+                if board.core.get_type(pos) == "F":
                     model.Add(var == 1)
-                elif board.get_type(pos, special='raw') == "C":
+                elif board.core.get_type(pos) == "C":
                     model.Add(var == 0)
-        var_list = [v for _, v in board(mode="variable", special='raw')]
+        var_list = [v for _, v in board.core(mode="variable")]
         model.AddBoolAnd(switch.get_all_vars())
         __count = 0
         random_total = int(total * (2 ** (1 - len(self.mines_rules.rules))))
@@ -301,7 +324,7 @@ class Summon:
         else:
             status, solver = solver_model(model, True)
         for key in board.get_board_keys():
-            for pos, var in board(mode="variable", key=key, special='raw'):
+            for pos, var in board.core(mode="variable", key=key):
                 if solver.Value(var):
                     board[pos] = board.get_config(key, "MINES")
                 else:
@@ -332,10 +355,10 @@ class Summon:
                   end="\r", flush=True)
             pos = positions[index]
             _model = model.clone()
-            _model.Add(board.get_variable(pos, special='raw') == 0)
+            _model.Add(board.core.get_variable(pos) == 0)
             code = board.encode()
             board[pos] = board.get_config(pos.board_key, "MINES")
-            model.Add(board.get_variable(pos, special='raw') == 1)
+            model.Add(board.core.get_variable(pos) == 1)
             if len(self.mines_rules.rules) == 1:
                 total -= 1
             elif solver_model(model):
@@ -466,7 +489,7 @@ class Summon:
 
             c_poses = [(i, t, key) for key in
                        [key for key in board.get_board_keys() if board.get_config(key, "interactive")]
-                       for i, t in board("CF", mode="type", key=key, special='raw')]
+                       for i, t in board.core("CF", mode="type", key=key)]
 
             get_random().shuffle(c_poses)
 

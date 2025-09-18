@@ -191,19 +191,19 @@ class GameSession:
             0: 左键点击/翻开/设置非雷
             1: 右键点击/标雷/设置必雷
         """
-        if self.answer_board.get_type(pos, special='raw') == "F" and action == 0:
+        if self.answer_board.get_type(pos) == "F" and action == 0:
             return [
                 pos for key in self.answer_board.get_board_keys()
                 for pos, _ in self.answer_board(key=key)
-                if (self.board.get_type(pos, special='raw') == "N" and
-                    self.answer_board.get_type(pos, special='raw') == "F")
+                if (self.board.get_type(pos) == "N" and
+                    self.answer_board.get_type(pos) == "F")
             ]
-        if self.answer_board.get_type(pos, special='raw') == "C" and action == 1:
+        if self.answer_board.get_type(pos) == "C" and action == 1:
             return [
                 pos for key in self.answer_board.get_board_keys()
                 for pos, _ in self.answer_board(key=key)
-                if (self.board.get_type(pos, special='raw') == "N" and
-                    self.answer_board.get_type(pos, special='raw') == "F")
+                if (self.board.get_type(pos) == "N" and
+                    self.answer_board.get_type(pos) == "F")
             ]
         all_rules = self.summon.mines_rules.rules[:]
         all_rules += [self.summon.clue_rule, self.summon.mines_clue_rule]
@@ -225,8 +225,8 @@ class GameSession:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
             for pos, obj in board(key=key):
-                obj_type = board.get_type(pos, special='raw')
-                var = board.get_variable(pos, special='raw')
+                obj_type = board.get_type(pos)
+                var = board.get_variable(pos)
                 if obj_type == "F":
                     model.Add(var == 1)
                 if obj_type == "C":
@@ -244,8 +244,8 @@ class GameSession:
             return None
         mines_list = []
         for key in board.get_board_keys():
-            for pos, var in board(mode="var", key=key, special='raw'):
-                if self.board.get_type(pos, special='raw') != "N":
+            for pos, var in board(mode="var", key=key):
+                if self.board.get_type(pos) != "N":
                     continue
                 if solver.Value(var) == 0:
                     continue

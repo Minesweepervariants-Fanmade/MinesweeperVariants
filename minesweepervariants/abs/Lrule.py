@@ -48,16 +48,15 @@ class MinesRules:
 
 
 class Rule0R(AbstractMinesRule):
-    name = "0R"
-    subrules = [[True, "R"]]
     """
     总雷数规则
     """
+    name = "0R"
     def create_constraints(self, board: 'AbstractBoard', switch):
         if not self.subrules[0][0]:
             return
         model = board.get_model()
-        all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
+        all_variable = [board.core.get_variable(pos) for pos, _ in board()]
         model.Add(sum(all_variable) == get_total()).OnlyEnforceIf(switch.get(model, self))
         get_logger().trace(f"[R]: model add {all_variable} == {get_total()}")
 
