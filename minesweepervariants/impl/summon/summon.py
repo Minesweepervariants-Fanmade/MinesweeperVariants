@@ -239,6 +239,9 @@ class Summon:
             rule.init_clear(self.board)
         if self.dig_unique(self.board) is None:
             raise GenerateError
+        for rules in self.board.rules.values():
+            for rule in rules:
+                rule.init_board(self.board)
         self.logger.debug(board_bytes, end="\n\n")
         return self.board
 
@@ -255,8 +258,9 @@ class Summon:
                 _board.set_value(pos, None)
         _board = self.clue_rule.fill(_board)
         _board = self.mines_clue_rule.fill(_board)
-        for rule in self.mines_rules.rules:
-            rule.init_board(_board)
+        for rules in self.board.rules.values():
+            for rule in rules:
+                rule.init_board(_board)
         self.answer_board_str = "\n" + _board.show_board()
         self.answer_board_code = _board.encode()
         self.answer_board = _board.clone()
@@ -344,7 +348,7 @@ class Summon:
                 history.append((code, _model))
                 total -= 1
             else:
-                board: AbstractBoard = type(board)(code=code)
+                board: AbstractBoard = type(board)(rules=board.rules, code=code)
                 board[pos] = board.get_config(pos.board_key, "VALUE")
                 del model
                 model = _model
