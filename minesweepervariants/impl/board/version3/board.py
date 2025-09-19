@@ -61,105 +61,18 @@ def decode_bytes_7bit(data: bytes) -> int:
     return result
 
 
+class Vector(AbstractPosition):
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y, "")
+
+    def __repr__(self):
+        return f"Vector({self.y}, {self.x})"
+
+
 class Position(AbstractPosition):
     def __repr__(self):
         return (f"{self.board_key+':' if self.board_key != MASTER_BOARD else ''}"
                 f"{alpha(self.y)}{self.x+1}")
-
-    def _up(self, n: int = 1):
-        self.x -= n
-
-    def _down(self, n: int = 1):
-        self.x += n
-
-    def _left(self, n: int = 1):
-        self.y -= n
-
-    def _right(self, n: int = 1):
-        self.y += n
-
-    def _deviation(self, pos: 'Position'):
-        self.x += pos.x
-        self.y += pos.y
-
-    def in_bounds(self, bound_pos: 'Position') -> bool:
-        if bound_pos.board_key != self.board_key:
-            return False
-        return (0 <= self.x <= bound_pos.x and
-                0 <= self.y <= bound_pos.y)
-
-    def neighbors(self, *args: int) -> list['Position']:
-        """
-        按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
-
-        调用方式（类似 range）：
-            neighbors(end_layer)
-                返回所有欧几里得距离 ≤ √end_layer 的位置（从第 1 层开始）。
-            neighbors(start_layer, end_layer)
-                返回所有欧几里得距离 ∈ [√start_layer, √end_layer] 的位置。
-
-        :param args: 一个或两个整数
-            - 若提供一个参数 end_layer，视为从 √1 到 √end_layer。
-            - 若提供两个参数 start_layer 和 end_layer，视为从 √start_layer 到 √end_layer。
-            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
-
-        :return: 位置列表，按距离从近到远排序。
-        """
-
-        # 解析参数
-        if len(args) == 1:
-            low, high = 1, args[0]
-        elif len(args) == 2:
-            low, high = args
-        else:
-            return []
-
-        # 处理无效参数
-        if high < low:
-            return []
-
-        x0, y0 = self.x, self.y
-        directions = [(dx, dy) for dx in (-1, 0, 1)
-                      for dy in (-1, 0, 1) if (dx, dy) != (0, 0)]
-
-        heap = []  # 最小堆存储 (距离平方, x, y)
-        visited = {(x0, y0)}
-        result = []
-
-        # 处理包含自身的情况 (距离平方=0)
-        if low <= 0 <= high:
-            result.append(self.clone())
-
-        # 初始化邻居
-        for dx, dy in directions:
-            nx, ny = x0 + dx, y0 + dy
-            d_sq = (nx - x0) ** 2 + (ny - y0) ** 2
-            if d_sq <= high:
-                heapq.heappush(heap, (d_sq, nx, ny))
-                visited.add((nx, ny))
-
-        # 遍历所有可达位置
-        while heap:
-            d_sq, x, y = heapq.heappop(heap)
-
-            # 检查是否在目标范围内
-            if low <= d_sq <= high:
-                result.append(Position(x, y, self.board_key))
-
-            # 扩展新位置
-            for dx, dy in directions:
-                nx, ny = x + dx, y + dy
-                if (nx, ny) in visited:
-                    continue
-
-                visited.add((nx, ny))
-                new_d_sq = (nx - x0) ** 2 + (ny - y0) ** 2
-
-                # 仅考虑距离平方未超过上限的位置
-                if new_d_sq <= high:
-                    heapq.heappush(heap, (new_d_sq, nx, ny))
-
-        return result
 
 
 class Board(AbstractBoard):
@@ -233,7 +146,7 @@ class Board(AbstractBoard):
                     pos = Position(posx, posy, key)
                     if pos in self.get_config(pos.board_key, "mask"):
                         continue
-                    pos_type = self.core.get_type(pos)
+                    pos_type = self.get_type(pos)
 
                     # 检查是否符合目标类型
                     if target == "always" or pos_type in target:
@@ -242,13 +155,13 @@ class Board(AbstractBoard):
                         elif mode == "obj":
                             yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "type":
-                            yield pos, self.get_type(pos, *args, **kwargs)
+                            yield pos, self.get_type(pos)
                         elif mode == "var":
-                            yield pos, self.get_variable(pos, *args, **kwargs)
+                            yield pos, self.get_variable(pos)
                         elif mode == "variable":
-                            yield pos, self.get_variable(pos, *args, **kwargs)
+                            yield pos, self.get_variable(pos)
                         elif mode == "dye":
-                            yield pos, self.get_dyed(pos, *args, **kwargs)
+                            yield pos, self.get_dyed(pos)
                         elif mode == "none":
                             yield pos, None
 
@@ -277,7 +190,7 @@ class Board(AbstractBoard):
     def generate_board(
             self, board_key: str,
             size: tuple = (),
-            labels: list[str] = [],
+            labels=None,
             code: bytes = None,
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
@@ -290,6 +203,8 @@ class Board(AbstractBoard):
         :param true_tag: 题板默认非雷对象
         :param false_tag:题板默认雷对象
         """
+        if labels is None:
+            labels = []
         if board_key in self.board_data:
             return
         flag_byte = 0
@@ -476,7 +391,7 @@ class Board(AbstractBoard):
             self.board_data[key]["obj"][pos.y][pos.x] = value
             self.board_data[key]["type"][pos.y][pos.x] = self.type_value(value)
 
-    def get_dyed(self, pos: 'Position', *args, **kwargs) -> bool | None:
+    def get_dyed(self, pos: 'Position') -> bool | None:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["dye"][pos.y][pos.x]
@@ -520,14 +435,14 @@ class Board(AbstractBoard):
         _pos = pos.clone()
         pos_list = [_pos]
         while True:
-            _pos = _pos.left()
+            _pos = self.left(_pos)
             if not _pos.in_bounds(bound):
                 break
             pos_list.append(_pos)
         _pos = pos.clone()
         pos_list = pos_list[::-1]
         while True:
-            _pos = _pos.right()
+            _pos = self.right(_pos)
             if not _pos.in_bounds(bound):
                 break
             pos_list.append(_pos)
@@ -538,14 +453,14 @@ class Board(AbstractBoard):
         _pos = pos.clone()
         pos_list = [_pos]
         while True:
-            _pos = _pos.up()
+            _pos = self.up(_pos)
             if not _pos.in_bounds(bound):
                 break
             pos_list.append(_pos)
         _pos = pos.clone()
         pos_list = pos_list[::-1]
         while True:
-            _pos = _pos.down()
+            _pos = self.down(_pos)
             if not _pos.in_bounds(bound):
                 break
             pos_list.append(_pos)
@@ -560,6 +475,90 @@ class Board(AbstractBoard):
             if self.is_valid(pos):
                 return pos
         return None
+
+    def up(self, pos: 'Position', n: int = 1):
+        pos.x -= n
+        return pos
+
+    def down(self, pos: 'Position', n: int = 1):
+        pos.x += n
+        return pos
+
+    def left(self, pos: 'Position', n: int = 1):
+        pos.y -= n
+        return pos
+
+    def right(self, pos: 'Position', n: int = 1):
+        pos.y += n
+        return pos
+
+    def deviation(self, pos: 'Position', diff_pos: 'Position'):
+        pos = pos.clone()
+        pos.x += diff_pos.x
+        pos.y += diff_pos.y
+        return pos
+
+    def difference(self, pos1: 'AbstractPosition', pos2: 'AbstractPosition') -> 'AbstractPosition':
+        vector = Vector(0, 0)
+        vector.x = pos1.x - pos2.x
+        vector.y = pos1.y - pos2.y
+        return vector
+
+    def neighbors(self, root_pos, *args: int) -> list['Position']:
+        # 解析参数
+        if len(args) == 1:
+            low, high = 1, args[0]
+        elif len(args) == 2:
+            low, high = args
+        else:
+            return []
+
+        # 处理无效参数
+        if high < low:
+            return []
+
+        x0, y0 = root_pos.x, root_pos.y
+        directions = [(dx, dy) for dx in (-1, 0, 1)
+                      for dy in (-1, 0, 1) if (dx, dy) != (0, 0)]
+
+        heap = []  # 最小堆存储 (距离平方, x, y)
+        visited = {(x0, y0)}
+        result = []
+
+        # 处理包含自身的情况 (距离平方=0)
+        if low <= 0 <= high:
+            result.append(root_pos.clone())
+
+        # 初始化邻居
+        for dx, dy in directions:
+            nx, ny = x0 + dx, y0 + dy
+            d_sq = (nx - x0) ** 2 + (ny - y0) ** 2
+            if d_sq <= high:
+                heapq.heappush(heap, (d_sq, nx, ny))
+                visited.add((nx, ny))
+
+        # 遍历所有可达位置
+        while heap:
+            d_sq, x, y = heapq.heappop(heap)
+
+            # 检查是否在目标范围内
+            if low <= d_sq <= high:
+                result.append(Position(x, y, root_pos.board_key))
+
+            # 扩展新位置
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if (nx, ny) in visited:
+                    continue
+
+                visited.add((nx, ny))
+                new_d_sq = (nx - x0) ** 2 + (ny - y0) ** 2
+
+                # 仅考虑距离平方未超过上限的位置
+                if new_d_sq <= high:
+                    heapq.heappush(heap, (new_d_sq, nx, ny))
+
+        return result
 
     def get_pos_box(self, pos1: "AbstractPosition", pos2: "AbstractPosition") -> List["AbstractPosition"]:
         if pos1.board_key != pos2.board_key:
@@ -586,13 +585,13 @@ class Board(AbstractBoard):
             elif mode == "obj":
                 result.append(self.get_value(pos, *args, **kwargs))
             elif mode == "variable":
-                result.append(self.get_variable(pos, *args, **kwargs))
+                result.append(self.get_variable(pos))
             elif mode == "var":
-                result.append(self.get_variable(pos, *args, **kwargs))
+                result.append(self.get_variable(pos))
             elif mode == "type":
-                result.append(self.get_type(pos, *args, **kwargs))
+                result.append(self.get_type(pos))
             elif mode == "dye":
-                result.append(self.get_dyed(pos, *args, **kwargs))
+                result.append(self.get_dyed(pos))
             else:
                 raise ValueError(f"Unsupported mode: {mode}")
         return result

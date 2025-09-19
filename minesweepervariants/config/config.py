@@ -24,7 +24,7 @@ DEFAULT_CONFIG = {
 
     "output_path": ".\\output",   # 保存路径，默认为工作目录下的output
     "timeout": 0,                 # 求解器超时时间（秒），0为无限制
-    "workes_number": 12           # 多线程数量
+    "workes_number": 3           # 多线程数量
 }
 
 IMAGE_CONFIG = config = {

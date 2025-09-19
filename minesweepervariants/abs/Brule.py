@@ -8,6 +8,7 @@ class AbstractBoardRule(AbstractRule, ABC):
     """
     题板规则
     """
+
     @classmethod
     @abstractmethod
     def get_board(cls) -> type['AbstractProxyBoard']:
@@ -21,6 +22,7 @@ class AbstractBoardRule(AbstractRule, ABC):
         """
         return AbstractProxyBoard(board)
 
+
 class AbstractProxyBoard(AbstractBoard, ABC):
     def __init__(self, board: AbstractBoard):
         if hasattr(board, "core"):
@@ -31,9 +33,10 @@ class AbstractProxyBoard(AbstractBoard, ABC):
     def __getattr__(self, name):
         return getattr(self.core, name)
 
+
 # --------实例类-------- #
 
-class Board14MV(AbstractProxyBoard): 
+class Board14MV(AbstractProxyBoard):
     ...
 
 

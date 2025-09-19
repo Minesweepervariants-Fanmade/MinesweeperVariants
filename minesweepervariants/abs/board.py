@@ -34,10 +34,10 @@ class AbstractPosition(ABC):
 
     def __eq__(self, other):
         return (
-            isinstance(other, self.__class__) and
-            self.x == other.x and
-            self.y == other.y and
-            self.board_key == other.board_key
+                isinstance(other, self.__class__) and
+                self.x == other.x and
+                self.y == other.y and
+                self.board_key == other.board_key
         )
 
     def __hash__(self):
@@ -60,10 +60,10 @@ class AbstractBoard(ABC):
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
-        "by_mini",      # 题板是否附带类角标
-        "pos_label",    # 题板是否有X=N标志
-        "row_col",      # 题板是否启用行列号
-        "interactive"   # 允许在该题板上放置雷和删除线索
+        "by_mini",  # 题板是否附带类角标
+        "pos_label",  # 题板是否有X=N标志
+        "row_col",  # 题板是否启用行列号
+        "interactive"  # 允许在该题板上放置雷和删除线索
     ]
 
     @abstractmethod
@@ -76,6 +76,9 @@ class AbstractBoard(ABC):
 
     def __repr__(self):
         return self.show_board()
+
+    def __iter__(self):
+        yield from self.__call__()
 
     @abstractmethod
     def __call__(
@@ -221,7 +224,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_value(self, pos: 'AbstractPosition')\
+    def get_value(self, pos: 'AbstractPosition') \
             -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         """
         获取位置里的对象
@@ -309,7 +312,7 @@ class AbstractBoard(ABC):
         创建时需要遵守board实现的位置规则
         :return: 位置
         """
-    
+
     @abstractmethod
     def neighbors(self, root_pos: 'AbstractPosition', *args: int) -> list['AbstractPosition']:
         """
@@ -321,6 +324,7 @@ class AbstractBoard(ABC):
             neighbors(start_layer, end_layer)
                 返回所有欧几里得距离 ∈ [√start_layer, √end_layer] 的位置。
 
+        :param root_pos: 根坐标的未知
         :param args: 一个或两个整数
             - 若提供一个参数 end_layer，视为从 √1 到 √end_layer。
             - 若提供两个参数 start_layer 和 end_layer，视为从 √start_layer 到 √end_layer。
@@ -332,18 +336,32 @@ class AbstractBoard(ABC):
     @abstractmethod
     def deviation(
             self, pos: 'AbstractPosition',
-            deviation_pos: 'AbstractPosition'
-        ) -> 'AbstractPosition':
+            diff_pos: 'AbstractPosition'
+    ) -> 'AbstractPosition':
         """
         对于输入位置进行偏移
-        :param pos: 相对量
+        :param pos: 偏移目标
+        :param diff_pos: 相对量
         :return: 偏移完成后的另外一个值
         """
 
     @abstractmethod
+    def difference(
+            self, pos1: 'AbstractPosition',
+            pos2: 'AbstractPosition'
+    ) -> 'AbstractPosition':
+        """
+        将pos1与pos2进行做差
+        表示pos1至pos2的偏移量
+        :param pos1: 起始坐标
+        :param pos2: 终点坐标
+        :return: 对应偏移量
+        """
+
+    @abstractmethod
     def up(
-        self, pos: 'AbstractPosition',
-        n: int = 1
+            self, pos: 'AbstractPosition',
+            n: int = 1
     ) -> 'AbstractPosition':
         """
         返回一个向上n格的位置对象
@@ -353,8 +371,8 @@ class AbstractBoard(ABC):
 
     @abstractmethod
     def down(
-        self, pos: 'AbstractPosition', 
-        n: int = 1
+            self, pos: 'AbstractPosition',
+            n: int = 1
     ) -> 'AbstractPosition':
         """
         返回一个向下n格的位置对象
@@ -364,8 +382,8 @@ class AbstractBoard(ABC):
 
     @abstractmethod
     def left(
-        self, pos: 'AbstractPosition',
-        n: int = 1
+            self, pos: 'AbstractPosition',
+            n: int = 1
     ) -> 'AbstractPosition':
         """
         返回一个向左n格的位置对象
@@ -375,8 +393,8 @@ class AbstractBoard(ABC):
 
     @abstractmethod
     def right(
-        self, pos: 'AbstractPosition', 
-        n: int = 1
+            self, pos: 'AbstractPosition',
+            n: int = 1
     ) -> 'AbstractPosition':
         """
         返回一个向右n格的位置对象
@@ -384,8 +402,11 @@ class AbstractBoard(ABC):
         :return: 结果位置
         """
 
-    def shift(self, x: int, y: int):
-        return self.up(x).right(y)  # TODO xy顺序颠倒了
+    def shift(
+            self, pos: 'AbstractPosition',
+            x: int, y: int
+    ):
+        return self.right(self.up(pos, x), y)  # TODO xy顺序颠倒了
 
     @abstractmethod
     def get_pos_box(self, pos1: "AbstractPosition", pos2: "AbstractPosition") -> List["AbstractPosition"]:
@@ -399,7 +420,8 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
+    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args, **kwargs) -> List[
+        Any]:
         """
         批量获取指定位置上的信息。
         :param positions: 位置列表
@@ -439,31 +461,9 @@ class AbstractBoard(ABC):
         return decode_board(data)
 
 
-
 # --------实例类-------- #
 
 
 class PositionTag(AbstractPosition):
     def __init__(self):
         super().__init__(0, 0, MASTER_BOARD)
-
-    def neighbors(self, *args: int) -> list['AbstractPosition']:
-        return []
-
-    def in_bounds(self, bound_pos: 'AbstractPosition') -> bool:
-        return False
-
-    def _deviation(self, pos: 'AbstractPosition'):
-        pass
-
-    def _up(self, n: int = 1):
-        pass
-
-    def _down(self, n: int = 1):
-        pass
-
-    def _left(self, n: int = 1):
-        pass
-
-    def _right(self, n: int = 1):
-        pass

@@ -298,12 +298,12 @@ class Summon:
         ]:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
-            for pos, var in board.core(mode="variable", key=key):
-                if board.core.get_type(pos) == "F":
+            for pos, var in board(mode="variable", key=key):
+                if board.get_type(pos) == "F":
                     model.Add(var == 1)
-                elif board.core.get_type(pos) == "C":
+                elif board.get_type(pos) == "C":
                     model.Add(var == 0)
-        var_list = [v for _, v in board.core(mode="variable")]
+        var_list = [v for _, v in board(mode="variable")]
         model.AddBoolAnd(switch.get_all_vars())
         __count = 0
         random_total = int(total * (2 ** (1 - len(self.mines_rules.rules))))
@@ -324,7 +324,7 @@ class Summon:
         else:
             status, solver = solver_model(model, True)
         for key in board.get_board_keys():
-            for pos, var in board.core(mode="variable", key=key):
+            for pos, var in board(mode="variable", key=key):
                 if solver.Value(var):
                     board[pos] = board.get_config(key, "MINES")
                 else:
@@ -355,10 +355,10 @@ class Summon:
                   end="\r", flush=True)
             pos = positions[index]
             _model = model.clone()
-            _model.Add(board.core.get_variable(pos) == 0)
+            _model.Add(board.get_variable(pos) == 0)
             code = board.encode()
             board[pos] = board.get_config(pos.board_key, "MINES")
-            model.Add(board.core.get_variable(pos) == 1)
+            model.Add(board.get_variable(pos) == 1)
             if len(self.mines_rules.rules) == 1:
                 total -= 1
             elif solver_model(model):
@@ -489,7 +489,7 @@ class Summon:
 
             c_poses = [(i, t, key) for key in
                        [key for key in board.get_board_keys() if board.get_config(key, "interactive")]
-                       for i, t in board.core("CF", mode="type", key=key)]
+                       for i, t in board("CF", mode="type", key=key)]
 
             get_random().shuffle(c_poses)
 
