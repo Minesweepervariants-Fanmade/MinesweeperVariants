@@ -188,12 +188,12 @@ def main(
             f.write(f"\n题板代码: \n{encode_board(answer_code)}:{mask.hex()}:{':'.join(rule_code)}\n")
 
         if image:
-            draw_board(board=get_board(board_class)(code=board_code), cell_size=100, output=file_name + "demo",
+            draw_board(board=_board, cell_size=100, output=file_name + "demo",
                     bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
                                     f"-R{'*' if drop_r else total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
-            draw_board(board=get_board(board_class)(code=answer_code), output=file_name + "answer", cell_size=100,
+            draw_board(board=game.answer_board, output=file_name + "answer", cell_size=100,
                     bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
                                     f"-R{total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
