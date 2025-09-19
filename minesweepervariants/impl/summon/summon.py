@@ -5,11 +5,12 @@
 # @FileName: summon.py
 import threading
 import time
-from typing import Union, List, Set, Dict
+from typing import Union, List, Tuple, Dict
 
 from ortools.sat.python import cp_model
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule
+from ...abs.Lrule import Rule0R
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
 from ...abs.Brule import AbstractBoardRule
@@ -56,6 +57,10 @@ class Summon:
         :param board: 题板的实现类id
         :param vice_board: 启用删除副板
         """
+        def init_rule_id(string: str) -> List[Tuple[str, str]]:
+            """ruleId -> [(name, data), ...]"""
+
+
         # summon初始化
         self.answer_board = None
         self.drop_r = drop_r
@@ -69,22 +74,24 @@ class Summon:
         # 题板初始化
         self.board = get_board(board)(size)
 
+        # 获取所有的规则id
+        self.rule2board: Dict[Tuple[str, str], List[Tuple[str, str]]] = {}
+
+        rule_id_list: set = {}
+        for rule_id in rules:
+            rule_data = init_rule_id(rule_id)
+            rule_id_list.add(rule_data[0])
+            self.rule2board[rule_data[0]] = rule_data[1:]
+
         clue_rules: List[type] = []
         mines_rules: List[type] = []
         mines_clue_rules: List[type] = []
-        board_rules: List[type] = []
-        rule_board_rules_map: Dict[type['AbstractRule'], List[str]] = {}
 
-        if "R" not in rules:
-            rules.append("R")
+        board_rules: List[AbstractBoardRule] = []
 
-        # 获取所有的规则
-        while rules:
-            rule_id = rules.pop(0)
-            
-            
+        # 获取所有的规则实体
+        for rule_id, data in rule_id_list:
             rule_type: type['AbstractRule'] = get_rule(rule_id)
-            rule_board_rules_map[rule_type]
             if rule_type is None:
                 self.logger.error("键入了一个未知的规则")
             elif issubclass(rule_type, AbstractClueRule):
@@ -96,11 +103,16 @@ class Summon:
             elif issubclass(rule_type, AbstractBoardRule):
                 if rule_type in board_rules:
                     continue
-                board_rules.append(rule_type)
+                rule = rule_type(board=board, data=data)
+                board_rules.append(rule)
+                for board_rule_list in self.rule2board.values:
+                    if (board, data) not in board_rule_list:
+                        continue
+                    board_rule_list[board_rule_list.index((board, data))] = rule
             else:
-                # 如果你不是左线不是中线也不是右线那你怎么混进来的?
+                # 如果你不是左线不是中线不是右线也不是题板规则那你怎么混进来的?
                 raise ValueError("Unknown Rule")
-        
+
         # 初始化题板规则
         for rule in board_rules:
             rule: AbstractBoardRule
@@ -119,7 +131,7 @@ class Summon:
         # 左线规则初始化
         self.mines_rules = MinesRules(mines_rules)
         for rule in mines_rules:
-            if "R" in rule.name:
+            if isinstance(rule, Rule0R):
                 continue
             rules.append(rule.get_name())
 
@@ -150,10 +162,6 @@ class Summon:
 
         if not rules:
             rules.append("V")
-
-        # 题板规则初始化
-        if len(board_rules) > 0:
-            ...
 
         # 掩码规则
         if mask:
