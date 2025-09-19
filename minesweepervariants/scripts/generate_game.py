@@ -106,7 +106,7 @@ def main(
             continue
         except GenerateError:
             continue
-        game.answer_board = get_board(board_class)(rules=None, code=s.answer_board_code)
+        game.answer_board = get_board(board_class)(rules={}, code=s.answer_board_code)
         # game.board = get_board("0B")(code=b'')
         # game.answer_board = get_board("0B")(code=b'')
         _board = game.board.clone()
