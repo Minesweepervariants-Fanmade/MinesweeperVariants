@@ -7,6 +7,7 @@
 import base64
 import os
 import time
+from typing import TYPE_CHECKING
 
 from minesweepervariants.impl.impl_obj import get_board, ModelGenerateError, encode_board
 from minesweepervariants.impl.summon import Summon
@@ -52,9 +53,9 @@ def main(
     total = s.total
     logger.info(f"total mines: {total}")
     _board = None
-    info_list = []
     print(rule_code)
     attempt_index = 0
+    time_used = -1
     while attempts == -1 or attempt_index < attempts:
         attempt_index += 1
         s = Summon(size=size, total=total, rules=rule_code[:], board=board_class,
@@ -80,23 +81,11 @@ def main(
         if len([None for _ in _board("NF")]) == total:
             logger.warn("题板生成失败 线索填充无法覆盖全盘")
             continue
-        info_list.append([
-            b_time - a_time,
-            n_num,
-            "\n" + _board.show_board(),
-            _board.encode(),
-            "\n" + s.answer_board_str,
-            s.answer_board_code,
-            _board
-        ])
-
+        time_used = b_time - a_time
         break
 
-    if not info_list:
+    if attempt_index >= attempts:
         raise ValueError("未在有效次数内得出结果")
-
-    info_list.sort(key=lambda x: x[0])
-    time_used, n_num, board_str, board_code, answer, answer_code, _board = info_list[0]
 
     rule_text = ""
     for rule in rules:
@@ -141,10 +130,10 @@ def main(
         f.write(f"总雷数: {total}/{n_num}\n")
         f.write(f"种子: {get_seed()}\n")
         f.write(rule_text)
-        f.write(board_str)
-        f.write(answer)
+        f.write("\n" + _board.show_board())
+        f.write("\n" + s.answer_board.show_board())
 
-        f.write(f"\n答案: img -c {encode_board(answer_code)} ")
+        f.write(f"\n答案: img -c {encode_board(s.answer_board.encode())} ")
         f.write(f"-r \"{rule_text}-R{total}/")
         f.write(f"{n_num}")
         if unseed:
@@ -153,7 +142,7 @@ def main(
             f.write(" ")
         f.write("-o answer\n")
 
-        f.write(f"\n题板: img -c {encode_board(board_code)} ")
+        f.write(f"\n题板: img -c {encode_board(_board.encode())} ")
         f.write(f"-r \"{rule_text}-R{'*' if drop_r else total}/")
         f.write(f"{n_num}")
         if unseed:
@@ -162,7 +151,7 @@ def main(
             f.write(" ")
         f.write("-o demo\n")
 
-        f.write(f"\n题板代码: \n{encode_board(answer_code)}:{mask.hex()}:{':'.join(rule_code)}\n")
+        f.write(f"\n题板代码: \n{encode_board(s.answer_board.encode())}:{mask.hex()}:{':'.join(rule_code)}\n")
 
         f.write(f"\n总求解用时: \n{sum(d['time'] for d in timer.HISTORY)}s\n")
 
@@ -171,12 +160,12 @@ def main(
             f.write(f"求解状态: {d['result']}, 用时: {d['time']}s\n")
 
     if image:
-        draw_board(board=get_board(board_class)(code=board_code), cell_size=100, output=file_name + "demo",
+        draw_board(board=_board, cell_size=100, output=file_name + "demo",
                 bottom_text=(rule_text +
                                 f"-R{'*' if drop_r else total}/{n_num}" +
                                 ("\n" if unseed else f"-{get_seed()}\n")))
 
-        draw_board(board=get_board(board_class)(code=answer_code), output=file_name + "answer", cell_size=100,
+        draw_board(board=s.answer_board, output=file_name + "answer", cell_size=100,
                 bottom_text=(rule_text +
                                 f"-R{total}/{n_num}" +
                                 ("\n" if unseed else f"-{get_seed()}\n")))
@@ -185,6 +174,6 @@ def main(
     logger.info("\n生成时间" + logger.get_time() + "\n")
     logger.info(f"生成用时:{time_used}s\n")
     logger.info(f"总雷数: {total}/{n_num}\n")
-    logger.info(board_str + "\n")
-    logger.info(answer + "\n")
-    logger.info(f"{board_code}")
+    logger.info("\n" + _board + "\n")
+    logger.info(s.answer_board + "\n")
+    logger.info(f"{_board.encode()}")

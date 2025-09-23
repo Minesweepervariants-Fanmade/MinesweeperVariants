@@ -53,136 +53,58 @@ class Summon:
         :param size: 题板的尺寸
         :param total: 雷总数
         :param rules: 单独的右线规则id
+        :param drop_r: 生成时是否抛弃R推
+        :param mask: 掩码规则
         :param dye: 染色规则
         :param board: 题板的实现类id
         :param vice_board: 启用删除副板
         """
         def init_rule_id(string: str) -> List[Tuple[str, str]]:
-            """ruleId -> [(name, data), ...]"""
-
+            """
+            ruleId -> [(name, data), ...]
+            ruleId: A(B(C):xxx):xxx:xxx 
+            # A为主规则 B,C为题板规则
+            """
+            
+        # 题板初始化
+        self.board = get_board(board)(size)
 
         # summon初始化
-        self.answer_board = None
+        self.answer_board: AbstractBoard = self.board.clone()
         self.drop_r = drop_r
         self.logger = get_logger()
-        self.answer_board_str = ""
-        self.answer_board_code = None
         self.total = total
         self.vice_board = vice_board
         self.unseed = False
 
-        # 题板初始化
-        self.board = get_board(board)(size)
 
-        # 获取所有的规则id
-        self.rule2board: Dict[Tuple[str, str], List[Tuple[str, str]]] = {}
+        # 规则初始化
+        self.board_rules = []
+        self.clue_rule = None
+        self.mines_clue_rule = None
+        self.mines_rules = MinesRules()
 
-        rule_id_list: set = {}
-        for rule_id in rules:
-            rule_data = init_rule_id(rule_id)
-            rule_id_list.add(rule_data[0])
-            self.rule2board[rule_data[0]] = rule_data[1:]
+        self.rule_boardRules = {}
+        all_rule = {"L": [], "M": [], "R": [], "B": self.board_rules}
 
-        clue_rules: List[type] = []
-        mines_rules: List[type] = []
-        mines_clue_rules: List[type] = []
-
-        board_rules: List[AbstractBoardRule] = []
-
-        # 获取所有的规则实体
-        for rule_id, data in rule_id_list:
-            rule_type: type['AbstractRule'] = get_rule(rule_id)
+        for rule_id, data in set([
+            rule_data for rule_id in rules
+            for rule_data in init_rule_id(rule_id)
+        ]):
+            rule_type: type[AbstractRule] = get_rule(rule_id)
             if rule_type is None:
                 self.logger.error("键入了一个未知的规则")
             elif issubclass(rule_type, AbstractClueRule):
-                clue_rules.append(rule_type)
-            elif issubclass(rule_type, AbstractMinesRule):
-                mines_rules.append(rule_type)
+                all_rule["R"].append(rule_type)
             elif issubclass(rule_type, AbstractMinesClueRule):
-                mines_clue_rules.append(rule_type)
+                all_rule["M"].append(rule_type)
+            elif issubclass(rule_type, AbstractMinesRule):
+                all_rule["L"].append(rule_type)
             elif issubclass(rule_type, AbstractBoardRule):
-                if rule_type in board_rules:
-                    continue
                 rule = rule_type(board=board, data=data)
-                board_rules.append(rule)
-                for board_rule_list in self.rule2board.values:
-                    if (board, data) not in board_rule_list:
-                        continue
-                    board_rule_list[board_rule_list.index((board, data))] = rule
-            else:
-                # 如果你不是左线不是中线不是右线也不是题板规则那你怎么混进来的?
-                raise ValueError("Unknown Rule")
-
-        # 初始化题板规则
-        for rule in board_rules:
-            rule: AbstractBoardRule
-            rule(board)
-
-        # 依次初始化
-        for rule in (
-            clue_rules + mines_rules +
-            mines_clue_rules
-        ):
-            ...
-
-        # 清空列表来让他遍历所有规则名
-        rules.clear()
-
-        # 左线规则初始化
-        self.mines_rules = MinesRules(mines_rules)
-        for rule in mines_rules:
-            if isinstance(rule, Rule0R):
-                continue
-            rules.append(rule.get_name())
-
-        # 中线规则初始化
-        if len(mines_clue_rules) == 0:
-            self.mines_clue_rule = get_rule("F")(board=self.board, data=None)
-        elif len(mines_clue_rules) > 1:
-            # 我什么时候写的F#?
-            # 我不道啊
-            self.mines_clue_rule = RuleMinesSharp(board=self.board, data=mines_clue_rules)
-            rules.append("F#")
-        else:
-            self.mines_clue_rule = mines_clue_rules[0]
-            rules.append(self.mines_clue_rule.get_name())
-
-        # 右线规则初始化
-        if len(clue_rules) == 0:
-            if len(mines_clue_rules) == 0:
-                self.clue_rule = get_rule("V")(board=self.board, data=None)
-            else:
-                self.clue_rule = get_rule("?")(board=self.board, data="")
-        elif len(clue_rules) > 1:
-            self.clue_rule = RuleClueSharp(board=self.board, data=clue_rules)
-            rules.append("#")
-        else:
-            self.clue_rule = clue_rules[0]
-            rules.append(self.clue_rule.get_name())
-
-        if not rules:
-            rules.append("V")
-
-        # 掩码规则
-        if mask:
-            _board: AbstractBoard = self.board.clone()
-            _board.dyed(mask[1:] if mask.startswith("&") else mask)
-            for pos, is_dyed in _board(mode="dye"):
-                if is_dyed: self.board.set_mask(pos)
-
-        # 染色规则
-        if dye:
-            self.board.dyed(dye)
-
-        # 雷总数初始化
-        if total == -1:
-            self.init_total()
-        else:
-            self.total = total
-        set_total(total=self.total)
-
+                
+    
     def rule_boardRuleApply(self, rule):
-        self
         ...
 
     def init_total(self):
@@ -202,10 +124,10 @@ class Summon:
 
         self.board: AbstractBoard
         ub = sum([size[0] * size[1] for key in self.board.get_board_keys()
-                  for size in [self.board.get_config(key, "size")]])
+                  for size in [self.board.board_size(key)]])
         info = {
             "size": {key: (size[0], size[1]) for key in self.board.get_board_keys()
-                     for size in [self.board.get_config(key, "size")]},
+                     for size in [self.board.board_size(key)]},
             "total": {key: len([_ for _, _ in self.board(key=key)])
                       for key in self.board.get_board_keys()},
             "interactive": [key for key in self.board.get_board_keys() if
@@ -286,8 +208,6 @@ class Summon:
         _board = self.mines_clue_rule.fill(_board)
         for rule in self.mines_rules.rules:
             rule.init_board(_board)
-        self.answer_board_str = "\n" + _board.show_board()
-        self.answer_board_code = _board.encode()
         self.answer_board = _board.clone()
         self.logger.debug("题板生成完毕:\n" + _board.show_board())
         self.logger.debug(_board.encode())

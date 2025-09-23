@@ -74,7 +74,7 @@ def get_all_subclasses(cls):
     return subclasses
 
 
-def get_board(name: Optional[str] = None):
+def get_board(name: Optional[str] = None) -> Optional[type[AbstractBoard]]:
     if name is None:
         v = -1
         b = None
