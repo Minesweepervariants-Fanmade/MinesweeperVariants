@@ -306,6 +306,8 @@ class Summon:
             random_total = int(0.5 * random_total)
         else:
             status, solver = solver_model(model, True)
+        if not status:
+            return None
         for key in board.get_board_keys():
             for pos, var in board(mode="variable", key=key, special='raw'):
                 if solver.Value(var):
