@@ -31,7 +31,8 @@ IMAGE_CONFIG = config = {
     # 背景色设置
     "background": {
         "white": "#FFFFFF",
-        "black": "#000000"
+        "black": "#000000",
+        "image": ""
     },
 
     # 网格线设置

@@ -11,6 +11,7 @@ from .tool import get_logger
 from .. import __path__ as basepath
 from ..abs.board import AbstractBoard
 from ..config.config import IMAGE_CONFIG, DEFAULT_CONFIG
+import minesweepervariants
 
 
 def _hex_to_rgb(hex_color: str):
@@ -325,6 +326,58 @@ def draw_board(
                 x = x_offset - cell_size * 0.25
                 y = margin + row * cell_size + cell_size / 2
                 draw.text((x, y), str(row + 1), fill=text_color, font=axis_font, anchor="mm")
+
+        # 绘制背景图片（如果配置指定）
+        try:
+            bg_cfg = CONFIG.get("background", {})
+            img_name = None
+
+            if isinstance(bg_cfg, dict):
+                img_name = bg_cfg.get("image")
+                opacity = float(bg_cfg.get("opacity", 1.0))
+            else:
+                raise ValueError("image not found")
+
+            if img_name:
+                if not img_name.startswith(("http://","https://")):
+                    img_path = pathlib.Path(minesweepervariants.__path__[0]) / CONFIG["assets"] / img_name
+                    if img_path.exists():
+                        bg_img = Image.open(img_path)
+                    else:
+                        raise FileNotFoundError("background image not found")
+                else:
+                    import requests
+                    from io import BytesIO
+                    resp = requests.get(img_name, timeout=10)
+                    resp.raise_for_status()
+                    bg_img = Image.open(BytesIO(resp.content))
+
+                bg_img = bg_img.convert("RGBA")
+                target_w = cols * cell_size
+                target_h = rows * cell_size
+
+                iw, ih = bg_img.size
+
+                scale = max(target_w / iw, target_h / ih)
+                if scale <= 0:
+                    raise ValueError("invalid background scale computed")
+
+                new_size = (max(1, int(iw * scale)), max(1, int(ih * scale)))
+                bg_img = bg_img.resize(new_size)
+
+                # 居中裁剪到目标大小（若图片比目标小则会在边缘截取）
+                left = max(0, (bg_img.width - target_w) // 2)
+                top = max(0, (bg_img.height - target_h) // 2)
+                bg_img = bg_img.crop((left, top, left + target_w, top + target_h))
+
+                # 应用透明度
+                if opacity < 1.0:
+                    alpha = bg_img.split()[3].point(lambda p: int(p * opacity))
+                    bg_img.putalpha(alpha)
+
+                image.paste(bg_img, (int(x_offset), int(margin)), bg_img)
+        except Exception as exc:
+            get_logger().exception(f"Failed to draw background image: {exc}")
 
         # 染色
         for pos, _ in board(key=key):
