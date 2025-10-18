@@ -176,7 +176,7 @@ def get_dummy(
 
 def draw_board(
         board: AbstractBoard,
-        background_white: bool = False,
+        background_white: bool = None,
         bottom_text: str = "",
         cell_size: int = 100,
         output="output"
@@ -191,6 +191,15 @@ def draw_board(
     """
     from PIL import Image, ImageDraw, ImageFont
     from .element_renderer import Renderer
+
+    CONFIG = {}
+
+    CONFIG.update(IMAGE_CONFIG)
+    CONFIG["output_path"] = DEFAULT_CONFIG["output_path"]
+
+    if background_white is None:
+        background_white = CONFIG["white_base"]
+
     def load_font(size: int) -> ImageFont.FreeTypeFont:
         path = pathlib.Path(basepath[0])
         path /= CONFIG["assets"]
@@ -237,11 +246,6 @@ def draw_board(
         "pos_label": board.get_config(k, "pos_label"),
         "row_col": board.get_config(k, "row_col"),
     } for k in board_keys}
-
-    CONFIG = {}
-
-    CONFIG.update(IMAGE_CONFIG)
-    CONFIG["output_path"] = DEFAULT_CONFIG["output_path"]
 
     margin_ratio = CONFIG["margin"]["top_left_right_ratio"]
     bottom_ratio = CONFIG["margin"]["bottom_ratio"]
@@ -334,7 +338,7 @@ def draw_board(
 
             if isinstance(bg_cfg, dict):
                 img_name = bg_cfg.get("image")
-                opacity = float(bg_cfg.get("opacity", 1.0))
+                opacity = bg_cfg.get("opacity", 1.0)
             else:
                 raise ValueError("image not found")
 
@@ -372,6 +376,7 @@ def draw_board(
 
                 # 应用透明度
                 if opacity < 1.0:
+                    print(opacity)
                     alpha = bg_img.split()[3].point(lambda p: int(p * opacity))
                     bg_img.putalpha(alpha)
 
