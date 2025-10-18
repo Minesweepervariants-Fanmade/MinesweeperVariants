@@ -377,7 +377,7 @@ def draw_board(
 
                 image.paste(bg_img, (int(x_offset), int(margin)), bg_img)
         except Exception as exc:
-            get_logger().exception(f"Failed to draw background image: {exc}")
+            get_logger().error(f"Failed to draw background image: {exc}")
 
         # 染色
         for pos, _ in board(key=key):
