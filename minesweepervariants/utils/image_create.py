@@ -194,6 +194,7 @@ def draw_board(
 
     CONFIG = {}
 
+    CONFIG.update(DEFAULT_CONFIG)
     CONFIG.update(IMAGE_CONFIG)
     CONFIG["output_path"] = DEFAULT_CONFIG["output_path"]
 
