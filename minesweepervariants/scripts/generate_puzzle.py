@@ -42,6 +42,7 @@ def main(
         file_name: str,  # 文件已什么开头
 ):
     rule_code = rules[:]
+    rule_code_bk = rules[:]
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
@@ -99,7 +100,7 @@ def main(
     time_used, n_num, board_str, board_code, answer, answer_code, _board = info_list[0]
 
     rule_text = ""
-    for rule in rules:
+    for rule in rule_code_bk:
         rule_text += "[" + rule + "]"
     if rule_text == "":
         rule_text = "[V]"
