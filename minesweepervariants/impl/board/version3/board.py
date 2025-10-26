@@ -4,6 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 
+import re
 import traceback
 from typing import List, Union, Tuple, Any, Generator, TYPE_CHECKING
 import heapq
@@ -542,7 +543,7 @@ class Board(AbstractBoard):
 
             if (pos.x, pos.y) not in self.board_data[key]["variable_special"][special]:
                 self.board_data[key]["variable_special"][special][(pos.x, pos.y)] = \
-                    self._model.NewBoolVar(f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
+                    self._model.NewIntVar(0, 999, f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
             return self.board_data[key]["variable_special"][special][(pos.x, pos.y)]
 
     def clear_variable(self):
