@@ -1,6 +1,9 @@
 from importlib.metadata import version
 
-__version__ = version("minesweepervariants")
+try:
+    __version__ = version("minesweepervariants")
+except Exception:
+    __version__ = "0.0.0"
 
 def tuple_version() -> tuple[int, int, int]:
     ver = __version__.split(".")
