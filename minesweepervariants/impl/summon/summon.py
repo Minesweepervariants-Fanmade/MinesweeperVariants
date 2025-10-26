@@ -109,12 +109,12 @@ class Summon:
                 # 如果你不是左线不是中线也不是右线那你怎么混进来的?
                 raise ValueError("Unknown Rule")
 
-        flag = False
+        # flag = False
         for rule_id in libs:
             if rule_id not in deps:
-                if flag:
-                    raise ValueError(f"存在无用规则{libs}")
-                flag = True
+                # if flag:
+                #     raise ValueError(f"存在无用规则{libs}")
+                # flag = True
                 rule: AbstractRule = get_rule("V''")(board=self.board, data=rule_id)
                 clue_rules.append(rule)
 
