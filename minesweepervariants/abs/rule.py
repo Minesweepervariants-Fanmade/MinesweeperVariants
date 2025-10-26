@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 class AbstractRule(ABC):
     # 规则名称
     name: Union[Tuple[str], List[str], str] = [""]
+    lib_only = False
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
         self.__data = data

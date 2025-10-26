@@ -79,18 +79,23 @@ class Summon:
         rules_info = []
 
         rule_map = []
+        deps = []
+        libs = []
         for rule_id in rules:
             parts = rule_id.split(CONFIG["delimiter"], 1)
             rule_id = parts[0]
             data = parts[1] if len(parts) == 2 else None
             rule_map.append((rule_id, data))
+
         for rule_id, data in rule_map:
             rule: AbstractRule = get_rule(rule_id)(board=self.board, data=data)
-            deps = rule.get_deps()
-            for dep in deps:
+            rule_deps = rule.get_deps()
+            for dep in rule_deps:
+                deps.append(dep)
                 if dep not in [r[0] for r in rule_map]:
                     rule_map.append((dep, None))
-
+            if rule.lib_only:
+                libs.append(rule_id)
             rules_info.append((rule, data))
             if rule is None:
                 self.logger.error("键入了一个未知的规则")
@@ -103,6 +108,15 @@ class Summon:
             else:
                 # 如果你不是左线不是中线也不是右线那你怎么混进来的?
                 raise ValueError("Unknown Rule")
+
+        flag = False
+        for rule_id in libs:
+            if rule_id not in deps:
+                if flag:
+                    raise ValueError(f"存在无用规则{libs}")
+                flag = True
+                rule: AbstractRule = get_rule("V''")(board=self.board, data=rule_id)
+                clue_rules.append(rule)
 
         self.board.rules = {"clue_rules": clue_rules, "mines_rules": mines_rules, "mines_clue_rules": mines_clue_rules}
 
