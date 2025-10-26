@@ -93,7 +93,7 @@ def get_board(name: Optional[str] = None):
                 return i
 
 
-def get_rule(name: str) -> type | None:
+def get_rule(name: str) -> type:
     for i in get_all_subclasses(AbstractRule):
         if i in [
             AbstractClueRule,

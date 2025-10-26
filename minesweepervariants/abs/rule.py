@@ -91,6 +91,11 @@ class AbstractRule(ABC):
         :return:
         """
 
+    def get_deps(self) -> List[str]:
+        """
+        返回当前规则依赖的其他规则名称列表
+        """
+        return []
 
 class AbstractValue(ABC):
     @abstractmethod
