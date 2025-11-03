@@ -16,7 +16,7 @@ from ortools.sat.python.cp_model import IntVar
 from ....abs.rule import AbstractValue
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
-from ....utils.tool import get_logger
+from ....utils.tool import get_logger, get_random
 from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD
 from ....abs.Rrule import AbstractClueValue
 from ....abs.Mrule import AbstractMinesValue
@@ -271,15 +271,23 @@ class Board(AbstractBoard):
     def get_model(self):
         if self._model is None:
             self._model = cp_model.CpModel()
+            random = get_random()
             for _key in self.board_data:
                 _size = self.board_data[_key]["config"]["size"]
                 if "variable" in self.board_data[_key]:
                     del self.board_data[_key]["variable"]
+                
                 self.board_data[_key]["variable"] = \
-                    [[self._model.NewBoolVar(f"var({self.get_pos(x, y, _key)})")
-                      for y in range(_size[1])]
-                     for x in range(_size[0])]
+                    [[None for y in range(_size[1])] for x in range(_size[0])]
+                positions = [(x, y) for y in range(_size[1]) for x in range(_size[0])]
+                random.shuffle(positions)
+                for pos_tuple in positions:
+                    x, y = pos_tuple
+                    self.board_data[_key]["variable"][x][y] = \
+                        self._model.NewBoolVar(f"var({self.get_pos(x, y, _key)})")
                 get_logger().trace(f"构建新变量:{self.board_data[_key]['variable']}")
+        return self._model
+
         return self._model
 
     def generate_board(
