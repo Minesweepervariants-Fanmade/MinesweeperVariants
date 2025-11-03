@@ -294,7 +294,10 @@ class Summon:
         return _board
 
     def random_fill(self, board, total):
+        # if len(self.mines_rules.rules) == 1:
+        #     return self.fill_valid(board, total)
         switch = Switch()
+        random = get_random()
         model = board.get_model()
         for rule in self.mines_rules.rules + [
             self.mines_clue_rule, self.clue_rule
@@ -308,11 +311,24 @@ class Summon:
                     model.Add(var == 0)
         var_list = [v for _, v in board(mode="variable", special='raw')]
         model.AddBoolAnd(switch.get_all_vars())
-        print(f"正在随机放雷", end="\t", flush=True)
-        status, solver = solver_model(model, True)
-        print(f"求解完毕 status: {status}", end="\r", flush=True)
-        if not status:
-            return None
+        __count = 0
+        random_total = int(total * (2 ** (1 - len(self.mines_rules.rules))))
+        while random_total > 0:
+            __count += 1
+            print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)", end="\r", flush=True)
+            _model = model.clone()
+            model.AddBoolAnd(random.sample(var_list, random_total))
+            status, solver = solver_model(model, True)
+            print(f"第{__count}次求解完毕 status: {status}", end="\r", flush=True)
+            if status:
+                break
+            if random_total <= 0:
+                return None
+            del model
+            model = _model
+            random_total = int(0.5 * random_total)
+        else:
+            status, solver = solver_model(model, True)
         for key in board.get_board_keys():
             for pos, var in board(mode="variable", key=key, special='raw'):
                 if solver.Value(var):
@@ -320,9 +336,9 @@ class Summon:
                 else:
                     board[pos] = board.get_config(key, "VALUE")
         print("\n\n", board)
-        print(f"随机放雷完毕\t ", end="\n", flush=True)
+        print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
         return board
-
+        
     def fill_valid(self, board: 'AbstractBoard', total: int, model=None) -> Union[AbstractBoard, None]:
         random = get_random()
         history: list[tuple] = []
