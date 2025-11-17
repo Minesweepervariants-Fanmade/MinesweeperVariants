@@ -140,8 +140,12 @@ if args.seed != defaults.get("seed"):
     args.attempts = 1
 
 for rule_name in args.rules:
-    if "$" in rule_name:
-        args.rules[args.rules.index(rule_name)] = rule_name.replace("$", "^")
+    if "$0" in rule_name:
+        args.rules[args.rules.index(rule_name)] = rule_name.replace("$0", "$")
+    if "$1" in rule_name:
+        args.rules[args.rules.index(rule_name)] = rule_name.replace("$1", "^")
+    if "$2" in rule_name:
+        args.rules[args.rules.index(rule_name)] = rule_name.replace("$2", "|")
 
 if args.test:
     test(
