@@ -146,6 +146,8 @@ for rule_name in args.rules:
         args.rules[args.rules.index(rule_name)] = rule_name.replace("$1", "^")
     if "$2" in rule_name:
         args.rules[args.rules.index(rule_name)] = rule_name.replace("$2", "|")
+    if "$3" in rule_name:
+        args.rules[args.rules.index(rule_name)] = rule_name.replace("$3", "&")
 
 if args.test:
     test(
