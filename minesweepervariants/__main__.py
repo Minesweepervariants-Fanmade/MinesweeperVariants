@@ -139,7 +139,8 @@ else:
 if args.seed != defaults.get("seed"):
     args.attempts = 1
 
-for rule_name in args.rules:
+for rule_index in range(len(args.rules)):
+    rule_name = args.rules[rule_index]
     if "$0" in rule_name:
         rule_name = rule_name.replace("$0", "$")
     if "$1" in rule_name:
@@ -148,7 +149,7 @@ for rule_name in args.rules:
         rule_name = rule_name.replace("$2", "|")
     if "$3" in rule_name:
         rule_name = rule_name.replace("$3", "&")
-    args.rules[args.rules.index(rule_name)] = rule_name
+    args.rules[rule_index] = rule_name
 
 if args.test:
     test(
