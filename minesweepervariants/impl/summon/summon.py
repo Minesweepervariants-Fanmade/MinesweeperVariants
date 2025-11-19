@@ -329,6 +329,8 @@ class Summon:
             random_total = int(0.5 * random_total)
         else:
             status, solver = solver_model(model, True)
+        if not status:
+            return None
         for key in board.get_board_keys():
             for pos, var in board(mode="variable", key=key, special='raw'):
                 if solver.Value(var):
@@ -371,18 +373,25 @@ class Summon:
                 history.append((code, _model))
                 total -= 1
             else:
-                board: AbstractBoard = type(board)(rules=board.rules, code=code)
+                board = type(board)(rules=board.rules, code=code)
                 board[pos] = board.get_config(pos.board_key, "VALUE")
                 del model
                 model = _model
-        if solver_model(model):
-            return self.random_fill(board, 0)
+        result = self.random_fill(board, 0)
+        if result:
+            return result
         while history:
             code, model = history.pop()
-            board = type(board)(code=code)
-            board = self.fill_valid(board, total)
-            if board is not None:
-                return board
+            board = type(board)(
+                code=code, rules={
+                    "clue_rules": [self.clue_rule],
+                    "mines_rules": self.mines_rules.rules,
+                    "mines_clue_rules": [self.mines_clue_rule],
+                }
+            )
+            _board = self.fill_valid(board, total)
+            if _board is not None:
+                return _board
         return None
 
     def dig_unique(self, board: 'AbstractBoard'):
