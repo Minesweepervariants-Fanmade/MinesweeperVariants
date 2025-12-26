@@ -89,7 +89,6 @@ class Summon:
         clue_rules = self.board.rules["clue_rules"]
         mines_rules = self.board.rules["mines_rules"]
         mines_clue_rules = self.board.rules["mines_clue_rules"]
-        print(self.board.rules)
 
         # 清空列表来让他遍历所有规则名
         rules.clear()
