@@ -3,13 +3,17 @@
 # @Time    : 2025/06/03 05:30
 # @Author  : Wu_RH
 # @FileName: summon.py
+from calendar import c
 import threading
 import time
 from typing import Union, List
 from unittest import result
+from venv import logger
 
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
+
+from ...impl.rule.sharpRule import AbstractClueSharp
 
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
@@ -119,12 +123,17 @@ class Summon:
             else:
                 self.clue_rule = get_rule("?")(board=self.board, data="")
         elif len(clue_rules) > 1:
-            self.clue_rule = RuleClueSharp(board=self.board, data=clue_rules)
-            rules.append("#")
+            for rule in clue_rules:
+                if isinstance(rule, AbstractClueSharp):
+                    logger.warning("TODO: 多个右线中存在标签")
+                    self.clue_rule = rule
+                    break
+            else: # 未发现标签规则
+                self.clue_rule = RuleClueSharp(board=self.board, data=clue_rules)
+                rules.append("#")
         else:
             self.clue_rule = clue_rules[0]
             rules.append(self.clue_rule.get_name())
-
         if not rules:
             rules.append("V")
 
