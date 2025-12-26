@@ -270,6 +270,15 @@ class AbstractBoard(ABC):
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
+    def get_rule(self, rule_name: str, resolve: bool = True) -> "AbstractRule | None":
+        """
+        返回指定名称的规则对象
+        :param rule_name: 规则名称
+        :return: 规则对象
+        :resolve: 是否解析
+        """
+        raise RuntimeError("Method get_rule is not bound")
+
     @abstractmethod
     def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = None) -> None:
         """

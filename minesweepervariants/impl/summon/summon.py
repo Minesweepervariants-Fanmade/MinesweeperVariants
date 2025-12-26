@@ -6,6 +6,7 @@
 import threading
 import time
 from typing import Union, List
+from unittest import result
 
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
@@ -69,59 +70,26 @@ class Summon:
         # 题板初始化
         self.board = get_board(board)(rules = None, size = size)
 
-        clue_rules = []
-        mines_rules = []
-        mines_clue_rules = []
+        # 绑定 get_rule 方法
+        def _get_rule(_self: AbstractBoard, rule_name: str, resolve: bool = True) -> AbstractRule | None:
+            return self._resolve_rules(_self, rule_name)
+
+        self.board.get_rule = _get_rule.__get__(self.board)
+
+        # 初始化规则容器
+        self.board.rules = {"clue_rules": [], "mines_rules": [], "mines_clue_rules": []}
 
         if "R" not in rules:
             rules.append("R")
 
-        rules_info = []
+        # 增量式添加规则
+        for rule in rules:
+            self._resolve_rules(self.board, rule)
 
-        rule_map = []
-        deps = []
-        libs = []
-        for rule_id in rules:
-            parts = rule_id.split(CONFIG["delimiter"], 1)
-            rule_id = parts[0]
-            data = parts[1] if len(parts) == 2 else None
-            rule_map.append((rule_id, data))
-
-        for rule_id, data in rule_map:
-            rule: AbstractRule = get_rule(rule_id)(board=self.board, data=data)
-            rule_deps = rule.get_deps()
-            for dep in rule_deps:
-                deps.append(dep)
-                if dep not in [r[0] for r in rule_map]:
-                    rule_map.append((dep, None))
-            if rule.lib_only:
-                libs.append(rule_id)
-            rules_info.append((rule, data))
-            if rule is None:
-                self.logger.error("键入了一个未知的规则")
-            elif isinstance(rule, AbstractClueRule):
-                clue_rules.append(rule)
-            elif isinstance(rule, AbstractMinesRule):
-                mines_rules.append(rule)
-            elif isinstance(rule, AbstractMinesClueRule):
-                mines_clue_rules.append(rule)
-            else:
-                # 如果你不是左线不是中线也不是右线那你怎么混进来的?
-                raise ValueError("Unknown Rule")
-
-        # flag = False
-        for rule_id in libs:
-            if rule_id not in deps:
-                # if flag:
-                #     raise ValueError(f"存在无用规则{libs}")
-                # flag = True
-                rule: AbstractRule = get_rule("V''")(board=self.board, data=rule_id)
-                clue_rules.append(rule)
-
-        self.board.rules = {"clue_rules": clue_rules, "mines_rules": mines_rules, "mines_clue_rules": mines_clue_rules}
-
-        for rule in clue_rules + mines_rules + mines_clue_rules:
-            rule.combine(rules_info)
+        clue_rules = self.board.rules["clue_rules"]
+        mines_rules = self.board.rules["mines_rules"]
+        mines_clue_rules = self.board.rules["mines_clue_rules"]
+        print(self.board.rules)
 
         # 清空列表来让他遍历所有规则名
         rules.clear()
@@ -178,6 +146,82 @@ class Summon:
         else:
             self.total = total
         set_total(total=self.total)
+
+    def _parse_rule_data(self, rule: str):
+        # 解析规则 ID 和 data
+        parts = rule.split(CONFIG["delimiter"], 1)
+        rule_id = parts[0]
+        data = parts[1] if len(parts) == 2 else None
+        return rule_id, data
+
+    def _resolve_rules(self, board: AbstractBoard, rule: str, resolve: bool = True) -> AbstractRule | None:
+        """
+        增量式添加单个规则及其依赖到 board.rules
+
+        :param board: 目标题板对象
+        :param rule: 单个规则ID字符串（可含 delimiter 分隔的 data）
+        """
+        # 解析规则 ID 和 data
+        rule_id, data = self._parse_rule_data(rule)
+
+        # 检查是否已添加过该规则（避免重复）
+        all_rules: list[AbstractRule] = (board.rules["clue_rules"] +
+                     board.rules["mines_rules"] +
+                     board.rules["mines_clue_rules"])
+
+        for existing_rule in all_rules:
+            if existing_rule.name == rule_id and existing_rule.__data == data:
+                return existing_rule
+
+        # 不需要解析直接返回
+        if not resolve:
+            return None
+
+        # 实例化规则
+        rule_instance: AbstractRule = get_rule(rule_id)(board=board, data=data)
+
+        if rule_instance is None:
+            self.logger.error(f"键入了一个未知的规则: {rule_id}")
+            return None
+
+        result_rule = rule_instance
+
+        # 递归处理依赖
+        rule_deps = rule_instance.get_deps()
+        for dep in rule_deps:
+            self._resolve_rules(board, dep)
+
+        # 根据类型分类添加
+        if isinstance(rule_instance, AbstractClueRule):
+            board.rules["clue_rules"].append(rule_instance)
+        elif isinstance(rule_instance, AbstractMinesRule):
+            board.rules["mines_rules"].append(rule_instance)
+        elif isinstance(rule_instance, AbstractMinesClueRule):
+            board.rules["mines_clue_rules"].append(rule_instance)
+        else:
+            raise ValueError(f"Unknown Rule: {rule_id}")
+
+        # 检查是否为 lib_only 规则
+        if rule_instance.lib_only:
+            # 检查该规则是否被其他规则依赖
+            for existing_rule in all_rules:
+                if rule_id in existing_rule.get_deps():
+                    break
+            else: # 未被依赖
+                v_rule: AbstractRule = get_rule("V''")(board=board, data=rule_id)
+                board.rules["clue_rules"].append(v_rule)
+                result_rule = v_rule
+
+        # 更新所有规则的 combine 信息
+        all_rules = (board.rules["clue_rules"] +
+                     board.rules["mines_rules"] +
+                     board.rules["mines_clue_rules"])
+        rules_info: list[tuple[AbstractRule, str | None]] = [(r, None) for r in all_rules]  # 简化版本，data 信息在规则实例中
+
+        for r in all_rules:
+            r.combine(rules_info)
+
+        return result_rule
 
     def init_total(self):
         soft_conds = [-float("inf")]
@@ -340,7 +384,7 @@ class Summon:
         print("\n\n", board)
         print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
         return board
-        
+
     def fill_valid(self, board: 'AbstractBoard', total: int, model=None) -> Union[AbstractBoard, None]:
         random = get_random()
         history: list[tuple] = []
