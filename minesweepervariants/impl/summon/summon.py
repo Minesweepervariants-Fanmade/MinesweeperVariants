@@ -70,12 +70,11 @@ class Summon:
         # 题板初始化
         self.board = get_board(board)(rules = None, size = size)
 
-        # 绑定 get_rule 方法
-        def _get_rule(_self: AbstractBoard, rule_name: str, resolve: bool = True) -> AbstractRule | None:
-            return self._resolve_rules(_self, rule_name)
+        # 绑定 get_rule_instance 方法
+        def _get_rule_instance(_self: AbstractBoard, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
+            return self.add_rule(_self, rule_name, data=data, add=add)
 
-        self.board.get_rule = _get_rule.__get__(self.board)
-
+        self.board.get_rule_instance = _get_rule_instance.__get__(self.board)
         # 初始化规则容器
         self.board.rules = {"clue_rules": [], "mines_rules": [], "mines_clue_rules": []}
 
@@ -84,7 +83,8 @@ class Summon:
 
         # 增量式添加规则
         for rule in rules:
-            self._resolve_rules(self.board, rule)
+            rule_id, data = self._parse_rule_data(rule)
+            self.add_rule(self.board, rule_id, data=data)
 
         clue_rules = self.board.rules["clue_rules"]
         mines_rules = self.board.rules["mines_rules"]
@@ -154,15 +154,13 @@ class Summon:
         data = parts[1] if len(parts) == 2 else None
         return rule_id, data
 
-    def _resolve_rules(self, board: AbstractBoard, rule: str, resolve: bool = True) -> AbstractRule | None:
+    def add_rule(self, board: AbstractBoard, rule_id: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
         """
         增量式添加单个规则及其依赖到 board.rules
 
         :param board: 目标题板对象
         :param rule: 单个规则ID字符串（可含 delimiter 分隔的 data）
         """
-        # 解析规则 ID 和 data
-        rule_id, data = self._parse_rule_data(rule)
 
         # 检查是否已添加过该规则（避免重复）
         all_rules: list[AbstractRule] = (board.rules["clue_rules"] +
@@ -173,8 +171,8 @@ class Summon:
             if existing_rule.name == rule_id and existing_rule.__data == data:
                 return existing_rule
 
-        # 不需要解析直接返回
-        if not resolve:
+        # 不需要添加直接返回
+        if not add:
             return None
 
         # 实例化规则
@@ -189,7 +187,7 @@ class Summon:
         # 递归处理依赖
         rule_deps = rule_instance.get_deps()
         for dep in rule_deps:
-            self._resolve_rules(board, dep)
+            self.add_rule(board, dep)
 
         # 根据类型分类添加
         if isinstance(rule_instance, AbstractClueRule):
