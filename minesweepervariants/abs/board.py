@@ -402,7 +402,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def set_config(self, board_key: str, config_name: str, value: bool):
+    def set_config(self, board_key: str, config_name: str, value: any):
         """
         设置某个题板的设置
         """

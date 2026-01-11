@@ -319,8 +319,15 @@ class Board(AbstractBoard):
             mask = decode_bytes_7bit(mask)
             if len(labels_code) == 1 and labels_code[0] == 0:
                 labels = []
-            else:
-                labels = labels_code.decode("ascii").split(";")
+            elif labels_code[0] == 1:
+                labels = labels_code[1:].decode("ascii").split(";")
+            elif labels_code[0] == 2:
+                labels = {}
+                for label in labels_code[1:].split(b'\xfe'):
+                    if not label:
+                        continue
+                    pos = Position(label[0], label[1], label[2:label.index(253)].decode("ascii"))
+                    labels[pos] = label[label.index(253) + 1:].decode("ascii")
             true_tag = get_value(pos=POSITION_TAG, code=ture_code)
             false_tag = get_value(pos=POSITION_TAG, code=false_code)
         data = dict()
@@ -378,7 +385,6 @@ class Board(AbstractBoard):
                 continue
             raise ValueError(f"unknown type{code}")
 
-
         for _rules in self.rules.values():
             for rule in _rules:
                 rule.onboard_init(self)
@@ -413,7 +419,23 @@ class Board(AbstractBoard):
             board_bytes.extend(bytes([255]))
             board_bytes.extend(mines.type() + b"|" + mines.code())
             board_bytes.extend(bytes([255]))
-            board_bytes.extend((";".join(label for label in labels) if len(labels) > 0 else "\x00").encode("ascii"))
+            if labels:
+                if type(labels) is dict:
+                    if any([isinstance(type(i), AbstractPosition) for i in labels.keys()]):
+                        raise
+                    board_bytes.extend([2])
+                    if labels:
+                        for pos, str_value in labels.items():
+                            board_bytes.extend([pos.x, pos.y])
+                            board_bytes.extend(pos.board_key.encode("ascii"))
+                            board_bytes.extend([253])
+                            board_bytes.extend(str_value.encode("ascii"))
+                            board_bytes.extend([254])
+                        board_bytes.pop(-1)
+                else:
+                    board_bytes.extend(b"\x01" + (";".join(label for label in labels)).encode("ascii"))
+            else:
+                board_bytes.extend(b"\x00")
             # key | sizex | sizey | config
             for pos, obj in self(key=board_key):
                 board_bytes.extend(b"\xff")
@@ -695,6 +717,11 @@ class Board(AbstractBoard):
 
     def pos_label(self, pos: 'AbstractPosition') -> str:
         labels = self.get_config(pos.board_key, "labels")
+        if type(labels) is dict:
+            if pos in labels:
+                return labels[pos]
+            else:
+                return ""
         txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
         txt += chr(pos.y % 26 + 65)
         txt += '='

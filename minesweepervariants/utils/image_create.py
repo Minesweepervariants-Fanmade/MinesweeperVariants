@@ -413,13 +413,13 @@ def draw_board(
             for pos, obj in board(mode="object", key=key):
                 if board.get_type(pos, special='raw') == "C":
                     continue
+                txt = board.pos_label(pos)
+                if not txt:
+                    continue
                 r, c = pos.x, pos.y
                 x = x_offset + c * cell_size + cell_size / 2
                 y = margin + r * cell_size + cell_size / 2
-                txt = chr(64 + c // 26) if c > 25 else ''
-                txt += chr(65 + c % 26)
-                txt += f"={r}"
-                draw.text((x, y), board.pos_label(pos), fill=pos_label_color, font=label_font, anchor="mm")
+                draw.text((x, y), txt, fill=pos_label_color, font=label_font, anchor="mm")
 
         # 内容渲染 - 使用ElementRenderer
         for pos, obj in board(mode="object", key=key):
