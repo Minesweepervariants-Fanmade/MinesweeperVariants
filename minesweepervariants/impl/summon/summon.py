@@ -179,9 +179,9 @@ class Summon:
             if existing_rule.name == rule_id and existing_rule.__data == data:
                 return existing_rule
 
-        # 不需要添加直接返回
-        if not add:
-            return None
+        # # 不需要添加直接返回
+        # if not add:
+        #     return None
 
         # 实例化规则
         rule_instance: AbstractRule = get_rule(rule_id)(board=board, data=data)
@@ -195,17 +195,18 @@ class Summon:
         # 递归处理依赖
         rule_deps = rule_instance.get_deps()
         for dep in rule_deps:
-            self.add_rule(board, dep)
+            self.add_rule(board, dep, data, add)
 
-        # 根据类型分类添加
-        if isinstance(rule_instance, AbstractClueRule):
-            board.rules["clue_rules"].append(rule_instance)
-        elif isinstance(rule_instance, AbstractMinesRule):
-            board.rules["mines_rules"].append(rule_instance)
-        elif isinstance(rule_instance, AbstractMinesClueRule):
-            board.rules["mines_clue_rules"].append(rule_instance)
-        else:
-            raise ValueError(f"Unknown Rule: {rule_id}")
+        if add:
+            # 根据类型分类添加
+            if isinstance(rule_instance, AbstractClueRule):
+                board.rules["clue_rules"].append(rule_instance)
+            elif isinstance(rule_instance, AbstractMinesRule):
+                board.rules["mines_rules"].append(rule_instance)
+            elif isinstance(rule_instance, AbstractMinesClueRule):
+                board.rules["mines_clue_rules"].append(rule_instance)
+            else:
+                raise ValueError(f"Unknown Rule: {rule_id}")
 
         # 检查是否为 lib_only 规则
         if rule_instance.lib_only:
@@ -215,17 +216,19 @@ class Summon:
                     break
             else: # 未被依赖
                 v_rule: AbstractRule = get_rule("V''")(board=board, data=rule_id)
-                board.rules["clue_rules"].append(v_rule)
+                if add: board.rules["clue_rules"].append(v_rule)
                 result_rule = v_rule
 
-        # 更新所有规则的 combine 信息
-        all_rules = (board.rules["clue_rules"] +
-                     board.rules["mines_rules"] +
-                     board.rules["mines_clue_rules"])
-        rules_info: list[tuple[AbstractRule, str | None]] = [(r, None) for r in all_rules]  # 简化版本，data 信息在规则实例中
+        if add:
+            # 更新所有规则的 combine 信息
+            all_rules = (board.rules["clue_rules"] +
+                        board.rules["mines_rules"] +
+                        board.rules["mines_clue_rules"])
+            rules_info: list[tuple[AbstractRule, str | None]] = [(r, None) for r in all_rules]  # 简化版本，data 信息在规则实例中
 
-        for r in all_rules:
-            r.combine(rules_info)
+
+            for r in all_rules:
+                r.combine(rules_info)
 
         return result_rule
 
