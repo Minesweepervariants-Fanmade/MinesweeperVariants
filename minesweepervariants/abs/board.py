@@ -257,7 +257,11 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        return self.__class__(code=self.encode(), default_special=self.default_special, rules=self.rules)
+        new_board = self.__class__(code=self.encode(), default_special=self.default_special, rules=self.rules)
+        if hasattr(self, "_get_rule_instance"):
+            new_board._bound_get_rule_instance(self._get_rule_instance)
+
+        return new_board
 
     def get_model(self) -> cp_model.CpModel:
         """获取cp_model"""
@@ -270,6 +274,14 @@ class AbstractBoard(ABC):
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
+    def _bound_get_rule_instance(self, get_rule_instance):
+        """
+        绑定get_rule_instance方法
+        :param get_rule_instance: 方法
+        """
+        self._get_rule_instance = get_rule_instance
+        self.get_rule_instance = self._get_rule_instance.__get__(self)
+
     def get_rule_instance(self, rule_name: str, data: str|None = None, add: bool = True) -> "AbstractRule | None":
         """
         返回指定名称的规则对象
@@ -277,7 +289,7 @@ class AbstractBoard(ABC):
         :return: 规则对象
         :add: 如果没有则添加
         """
-        raise RuntimeError("Method get_rule is not bound")
+        raise RuntimeError("Method get_rule_instance is not bound")
 
     @abstractmethod
     def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = None) -> None:

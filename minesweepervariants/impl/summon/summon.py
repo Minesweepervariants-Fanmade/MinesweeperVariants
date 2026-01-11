@@ -78,7 +78,7 @@ class Summon:
         def _get_rule_instance(_self: AbstractBoard, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
             return self.add_rule(_self, rule_name, data=data, add=add)
 
-        self.board.get_rule_instance = _get_rule_instance.__get__(self.board)
+        self.board._bound_get_rule_instance(_get_rule_instance)
         # 初始化规则容器
         self.board.rules = {"clue_rules": [], "mines_rules": [], "mines_clue_rules": []}
 
