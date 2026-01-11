@@ -547,15 +547,15 @@ class Summon:
         thread.start()
 
         for phase, put_type in enumerate([True, False]):
-            if not put_type:
-                temp_a_number = len([None for _ in board('C')])
-                temp_b_number = len([None for _ in board('F')])
-                if (init_clues_count == temp_a_number and
-                        init_mines_count == temp_b_number):
-                    self.logger.warn("题板无法删除任何线索 提前退出")
-                    progress_info["running"] = False
-                    thread.join()
-                    return None
+            # if not put_type:
+            #     temp_a_number = len([None for _ in board('C')])
+            #     temp_b_number = len([None for _ in board('F')])
+            #     if (init_clues_count == temp_a_number and
+            #             init_mines_count == temp_b_number):
+            #         self.logger.warn("题板无法删除任何线索 提前退出")
+            #         progress_info["running"] = False
+            #         thread.join()
+            #         return None
 
             c_poses = [(i, t, key) for key in
                        [key for key in board.get_board_keys() if board.get_config(key, "interactive")]
