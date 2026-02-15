@@ -83,6 +83,34 @@ class Position(AbstractPosition):
         self.x += pos.x
         self.y += pos.y
 
+    def _north(self, n: int = 1):
+        if self.y % 2 == 1:
+            self.x -= n
+            self.y -= n
+        else:
+            self.y -= n
+
+    def _east(self, n: int = 1):
+        if self.y % 2 == 1:
+            self.x -= n
+            self.y += n
+        else:
+            self.y += n
+
+    def _west(self, n: int = 1):
+        if self.y % 2 == 1:
+            self.y -= n
+        else:
+            self.x += n
+            self.y -= n
+
+    def _south(self, n: int = 1):
+        if self.y % 2 == 1:
+            self.y += n
+        else:
+            self.x += n
+            self.y += n
+
     def in_bounds(self, bound_pos: 'Position') -> bool:
         if bound_pos.board_key != self.board_key:
             return False
@@ -162,6 +190,65 @@ class Position(AbstractPosition):
 
         return result
 
+    def hex_neighbors(self, *args: int) -> list['Position']:
+        """
+        按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
+
+        调用方式（类似 range）：
+            hex_neighbors(end_layer)
+                返回距离 ≤ end_layer 的位置（从第 1 层开始）。
+            hex_neighbors(start_layer, end_layer)
+                返回距离 ∈ [start_layer, end_layer] 的位置。
+
+        :param args: 一个或两个整数
+            - 若提供一个参数 end_layer，视为从 1 到 end_layer。
+            - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
+            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
+
+        :return: 位置列表，按距离从近到远排序。
+        """
+        # 参数处理
+        if len(args) == 1:
+            low, high = 1, args[0]
+        elif len(args) == 2:
+            low, high = args
+        else:
+            return []
+
+        # 处理无效参数
+        if high < low or low < 1:
+            return []
+
+        result = []
+        visited = {(self.x, self.y)}
+        current_layer = [self]  # 当前层的位置列表
+
+        for distance in range(1, high + 1):
+            next_layer = []
+            for pos in current_layer:
+                # 获取六个邻接方向
+                hex_adjacent = [
+                    pos.up(),
+                    pos.down(),
+                    pos.north(),
+                    pos.east(),
+                    pos.west(),
+                    pos.south(),
+                ]
+                for neighbor in hex_adjacent:
+                    key = (neighbor.x, neighbor.y)
+                    if key not in visited:
+                        visited.add(key)
+                        next_layer.append(neighbor)
+                        # 如果距离在目标范围内，添加到结果
+                        if low <= distance <= high:
+                            result.append(neighbor)
+
+            if not next_layer:
+                break
+            current_layer = next_layer
+
+        return result
 
 class Board(AbstractBoard):
     """
@@ -276,7 +363,7 @@ class Board(AbstractBoard):
                 _size = self.board_data[_key]["config"]["size"]
                 if "variable" in self.board_data[_key]:
                     del self.board_data[_key]["variable"]
-                
+
                 self.board_data[_key]["variable"] = \
                     [[None for y in range(_size[1])] for x in range(_size[0])]
                 positions = [(x, y) for y in range(_size[1]) for x in range(_size[0])]

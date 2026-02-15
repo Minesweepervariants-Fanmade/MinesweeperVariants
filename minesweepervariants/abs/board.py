@@ -90,6 +90,34 @@ class AbstractPosition(ABC):
         """
 
     @abstractmethod
+    def _north(self, n: int = 1):
+        """
+        将自己向北(六边形方向)移动n格
+        :param n: 向北n格
+        """
+
+    @abstractmethod
+    def _east(self, n: int = 1):
+        """
+        将自己向东(六边形方向)移动n格
+        :param n: 向东n格
+        """
+
+    @abstractmethod
+    def _west(self, n: int = 1):
+        """
+        将自己向西(六边形方向)移动n格
+        :param n: 向西n格
+        """
+
+    @abstractmethod
+    def _south(self, n: int = 1):
+        """
+        将自己向南(六边形方向)移动n格
+        :param n: 向南n格
+        """
+
+    @abstractmethod
     def neighbors(self, *args: int) -> list['AbstractPosition']:
         """
         按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
@@ -168,6 +196,65 @@ class AbstractPosition(ABC):
 
     def shift(self, x: int = 0, y: int = 0):
         return self.up(x).right(y)
+
+    def north(self, n: int = 1) -> 'AbstractPosition':
+        """
+        返回一个向北(六边形方向)移动n格的位置对象
+        :param n: 向北n格
+        :return: 结果位置
+        """
+        _pos = self.clone()
+        _pos._north(n)
+        return _pos
+
+    def east(self, n: int = 1) -> 'AbstractPosition':
+        """
+        返回一个向东(六边形方向)移动n格的位置对象
+        :param n: 向东n格
+        :return: 结果位置
+        """
+        _pos = self.clone()
+        _pos._east(n)
+        return _pos
+
+    def west(self, n: int = 1) -> 'AbstractPosition':
+        """
+        返回一个向西(六边形方向)移动n格的位置对象
+        :param n: 向西n格
+        :return: 结果位置
+        """
+        _pos = self.clone()
+        _pos._west(n)
+        return _pos
+
+    def south(self, n: int = 1) -> 'AbstractPosition':
+        """
+        返回一个向南(六边形方向)移动n格的位置对象
+        :param n: 向南n格
+        :return: 结果位置
+        """
+        _pos = self.clone()
+        _pos._south(n)
+        return _pos
+
+    @abstractmethod
+    def hex_neighbors(self, *args: int) -> list['AbstractPosition']:
+        """
+        按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
+
+        调用方式（类似 range）：
+            hex_neighbors(end_layer)
+                返回距离 ≤ end_layer 的位置（从第 1 层开始）。
+            hex_neighbors(start_layer, end_layer)
+                返回距离 ∈ [start_layer, end_layer] 的位置。
+
+        :param args: 一个或两个整数
+            - 若提供一个参数 end_layer，视为从 1 到 end_layer。
+            - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
+            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
+
+        :return: 位置列表，按距离从近到远排序。
+        """
 
 
 class AbstractBoard(ABC):
@@ -544,3 +631,18 @@ class PositionTag(AbstractPosition):
 
     def _right(self, n: int = 1):
         pass
+
+    def _north(self, n: int = 1):
+        pass
+
+    def _east(self, n: int = 1):
+        pass
+
+    def _west(self, n: int = 1):
+        pass
+
+    def _south(self, n: int = 1):
+        pass
+
+    def hex_neighbors(self, *args: int) -> list['AbstractPosition']:
+        return []
