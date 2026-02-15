@@ -4,6 +4,7 @@
 # @Time    : 2025/06/29 16:12
 # @Author  : Wu_RH
 # @FileName: image_create.py
+import math
 import os
 import pathlib
 
@@ -201,6 +202,58 @@ def draw_board(
     if background_white is None:
         background_white = CONFIG["white_base"]
 
+    def safe_get_config(board_key: str, config_name: str, default=None):
+        try:
+            return board.get_config(board_key, config_name)
+        except Exception:
+            return default
+
+    def get_hex_metrics(_cell_size: float):
+        hex_size = _cell_size / math.sqrt(3)
+        hex_width = 2 * hex_size
+        hex_height = math.sqrt(3) * hex_size
+        x_spacing = 1.5 * hex_size
+        y_spacing = hex_height
+        return hex_size, hex_width, hex_height, x_spacing, y_spacing
+
+    def get_cell_box(pos, grid_type: str, x_offset: float, margin_top: float, _cell_size: float, metrics):
+        r, c = pos.x, pos.y
+        if grid_type == "hex":
+            hex_size, hex_width, hex_height, x_spacing, y_spacing = metrics
+            x_center = x_offset + c * x_spacing + hex_width / 2
+            y_center = margin_top + r * y_spacing + (y_spacing / 2 if c % 2 == 0 else 0) + hex_height / 2
+            x0 = x_center - _cell_size / 2
+            y0 = y_center - _cell_size / 2
+            return x0, y0, x_center, y_center
+        x0 = x_offset + c * _cell_size
+        y0 = margin_top + r * _cell_size
+        x_center = x0 + _cell_size / 2
+        y_center = y0 + _cell_size / 2
+        return x0, y0, x_center, y_center
+
+    def get_hex_points(x_center: float, y_center: float, hex_size: float):
+        angles = [0, 60, 120, 180, 240, 300]
+        return [
+            (x_center + hex_size * math.cos(math.radians(a)),
+             y_center + hex_size * math.sin(math.radians(a)))
+            for a in angles
+        ]
+
+    def get_hex_neighbor_positions(pos, _board: AbstractBoard):
+        x, y = pos.x, pos.y
+        board_key = pos.board_key
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        if y % 2 == 1:
+            directions += [(-1, -1), (-1, 1)]
+        else:
+            directions += [(1, -1), (1, 1)]
+        neighbors = []
+        for dx, dy in directions:
+            npos = type(pos)(x + dx, y + dy, board_key)
+            if _board.in_bounds(npos):
+                neighbors.append(npos)
+        return neighbors
+
     def load_font(size: int) -> ImageFont.FreeTypeFont:
         path = pathlib.Path(basepath[0])
         path /= CONFIG["assets"]
@@ -242,10 +295,25 @@ def draw_board(
         return "".join(_roman)
 
     board_keys = board.get_board_keys()
+    def infer_grid_type(board_key: str):
+        grid_type = safe_get_config(board_key, "grid_type", None)
+        if grid_type:
+            return grid_type
+        for _, obj in board(mode="object", key=board_key):
+            if obj is None:
+                continue
+            try:
+                if obj.type() == b"3H":
+                    return "hex"
+            except Exception:
+                continue
+        return "square"
+
     configs = {k: {
-        "by_mini": board.get_config(k, "by_mini"),
-        "pos_label": board.get_config(k, "pos_label"),
-        "row_col": board.get_config(k, "row_col"),
+        "by_mini": safe_get_config(k, "by_mini", False),
+        "pos_label": safe_get_config(k, "pos_label", False),
+        "row_col": safe_get_config(k, "row_col", False),
+        "grid_type": infer_grid_type(k),
     } for k in board_keys}
 
     margin_ratio = CONFIG["margin"]["top_left_right_ratio"]
@@ -265,15 +333,25 @@ def draw_board(
     bottom_margin = cell_size * bottom_ratio
 
     sizes = {}
+    pixel_sizes = {}
     for key in board_keys:
         br = board.boundary(key=key)
         rows = len(board.get_row_pos(br))
         cols = len(board.get_col_pos(br))
         sizes[key] = (cols, rows)
+        grid_type = configs[key]["grid_type"]
+        if grid_type == "hex":
+            _, hex_width, _, x_spacing, y_spacing = get_hex_metrics(cell_size)
+            board_width = (cols - 1) * x_spacing + hex_width if cols > 0 else 0
+            board_height = rows * y_spacing + y_spacing / 2 if rows > 0 else 0
+        else:
+            board_width = cols * cell_size
+            board_height = rows * cell_size
+        pixel_sizes[key] = (board_width, board_height)
 
-    total_width = int(sum(c for _, c in sizes.values()) * cell_size + (len(board_keys) + 1) * margin)
-    max_rows = max(r for r, _ in sizes.values())
-    total_height = int(margin + max_rows * cell_size + bottom_margin)
+    total_width = int(sum(pixel_sizes[k][0] for k in board_keys) + (len(board_keys) + 1) * margin)
+    max_height = max(pixel_sizes[k][1] for k in board_keys) if board_keys else 0
+    total_height = int(margin + max_height + bottom_margin)
 
     image = Image.new("RGBA", (total_width, total_height), bg_color)
     draw = ImageDraw.Draw(image)
@@ -284,6 +362,8 @@ def draw_board(
         by_mini = configs[key]["by_mini"]
         pos_label = configs[key]["pos_label"]
         row_col = configs[key]["row_col"]
+        grid_type = configs[key]["grid_type"]
+        hex_metrics = get_hex_metrics(cell_size) if grid_type == "hex" else None
 
         # 题板左上角编号
         if len(board_keys) > 2:
@@ -321,7 +401,11 @@ def draw_board(
             axis_font = load_font(axis_font_size)
 
             for col in range(cols):
-                x = x_offset + col * cell_size + cell_size // 2
+                if grid_type == "hex":
+                    _, hex_width, _, x_spacing, _ = hex_metrics
+                    x = x_offset + col * x_spacing + hex_width / 2
+                else:
+                    x = x_offset + col * cell_size + cell_size // 2
                 y = margin / 2
                 text = chr(64 + col // 26) if col > 25 else ''
                 text += chr(65 + col % 26)
@@ -329,7 +413,11 @@ def draw_board(
 
             for row in range(rows):
                 x = x_offset - cell_size * 0.25
-                y = margin + row * cell_size + cell_size / 2
+                if grid_type == "hex":
+                    _, _, hex_height, _, y_spacing = hex_metrics
+                    y = margin + row * y_spacing + (y_spacing / 2) + hex_height / 2
+                else:
+                    y = margin + row * cell_size + cell_size / 2
                 draw.text((x, y), str(row + 1), fill=text_color, font=axis_font, anchor="mm")
 
         # 绘制背景图片（如果配置指定）
@@ -358,8 +446,12 @@ def draw_board(
                     bg_img = Image.open(BytesIO(resp.content))
 
                 bg_img = bg_img.convert("RGBA")
-                target_w = cols * cell_size
-                target_h = rows * cell_size
+                if grid_type == "hex":
+                    target_w = pixel_sizes[key][0]
+                    target_h = pixel_sizes[key][1]
+                else:
+                    target_w = cols * cell_size
+                    target_h = rows * cell_size
 
                 iw, ih = bg_img.size
 
@@ -385,27 +477,73 @@ def draw_board(
         except Exception as exc:
             get_logger().error(f"Failed to draw background image: {exc}")
 
+        line_width = CONFIG["grid_line"]["width"]
+        stroke_px = max(1, int(cell_size * line_width))
+
         # 染色
         for pos, _ in board(key=key):
-            r, c = pos.x, pos.y
-            x0 = x_offset + c * cell_size
-            y0 = margin + r * cell_size
-            x1, y1 = x0 + cell_size, y0 + cell_size
+            x0, y0, x_center, y_center = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
             if board.get_dyed(pos):
-                draw.rectangle([x0, y0, x1, y1], fill=dye_color)
+                if grid_type == "hex":
+                    base_hex_size = hex_metrics[0]
+                    draw.polygon(get_hex_points(x_center, y_center, base_hex_size), fill=dye_color)
+                else:
+                    draw.rectangle([x0, y0, x0 + cell_size, y0 + cell_size], fill=dye_color)
 
         # 网格线
-        line_width = CONFIG["grid_line"]["width"]
-        for r in range(rows + 1):
-            y = margin + r * cell_size
-            draw.line([(int(x_offset - cell_size * (line_width * 0.3)), y),
-                       (int(x_offset + cols * cell_size + cell_size * (line_width * 0.3)), y)],
-                      fill=grid_color, width=int(cell_size * line_width))
-        for c in range(cols + 1):
-            x = x_offset + c * cell_size
-            draw.line([(x, int(margin - cell_size * (line_width * 0.3))),
-                       (x, int(margin + rows * cell_size + cell_size * (line_width * 0.3)))],
-                      fill=grid_color, width=int(cell_size * line_width))
+        if grid_type == "hex":
+            for pos, _ in board(key=key):
+                _, _, x_center, y_center = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
+                base_hex_size = hex_metrics[0]
+                points = get_hex_points(x_center, y_center, base_hex_size)
+                edges = []
+                for i in range(6):
+                    p1 = points[i]
+                    p2 = points[(i + 1) % 6]
+                    mid_x = (p1[0] + p2[0]) / 2
+                    mid_y = (p1[1] + p2[1]) / 2
+                    dir_x = mid_x - x_center
+                    dir_y = mid_y - y_center
+                    length = math.hypot(dir_x, dir_y)
+                    if length == 0:
+                        continue
+                    edges.append((p1, p2, dir_x / length, dir_y / length))
+
+                neighbors = get_hex_neighbor_positions(pos, board)
+                neighbor_dirs = []
+                for npos in neighbors:
+                    _, _, n_center_x, n_center_y = get_cell_box(npos, grid_type, x_offset, margin, cell_size, hex_metrics)
+                    ndx = n_center_x - x_center
+                    ndy = n_center_y - y_center
+                    nlen = math.hypot(ndx, ndy)
+                    if nlen == 0:
+                        continue
+                    neighbor_dirs.append((npos, ndx / nlen, ndy / nlen))
+
+                for p1, p2, dir_x, dir_y in edges:
+                    best_dot = -1.0
+                    best_neighbor = None
+                    for npos, ndx, ndy in neighbor_dirs:
+                        dot = dir_x * ndx + dir_y * ndy
+                        if dot > best_dot:
+                            best_dot = dot
+                            best_neighbor = npos
+                    if best_dot >= 0.85:
+                        if (pos.x, pos.y, pos.board_key) < (best_neighbor.x, best_neighbor.y, best_neighbor.board_key):
+                            draw.line([p1, p2], fill=grid_color, width=stroke_px)
+                    else:
+                        draw.line([p1, p2], fill=grid_color, width=stroke_px)
+        else:
+            for r in range(rows + 1):
+                y = margin + r * cell_size
+                draw.line([(int(x_offset - cell_size * (line_width * 0.3)), y),
+                           (int(x_offset + cols * cell_size + cell_size * (line_width * 0.3)), y)],
+                          fill=grid_color, width=int(cell_size * line_width))
+            for c in range(cols + 1):
+                x = x_offset + c * cell_size
+                draw.line([(x, int(margin - cell_size * (line_width * 0.3))),
+                           (x, int(margin + rows * cell_size + cell_size * (line_width * 0.3)))],
+                          fill=grid_color, width=int(cell_size * line_width))
 
         # X=N标签
         if pos_label:
@@ -416,16 +554,12 @@ def draw_board(
                 txt = board.pos_label(pos)
                 if not txt:
                     continue
-                r, c = pos.x, pos.y
-                x = x_offset + c * cell_size + cell_size / 2
-                y = margin + r * cell_size + cell_size / 2
+                _, _, x, y = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
                 draw.text((x, y), txt, fill=pos_label_color, font=label_font, anchor="mm")
 
         # 内容渲染 - 使用ElementRenderer
         for pos, obj in board(mode="object", key=key):
-            r, c = pos.x, pos.y
-            x0_cell = x_offset + c * cell_size
-            y0_cell = margin + r * cell_size
+            x0_cell, y0_cell, _, _ = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
             value = board.get_value(pos)
             if value is None:
                 continue
@@ -444,9 +578,7 @@ def draw_board(
         # 渲染角标
         if by_mini:
             for pos, obj in board(mode="object", key=key):
-                r, c = pos.x, pos.y
-                x0_cell = x_offset + c * cell_size
-                y0_cell = margin + r * cell_size
+                x0_cell, y0_cell, _, _ = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
                 x1_cell = x0_cell + cell_size
                 y1_cell = y0_cell + cell_size
                 value = board.get_value(pos)
@@ -463,11 +595,11 @@ def draw_board(
                           value.tag(board).decode('utf-8', 'ignore'),
                           fill=text_color, font=mini_font, anchor="rd")
 
-        x_offset += cols * cell_size + margin
+        x_offset += pixel_sizes[key][0] + margin
 
     # 底部文本
     if bottom_text:
-        bottom_y = margin + max_rows * cell_size
+        bottom_y = margin + max_height
         max_w = total_width
         low, high = 8, int(bottom_margin * 0.63)
         best = low
