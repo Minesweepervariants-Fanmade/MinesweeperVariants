@@ -16,11 +16,11 @@ class AbstractBoardRule(AbstractRule, ABC):
         返回题板类型
         """
 
+    @abstractmethod
     def apply(self, board: AbstractBoard) -> AbstractBoard:
         """
-        应用并返回代理题板
+        应用并返回代理题板实体对象
         """
-        return AbstractProxyBoard(board)
 
 
 class AbstractProxyBoard(AbstractBoard, ABC):
