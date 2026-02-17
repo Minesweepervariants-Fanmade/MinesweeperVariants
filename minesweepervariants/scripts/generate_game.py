@@ -106,7 +106,7 @@ def main(
             continue
         except GenerateError:
             continue
-        game.answer_board = get_board(board_class)(code=s.answer_board_code)
+        game.answer_board = s.answer_board
         # game.board = get_board("0B")(code=b'')
         # game.answer_board = get_board("0B")(code=b'')
         _board = game.board.clone()
@@ -189,13 +189,12 @@ def main(
 
         if image:
             draw_board(board=get_board(board_class)(code=board_code), cell_size=100, output=file_name + "demo",
-                    bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
+                    bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) + "?" if early_stop else "" +
                                     f"-R{'*' if drop_r else total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
             draw_board(board=get_board(board_class)(code=answer_code), output=file_name + "answer", cell_size=100,
-                    bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
+                    bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) + "?" if early_stop else "" +
                                     f"-R{total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
-
         return

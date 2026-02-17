@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Any, Generator, Tuple, Union
 
 from .rule import AbstractRule
-from .board import AbstractBoard
+from .board import MASTER_BOARD, AbstractBoard, AbstractPosition
 
 
 class AbstractBoardRule(AbstractRule, ABC):
@@ -25,7 +26,7 @@ class AbstractBoardRule(AbstractRule, ABC):
 
 class AbstractProxyBoard(AbstractBoard, ABC):
     def __init__(self, board: AbstractBoard):
-        if hasattr(board, "core"):
+        if isinstance(board, AbstractProxyBoard):
             self.core = board.core
         else:
             self.core = board
@@ -36,9 +37,7 @@ class AbstractProxyBoard(AbstractBoard, ABC):
 
 # --------实例类-------- #
 
-class Board14MV(AbstractProxyBoard):
-    ...
-
+class Board14MV(AbstractProxyBoard): ...
 
 class Rule14MV(AbstractBoardRule):
     @classmethod

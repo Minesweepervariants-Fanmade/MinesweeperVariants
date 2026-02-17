@@ -5,7 +5,7 @@
 # @FileName: board.py
 
 import traceback
-from typing import List, Union, Tuple, Any, Generator, TYPE_CHECKING
+from typing import List, Optional, Union, Tuple, Any, Generator, TYPE_CHECKING
 import heapq
 
 import gc
@@ -82,7 +82,10 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, size: tuple = None, code: bytes = None):
+    def __init__(
+        self, size: Optional[tuple] = None,
+        code: Optional[bytes] = None
+    ):
         # traceback.print_stack()
         self._model = None
         self.board_data = dict()
@@ -104,7 +107,7 @@ class Board(AbstractBoard):
     def __call__(
             self, target: Union[str, None] = "always",
             mode: str = "object",
-            key: str = None,
+            key: Optional[str] = None,
             *args, **kwargs
     ) -> Generator[
         Tuple[
@@ -144,12 +147,16 @@ class Board(AbstractBoard):
             for posx in range(size[0]):
                 for posy in range(size[1]):
                     pos = Position(posx, posy, key)
-                    if pos in self.get_config(pos.board_key, "mask"):
+                    if pos in self.board_data[pos.board_key]["config"]["mask"]:
                         continue
                     pos_type = self.get_type(pos)
 
                     # 检查是否符合目标类型
-                    if target == "always" or pos_type in target:
+                    if (
+                        target == "always" or
+                        target is None or
+                        pos_type in target
+                    ):
                         if mode == "object":
                             yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "obj":
@@ -165,7 +172,7 @@ class Board(AbstractBoard):
                         elif mode == "none":
                             yield pos, None
 
-    def has(self, target: str, key: str = None) -> bool:
+    def has(self, target: str, key: Optional[str] = None) -> bool:
         if key not in self.get_board_keys() + [None]:
             return False
         for pos, type_obj in self(mode="type", key=key):

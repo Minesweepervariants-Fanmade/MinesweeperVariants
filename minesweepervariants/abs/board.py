@@ -6,7 +6,7 @@
 # @FileName: board.py
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Union, TYPE_CHECKING, Generator, Any
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING, Generator, Any
 from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
@@ -15,6 +15,7 @@ from ortools.sat.python.cp_model import IntVar
 from ..impl.board.dye import get_dye
 
 if TYPE_CHECKING:
+    from minesweepervariants.abs.rule import AbstractValue
     from minesweepervariants.abs.Rrule import AbstractClueValue
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
@@ -44,7 +45,7 @@ class AbstractPosition(ABC):
         return hash((self.x, self.y, self.board_key))
 
     def __repr__(self):
-        return f"([{self.board_key}]{self.x}, {self.y})"
+        return f"[{self.board_key}]({self.x}, {self.y})"
 
     def clone(self):
         """
@@ -66,7 +67,6 @@ class AbstractBoard(ABC):
         "interactive"  # 允许在该题板上放置雷和删除线索
     ]
 
-    @abstractmethod
     def __init__(self, size, code):
         """
         :param size: 题板尺寸
@@ -80,13 +80,12 @@ class AbstractBoard(ABC):
     def __iter__(self):
         yield from self.__call__()
 
-    @abstractmethod
     def __call__(
             self, target: Union[str, None] = "always",
             mode: str = "object",
             key: str | None = MASTER_BOARD,
             *args, **kwargs
-    ) -> Generator[Tuple['AbstractPosition', Any], Any, None]:
+    ) -> Generator[Tuple['AbstractPosition', Optional[AbstractValue]], Any, None]:
         """
         被调用时循环返回目标值
         :param target: 遍历目标类型 可选参数: C:线索, F:雷, N:未定义|未翻开
@@ -94,6 +93,8 @@ class AbstractBoard(ABC):
         :param key: 选择哪块题板    默认使用主题版 如果传入None则遍历全部题板
         :return: 位置坐标与对应的值
         """
+        from minesweepervariants.utils.impl_obj import POSITION_TAG
+        yield POSITION_TAG, None
 
     def __getitem__(self, pos):
         return self.get_value(pos)
@@ -125,9 +126,12 @@ class AbstractBoard(ABC):
         return True
 
     def dyed(self, name: str):
-        get_dye(name).dye(self)
+        dye = get_dye(name)
+        if dye is None:
+            raise ValueError("未知的染色规则")
+        dye.dye(self)
 
-    def has(self, target: str, key: str = None):
+    def has(self, target: str, key: Optional[str] = None):
         """
         判断指定题板中是否包含目标字符串对应的元素
         target: 指定目标类型字符串
@@ -140,41 +144,42 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        return self.__class__(code=self.encode())
+        return self.__class__(size=None, code=self.encode())
 
     def get_model(self) -> cp_model.CpModel:
         """获取cp_model"""
+        return cp_model.CpModel()
 
     def get_board_keys(self) -> list[str]:
         """返回当前所有题板的名称"""
+        return []
 
     def get_interactive_keys(self) -> list[str]:
         """返回所有与主板同等级的题板索引"""
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
-    @abstractmethod
-    def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = None) -> None:
+    def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = b'') -> None:
         """
         创建一块副板 board_key为名称 size为尺寸 labels 为 X=N 的 N 可能取值
         """
 
-    @abstractmethod
     def encode(self) -> bytes:
         """
         编码成字节代码
         可在初始化时导入
         :return: 编码后的字节数据
         """
+        return b""
 
-    @abstractmethod
     def boundary(self, key=MASTER_BOARD) -> 'AbstractPosition':
         """
         返回选择题板的边界极限位置
         :return: 极限位置对象
         """
+        from minesweepervariants.utils.impl_obj import POSITION_TAG
+        return POSITION_TAG
 
-    @abstractmethod
     def is_valid(self, pos: 'AbstractPosition') -> bool:
         """
         检测对象是否在borad的范围内
@@ -191,14 +196,12 @@ class AbstractBoard(ABC):
         """
         return self.is_valid(pos)
 
-    @abstractmethod
     def set_mask(self, pos):
         """
         挖去题板的指定位置
         """
 
     @staticmethod
-    @abstractmethod
     def type_value(value) -> str:
         """
         对象的类型
@@ -207,7 +210,6 @@ class AbstractBoard(ABC):
         :return: 类型字符串
         """
 
-    @abstractmethod
     def get_type(self, pos: 'AbstractPosition') -> str:
         """
         位置的类型
@@ -223,7 +225,6 @@ class AbstractBoard(ABC):
         调用该接口后状态将会重置
         """
 
-    @abstractmethod
     def get_value(self, pos: 'AbstractPosition') \
             -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         """
@@ -233,7 +234,6 @@ class AbstractBoard(ABC):
         :return: 位置上的对象或None
         """
 
-    @abstractmethod
     def set_value(self, pos: 'AbstractPosition', value):
         """
         将位置设置为指定对象
@@ -241,13 +241,11 @@ class AbstractBoard(ABC):
         :param value: 设置的对象值
         """
 
-    @abstractmethod
     def clear_board(self):
         """
         清空所有的数据
         """
 
-    @abstractmethod
     def set_dyed(self, pos: 'AbstractPosition', dyed: bool):
         """
         设置位置为指定染色
@@ -255,7 +253,6 @@ class AbstractBoard(ABC):
         :param dyed: 是否染色
         """
 
-    @abstractmethod
     def get_dyed(self, pos: 'AbstractPosition') -> bool:
         """
         返回某个格子是否被染色
@@ -263,19 +260,11 @@ class AbstractBoard(ABC):
         :return: 是否染色
         """
 
-    @abstractmethod
     def get_config(self, board_key: str, config_name: str):
         """
         返回某个题板的设置
         """
 
-    @abstractmethod
-    def set_config(self, board_key: str, config_name: str, value: bool):
-        """
-        设置某个题板的设置
-        """
-
-    @abstractmethod
     def get_variable(self, pos: 'AbstractPosition') -> IntVar:
         """
         返回指定坐标的布尔变量
@@ -283,13 +272,11 @@ class AbstractBoard(ABC):
         :return: 变量
         """
 
-    @abstractmethod
     def clear_variable(self):
         """
         清空当前题板的所有变量 将其设为None
         """
 
-    @abstractmethod
     def get_row_pos(self, pos: 'AbstractPosition') -> List["AbstractPosition"]:
         """
         返回输入坐标值的该行的所有坐标对象并打包为列表
@@ -297,7 +284,6 @@ class AbstractBoard(ABC):
         :return: 该行的所有坐标对象
         """
 
-    @abstractmethod
     def get_col_pos(self, pos: 'AbstractPosition') -> List["AbstractPosition"]:
         """
         返回输入坐标值的该的所有坐标对象并打包为列表
@@ -305,7 +291,6 @@ class AbstractBoard(ABC):
         :return: 该列的所有坐标对象
         """
 
-    @abstractmethod
     def get_pos(self, x, y, key=MASTER_BOARD) -> 'AbstractPosition':
         """
         返回位置实体
@@ -313,7 +298,6 @@ class AbstractBoard(ABC):
         :return: 位置
         """
 
-    @abstractmethod
     def neighbors(self, root_pos: 'AbstractPosition', *args: int) -> list['AbstractPosition']:
         """
         按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
@@ -333,7 +317,6 @@ class AbstractBoard(ABC):
         :return: 位置列表，按距离从近到远排序。
         """
 
-    @abstractmethod
     def deviation(
             self, pos: 'AbstractPosition',
             diff_pos: 'AbstractPosition'
@@ -345,7 +328,6 @@ class AbstractBoard(ABC):
         :return: 偏移完成后的另外一个值
         """
 
-    @abstractmethod
     def difference(
             self, pos1: 'AbstractPosition',
             pos2: 'AbstractPosition'
@@ -358,7 +340,6 @@ class AbstractBoard(ABC):
         :return: 对应偏移量
         """
 
-    @abstractmethod
     def up(
             self, pos: 'AbstractPosition',
             n: int = 1
@@ -369,7 +350,6 @@ class AbstractBoard(ABC):
         :return: 结果位置
         """
 
-    @abstractmethod
     def down(
             self, pos: 'AbstractPosition',
             n: int = 1
@@ -380,7 +360,6 @@ class AbstractBoard(ABC):
         :return: 结果位置
         """
 
-    @abstractmethod
     def left(
             self, pos: 'AbstractPosition',
             n: int = 1
@@ -391,7 +370,6 @@ class AbstractBoard(ABC):
         :return: 结果位置
         """
 
-    @abstractmethod
     def right(
             self, pos: 'AbstractPosition',
             n: int = 1
@@ -408,7 +386,6 @@ class AbstractBoard(ABC):
     ):
         return self.right(self.up(pos, x), y)  # TODO xy顺序颠倒了
 
-    @abstractmethod
     def get_pos_box(self, pos1: "AbstractPosition", pos2: "AbstractPosition") -> List["AbstractPosition"]:
         """
         使用输入的两个坐标作为对角点来生成一个矩形
@@ -419,7 +396,6 @@ class AbstractBoard(ABC):
         :return: 矩形框内的所有位置
         """
 
-    @abstractmethod
     def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args, **kwargs) -> List[
         Any]:
         """
@@ -436,14 +412,12 @@ class AbstractBoard(ABC):
             与 positions 一一对应的列表，包含所请求的对象
         """
 
-    @abstractmethod
     def show_board(self, show_tag: bool = False):
         """
         展示可视化调整的界面，如可选展示线索类型
         :param show_tag: 是否展示标签
         """
 
-    @abstractmethod
     def pos_label(self, pos: 'AbstractPosition') -> str:
         """
         返回位置的标签
@@ -451,6 +425,29 @@ class AbstractBoard(ABC):
         :return: 标签字符串
         """
 
+    def set_config(self, board_key: str, config_name: str, value: bool):
+        """
+        设置某个题板的设置
+        """
+
+    def default_mines(self, board_key: str) -> AbstractMinesValue:
+        """
+        获取该题板的默认雷值
+        """
+        return self.get_config(board_key, "MINES")
+    
+    def default_clue(self, board_key: str) -> AbstractClueValue:
+        """
+        获取该题板的默认线索值
+        """
+        return self.get_config(board_key, "VALUE")
+    
+    def board_size(self, board_key: str) -> Tuple[int, int]:
+        """
+        获取该题板的尺寸
+        """
+        return self.get_config(board_key, "size")
+    
     def serialize(self):
         from ..impl.impl_obj import encode_board
         return encode_board(self.encode())
