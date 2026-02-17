@@ -336,9 +336,9 @@ def draw_board(
     pixel_sizes = {}
     for key in board_keys:
         br = board.boundary(key=key)
-        rows = len(board.get_row_pos(br))
-        cols = len(board.get_col_pos(br))
-        sizes[key] = (cols, rows)
+        cols = len(board.get_row_pos(br))
+        rows = len(board.get_col_pos(br))
+        sizes[key] = (rows, cols)
         grid_type = configs[key]["grid_type"]
         if grid_type == "hex":
             _, hex_width, _, x_spacing, y_spacing = get_hex_metrics(cell_size)
