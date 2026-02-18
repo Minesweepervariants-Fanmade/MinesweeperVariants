@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from typing import Self, overload
-from abs.boardv2 import AbstractBoard, AbstractPosition
+from abs.boardv2 import AbstractBoard, AbstractPosition, Board
+from minesweepervariants.utils.dump import Serializeable
 
-@dataclass
+@dataclass(frozen=True)
 class Coord:
     x: int
     y: int
@@ -68,9 +69,8 @@ class Coord:
 
 class SquarePosition(AbstractPosition['SquareBoard'], Coord):
     def __init__(self, board: 'SquareBoard', coord: Coord):
-        super().__init__(board, label=str(coord))
-        self.x = coord.x
-        self.y = coord.y
+        Coord.__init__(self, coord.x, coord.y)
+        AbstractPosition.__init__(self, board, label=str(coord))
 
     def to_coord(self) -> Coord:
         return Coord(self.x, self.y)
@@ -107,7 +107,6 @@ class SquareBoard(AbstractBoard['SquarePosition']):
         self.width = width
         self.height = height
 
-
         for x in range(width):
             for y in range(height):
                 pos = self.Position(self, Coord(x, y))
@@ -118,7 +117,17 @@ class SquareBoard(AbstractBoard['SquarePosition']):
             neighbors: list[SquarePosition] = pos.neighbors4()
             self.graph[pos] = neighbors
 
+
+    @classmethod
+    def postload(cls, board: AbstractBoard) -> 'SquareBoard':
+        # TODO: 将AbstractBoard转化为SquareBoard，假设数据格式正确
+        board.__class__ = cls
+        return board  # type: ignore
+
+
 if __name__ == "__main__":
     board = SquareBoard(3, 3, "")
-    for pos in board.positions:
-        print(f"{pos}: {[str(neighbor) for neighbor in board.graph[pos]]}")
+    d = board.dump()
+    l = Board.load(d)
+    print(d)
+    print(l.dump())
