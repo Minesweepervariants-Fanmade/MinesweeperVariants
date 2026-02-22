@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Self, overload
-from abs.boardv2 import AbstractBoard, AbstractPosition, Board
-from minesweepervariants.utils.dump import Serializeable
+from ...abs.boardv2 import AbstractBoard, AbstractPosition, Board
 
 @dataclass(frozen=True)
 class Coord:
