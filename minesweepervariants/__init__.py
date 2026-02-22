@@ -15,7 +15,8 @@ def tuple_version() -> tuple[int, int, int]:
             return (0, 0, 0)
 
 
-
-from .scripts.generate_puzzle import main as puzzle
-from .scripts.generate_game import main as puzzle_query
-from .scripts.generate_test import main as test
+def load():
+    from .scripts.generate_puzzle import main as puzzle
+    from .scripts.generate_game import main as puzzle_query
+    from .scripts.generate_test import main as test
+    return puzzle, puzzle_query, test
