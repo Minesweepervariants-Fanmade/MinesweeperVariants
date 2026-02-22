@@ -1,7 +1,6 @@
 from abc import ABC
-from typing import Any, Generic, Self, TypeVar, overload
-from minesweepervariants.impl.board.dye import r
-from utils.dump import Serializeable, dump
+from typing import Generic, Self, TypeVar, overload
+from ..utils.dump import Serializeable, dump
 
 T = TypeVar("T", bound="AbstractBoard", covariant=True)
 
@@ -46,6 +45,7 @@ class AbstractPosition(Generic[T], ABC):
         self.label = label
         self.board = board
         self.neighbor = self.NeibhorAccessor(self)
+        self.variables= {}
 
     def is_near(self, other: Self):
         """self -> other"""
@@ -61,8 +61,15 @@ class AbstractPosition(Generic[T], ABC):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.board}, {self.label})"
 
+    def __hash__(self) -> int:
+        return hash((self.board.label, self.label))
+
     def dump(self) -> Serializeable:
         return str(self)
+
+    def get_var(self, key: str):
+        return self.variables.get(key)
+
 
 class AbstractBoard[T: AbstractPosition['AbstractBoard']](ABC):
     Position: type[T]
@@ -192,3 +199,13 @@ class Position(AbstractPosition['Board']):
 
 class Board(AbstractBoard['Position']):
     Position = Position
+
+
+if __name__ == "__main__":
+    b = Board("test")
+    p1 = b.create_position("A")
+    p2 = b.create_position("B")
+    p3 = b.create_position("C")
+    b.add_edge(p1, p2)
+    b.add_edge(p2, p3)
+    print(p1.neighbor[1])
