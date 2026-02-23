@@ -72,7 +72,7 @@ class TerminalEmulator:
         while self.running:
             try:
                 client_socket, addr = self.server_socket.accept()
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 新连接来自: {addr[0]}:{addr[1]}")
+                # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 新连接来自: {addr[0]}:{addr[1]}")
 
                 # 为新客户端创建输出队列
                 output_queue = Queue()
@@ -103,13 +103,11 @@ class TerminalEmulator:
     def _handle_client(self, client_socket, output_queue):
         """处理单个客户端连接"""
         process = None
-        with self.client_lock:
-            self.process_count += 1  # 增加进程计数
         try:
             # 等待接收客户端参数
             data = client_socket.recv(1024)
             if not data:
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端未发送参数，断开连接")
+                # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端未发送参数，断开连接")
                 return
 
             # 解析参数
@@ -131,6 +129,8 @@ class TerminalEmulator:
                 bufsize=1,
                 shell=False
             )
+            with self.client_lock:
+                self.process_count += 1  # 增加进程计数
 
             # 更新客户端信息
             with self.client_lock:
@@ -190,15 +190,14 @@ class TerminalEmulator:
                 client_socket.close()
             except:
                 pass
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端连接已关闭")
+            # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端连接已关闭")
 
     @staticmethod
     def _capture_output(process, output_queue):
         """捕获子进程输出"""
         try:
             while True:
-                line = os.read(process.stdout.fileno(), 1024)
-                line = line.decode("gbk") if line else ''
+                line = process.stdout.read(1024)
                 if not line and process.poll() is not None:
                     break
                 if line:
@@ -244,21 +243,23 @@ if __name__ == "__main__":
         bat_file='run.bat'  # 要执行的批处理文件
     )
 
+    print_rate = 60
     try:
         emulator.start_server()
         # 保持主线程运行
         last_print_time = time.time()
         while True:
             current_time = time.time()
-            # 每分钟打印一次进程数量
-            if (
-                current_time - last_print_time >= 60 and
-                emulator.process_count
-            ):  # 60秒 = 1分钟
-                with emulator.client_lock:
-                    active_clients = len(emulator.clients)
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 当前运行中的进程数: {emulator.process_count}, 活跃客户端数: {active_clients}")
-                last_print_time = current_time
+            if current_time - last_print_time >= print_rate:
+                # 打印一次进程数量
+                if emulator.process_count:
+                    with emulator.client_lock:
+                        active_clients = len(emulator.clients)
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 当前运行中的进程数: {emulator.process_count}, 活跃客户端数: {active_clients}")
+                    last_print_time = current_time
+                    print_rate <<= 1
+            if not emulator.process_count:
+                print_rate = 60
             time.sleep(1)
     except KeyboardInterrupt:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 接收到中断信号，停止服务器minesweepervariants..")
