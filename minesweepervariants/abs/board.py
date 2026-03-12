@@ -132,6 +132,7 @@ class AbstractPosition(ABC):
             - 若提供一个参数 end_layer，视为从 √1 到 √end_layer。
             - 若提供两个参数 start_layer 和 end_layer，视为从 √start_layer 到 √end_layer。
             - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
+            - 若 index 0 的值为 -1 ，则不使用距离平方的格点而是直接使用相对坐标为 [index 1, index 2] 的格点
 
         :return: 位置列表，按距离从近到远排序。
         """
