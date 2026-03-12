@@ -136,7 +136,9 @@ class Position(AbstractPosition):
         """
 
         # 解析参数
-        if args[0] == -1:
+        if len(args) == 0:
+            return []
+        elif args[0] == -1:
             return [Position(self.x - args[2], self.y - args[1], self.board_key)]
         elif len(args) == 1:
             low, high = 1, args[0]
