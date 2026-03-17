@@ -123,7 +123,7 @@ class TerminalEmulator:
                 cwd=os.getcwd(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                encoding='gbk',  # 指定编码
+                encoding='utf-8',  # 指定编码
                 errors='replace',  # 替换无法解码的字符
                 universal_newlines=True,   # 自动处理换行符
                 bufsize=1,
@@ -197,7 +197,7 @@ class TerminalEmulator:
         """捕获子进程输出"""
         try:
             while True:
-                line = process.stdout.read(1024)
+                line = process.stdout.read(4096)
                 if not line and process.poll() is not None:
                     break
                 if line:
