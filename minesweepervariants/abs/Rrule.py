@@ -8,6 +8,8 @@
 from abc import abstractmethod, ABC
 from typing import TYPE_CHECKING, List, Dict
 
+from minesweepervariants.abs.board import AbstractBoard
+
 from .rule import AbstractRule, AbstractValue
 from ..utils.image_create import get_text, get_image, get_dummy, get_col
 from ..utils.web_template import Number
@@ -62,6 +64,12 @@ class AbstractClueValue(AbstractValue, ABC):
         if "compose" in type(self).__dict__:
             return self.compose(board)
         return Number(self.__repr__())
+    
+    def weaker(self, board: AbstractBoard) -> AbstractValue:
+        return board.get_config("VALUE", self.pos.board_key)
+    
+    def weaker_times(self) -> int:
+        return 1
 
 
 # --------实例类-------- #

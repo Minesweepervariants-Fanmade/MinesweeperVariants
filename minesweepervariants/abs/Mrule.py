@@ -8,6 +8,8 @@
 # 雷线索由于未实装 等待版本大更新
 
 from typing import TYPE_CHECKING, Dict
+
+from minesweepervariants.abs.board import AbstractBoard
 from .rule import AbstractRule, AbstractValue
 from ..utils.image_create import get_image, get_col, get_dummy, get_text
 from abc import abstractmethod, ABC
@@ -68,6 +70,12 @@ class AbstractMinesValue(AbstractValue, ABC):
             return self.compose(board)
         data = Number(self.__repr__())
         return data
+    
+    def weaker(self, board: AbstractBoard) -> AbstractValue:
+        return board.get_config("MINES", self.pos.board_key)
+    
+    def weaker_times(self) -> int:
+        return 1
 
 
 # --------实例类-------- #

@@ -468,10 +468,14 @@ class Summon:
             self.logger.warn("题板多解 需要重新设计/+R")
             self.logger.warn("warn board:\n" + board.show_board())
             return None
+        
+        phases = max(value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None) + 1
 
         # 初始统计
         init_clues_count = len([None for _ in board('C')])
         init_mines_count = len([None for _ in board('F')])
+
+        init_weak_times = sum(value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None)
 
         # 共享状态
         progress_info = {
@@ -505,6 +509,8 @@ class Summon:
 
             while progress_info["running"]:
 
+                weak_times = sum(value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None)
+
                 _temp_a_number = len([None for _key in board.get_interactive_keys()
                                      for _, c in board('C', key=_key)
                                      if c != board.get_config(_key, "VALUE")])
@@ -512,7 +518,7 @@ class Summon:
                                      for _, c in board('F', key=_key)
                                      if c != board.get_config(_key, "MINES")])
 
-                total_all = init_mines_count + init_clues_count + _temp_a_number + _temp_b_number
+                total_all = init_weak_times + weak_times
 
                 # 题板所有位置计数
                 total_blank = len([None for _ in board('N')])
@@ -546,7 +552,7 @@ class Summon:
         thread = threading.Thread(target=progress_thread, daemon=True)
         thread.start()
 
-        for phase, put_type in enumerate([True, False]):
+        for phase in range(phases):
             # if not put_type:
             #     temp_a_number = len([None for _ in board('C')])
             #     temp_b_number = len([None for _ in board('F')])
@@ -570,8 +576,11 @@ class Summon:
 
                 if pos is None:
                     break
-                object_put = None if put_type else board.get_config(
-                    key, "VALUE" if pos_type == "C" else "MINES")
+
+                current_value = board.get_value(pos)
+                if current_value is None:
+                    continue
+                object_put = None if phase == 0 else current_value.weaker(board)
 
                 if board.get_value(pos) == object_put:
                     continue
