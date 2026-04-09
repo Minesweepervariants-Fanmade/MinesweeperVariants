@@ -93,7 +93,7 @@ if args.command == "list":
         result = split_symbol.encode(encode)
         for rule_line in ["L", "M", "R"]:
             for name in rule_list[rule_line].keys():
-                if not rule_list[rule_line][name]['module_doc']:
+                if rule_list[rule_line][name]["doc"] or (not rule_list[rule_line][name]['module_doc']):
                     unascii_name = [n for n in rule_list[rule_line][name]["names"] if not n.isascii()]
                     zh_name = unascii_name[0] if unascii_name else ""
                     part = f"[{name}]{zh_name}: " + rule_list[rule_line][name]["doc"]
