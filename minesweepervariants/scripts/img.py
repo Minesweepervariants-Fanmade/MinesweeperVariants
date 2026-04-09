@@ -46,7 +46,7 @@ try:
     board = decode_board(args.code)
 except:
     code = bytes.fromhex(args.code)
-    board = get_board(args.board_class)(code=code)
+    board = get_board(args.board_class)(rules={}, code=code)
 
 
 draw_board(
