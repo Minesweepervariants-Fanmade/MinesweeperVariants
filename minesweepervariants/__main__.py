@@ -90,15 +90,19 @@ if args.command == "list":
         import random
         encode = "utf-8"
         split_symbol = ''.join([chr(random.randint(33, 126)) for _ in range(50)])
-        result = split_symbol.encode(encode)
+        split_name_symbol = ''.join([chr(random.randint(33, 126)) for _ in range(10)])
+        result = split_symbol.encode(encode) + split_name_symbol.encode(encode)
         for rule_line in ["L", "M", "R"]:
             for name in rule_list[rule_line].keys():
-                if rule_list[rule_line][name]["doc"] or (not rule_list[rule_line][name]['module_doc']):
-                    unascii_name = [n for n in rule_list[rule_line][name]["names"] if not n.isascii()]
+                rule = rule_list[rule_line][name]
+                if rule["doc"] or (not rule['module_doc']):
+                    unascii_name = [n for n in rule["names"] if not n.isascii()]
                     zh_name = unascii_name[0] if unascii_name else ""
-                    part = f"[{name}]{zh_name}: " + rule_list[rule_line][name]["doc"]
+                    names = ", ".join(i for i in rule["names"] if i not in [name, zh_name])
+                    part = f"[{name}]{zh_name}{('(' + names + ')') if names else ''}: " + rule["doc"]
                 else:
                     part = rule_list[rule_line][name]['module_doc']
+                part = split_name_symbol.join(rule_list[rule_line][name]["names"] + [part])
                 result += part.encode(encode)
                 result += split_symbol.encode(encode)  # 如果原 join 是用分隔符连接
             result += (split_symbol * 2).encode(encode)
