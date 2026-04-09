@@ -102,7 +102,7 @@ if args.command == "list":
                     part = f"[{name}]{zh_name}{('(' + names + ')') if names else ''}: " + rule["doc"]
                 else:
                     part = rule_list[rule_line][name]['module_doc']
-                part = split_name_symbol.join(rule_list[rule_line][name]["names"] + [part])
+                part = split_name_symbol.join(rule_list[rule_line][name]["names"] + [name] + [part])
                 result += part.encode(encode)
                 result += split_symbol.encode(encode)  # 如果原 join 是用分隔符连接
             result += (split_symbol * 2).encode(encode)
