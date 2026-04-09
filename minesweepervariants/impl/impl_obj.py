@@ -143,7 +143,7 @@ def encode_board(code: bytes) -> str:
 def decode_board(base64data: str, name: Optional[str] = None):
     board_bytes = base64.urlsafe_b64decode(base64data.encode("ascii"))
     board_bytes = board_bytes.rstrip(b"\xff")
-    return get_board(name)(code=board_bytes)
+    return get_board(name)(rules={}, code=board_bytes)
 
 
 for pkg in [rule] + hypothesis_board:
