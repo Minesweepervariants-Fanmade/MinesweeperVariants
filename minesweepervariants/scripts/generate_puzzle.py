@@ -85,9 +85,6 @@ def main(
         logger.info(f"<{attempt_index}>生成用时:{b_time - a_time}s")
         logger.info(f"总雷数: {total}/{n_num}")
         logger.info("\n" + _board.show_board())
-        if len([None for _ in _board("C")]) == 0:
-            logger.warn("题板生成失败: 没有可显示线索")
-            continue
         info_list.append([
             b_time - a_time,
             n_num,
