@@ -28,6 +28,7 @@ def main(
         size: tuple[int, int],  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 规则id集合
+        early_rules: list[str],  # 仅初始生成阶段生效的左线规则
         dye: str,  # 染色规则
         mask_dye: str,   # 异形题板
         board_class: str,  # 题板的名称
@@ -38,7 +39,7 @@ def main(
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     attempt_index = 0
-    s = Summon(size=size, total=total, rules=rules, board=board_class, mask=mask_dye, dye=dye)
+    s = Summon(size=size, total=total, rules=rules, early_rules=early_rules, board=board_class, mask=mask_dye, dye=dye)
     if unseed:
         s.unseed = unseed
     total = s.total
@@ -86,7 +87,7 @@ def main(
             else:
                 f.write(f"-{get_seed()}\" ")
             f.write("-o answer\n")
-        
+
         if image:
             def d():
                 draw_board(board=_board, cell_size=100, output="answer",

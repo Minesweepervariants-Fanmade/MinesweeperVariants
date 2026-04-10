@@ -35,6 +35,7 @@ def main(
         size: tuple[int, int],  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 所有的规则集合
+        early_rules: list[str],  # 仅初始生成阶段生效的左线规则
         query: str,  # 最高线索数范围 x-y表示
         attempts: int,  # 尝试次数
         dye: str,  # 染色规则
@@ -62,7 +63,7 @@ def main(
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
-    s = Summon(size=size, total=total, rules=rules, board=board_class,
+    s = Summon(size=size, total=total, rules=rules, early_rules=early_rules, board=board_class,
                drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
                dynamic_dig_rounds=dynamic_dig_rounds,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
@@ -94,7 +95,7 @@ def main(
     attempt_index = 0
 
     while True:
-        s = Summon(size=size, total=total, rules=rule_code[:], board=board_class,
+        s = Summon(size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
                    drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
                    dynamic_dig_rounds=dynamic_dig_rounds,
                    dynamic_dig_max_batch=dynamic_dig_max_batch)

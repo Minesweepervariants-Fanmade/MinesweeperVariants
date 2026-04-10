@@ -34,6 +34,8 @@ parser.add_argument("-t", "--total", type=int, default=defaults.get("total"),
                     help="总雷数")
 parser.add_argument("-c", "--rules", nargs="+", default=[],
                     help="所有规则名")
+parser.add_argument("-E", "--early-rules", nargs="+", default=[],
+                    help="仅在初始题板生成阶段使用的左线规则名，可多个")
 parser.add_argument("-d", "--dye", default=defaults.get("dye"),
                     help="染色规则名称，如 @c")
 parser.add_argument("-m", "--mask",  default=defaults.get("dye"),
@@ -165,6 +167,24 @@ for rule_index in range(len(args.rules)):
         rule_name = rule_name.replace("$6", "%")
     args.rules[rule_index] = rule_name
 
+for rule_index in range(len(args.early_rules)):
+    rule_name = args.early_rules[rule_index]
+    if "$0" in rule_name:
+        rule_name = rule_name.replace("$0", "$")
+    if "$1" in rule_name:
+        rule_name = rule_name.replace("$1", "^")
+    if "$2" in rule_name:
+        rule_name = rule_name.replace("$2", "|")
+    if "$3" in rule_name:
+        rule_name = rule_name.replace("$3", "&")
+    if "$4" in rule_name:
+        rule_name = rule_name.replace("$4", ">")
+    if "$5" in rule_name:
+        rule_name = rule_name.replace("$5", "<")
+    if "$6" in rule_name:
+        rule_name = rule_name.replace("$6", "%")
+    args.early_rules[rule_index] = rule_name
+
 if args.test:
     test(
         log_lv=args.log_lv,
@@ -172,6 +192,7 @@ if args.test:
         size=size,
         total=args.total,
         rules=args.rules,
+        early_rules=args.early_rules,
         dye=args.dye,
         mask_dye=args.mask,
         board_class=args.board_class,
@@ -189,6 +210,7 @@ elif not args.query:
         size=size,
         total=args.total,
         rules=args.rules,
+        early_rules=args.early_rules,
         dye=args.dye,
         mask_dye=args.mask,
         drop_r=(not args.used_r),
@@ -207,6 +229,7 @@ else:
         size=size,
         total=args.total,
         rules=args.rules,
+        early_rules=args.early_rules,
         query=args.query,
         attempts=args.attempts,
         dye=args.dye,

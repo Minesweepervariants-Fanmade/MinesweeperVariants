@@ -48,6 +48,7 @@ class Summon:
         self, size: tuple[int, int],
         total: int,
         rules: list[str],
+        early_rules: Optional[list[str]] = None,
         drop_r: bool = False,
         mask: str = "",
         dye: str = "",
@@ -73,6 +74,7 @@ class Summon:
         self.total = total
         self.vice_board = vice_board
         self.unseed = False
+        self.early_mines_rules: list[AbstractMinesRule] = []
         self.dynamic_dig_rounds_override = (None if dynamic_dig_rounds is None else int(dynamic_dig_rounds))
         self.dynamic_dig_rounds = 0
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
@@ -143,6 +145,22 @@ class Summon:
         if not rules:
             rules.append("V")
 
+        if early_rules:
+            early_seen: set[tuple[str, str | None]] = set()
+            for early_rule in early_rules:
+                rule_id, data = self._parse_rule_data(early_rule)
+                dedupe_key = (rule_id, data)
+                if dedupe_key in early_seen:
+                    continue
+                early_seen.add(dedupe_key)
+
+                early_rule_instance = self.add_rule(self.board, rule_id, data=data, add=False)
+                if early_rule_instance is None:
+                    raise ValueError(f"-E 指定了未知规则: {rule_id}")
+                if not isinstance(early_rule_instance, AbstractMinesRule):
+                    raise ValueError(f"-E 仅支持左线规则, 但收到: {rule_id}")
+                self.early_mines_rules.append(early_rule_instance)
+
         # 掩码规则
         if mask:
             _board: AbstractBoard = self.board.clone()
@@ -160,6 +178,9 @@ class Summon:
         else:
             self.total = total
         set_total(total=self.total)
+
+    def _generation_mines_rules(self) -> list[AbstractMinesRule]:
+        return self.mines_rules.rules + self.early_mines_rules
 
     def _parse_rule_data(self, rule: str):
         # 解析规则 ID 和 data
@@ -266,7 +287,7 @@ class Summon:
             "hard_fns": [],
             "soft_fn": soft_fn
         }
-        for rule in self.mines_rules.rules + [self.clue_rule, self.mines_clue_rule]:
+        for rule in self._generation_mines_rules() + [self.clue_rule, self.mines_clue_rule]:
             rule.suggest_total(info)
 
         soft_conds = soft_conds[1:]
@@ -677,7 +698,7 @@ class Summon:
         switch = Switch()
         random = get_random()
         model = board.get_model()
-        for rule in self.mines_rules.rules + [
+        for rule in self._generation_mines_rules() + [
             self.mines_clue_rule, self.clue_rule
         ]:
             rule.create_constraints(board, switch)
@@ -690,7 +711,7 @@ class Summon:
         var_list = [v for _, v in board(mode="variable", special='raw')]
         model.AddBoolAnd(switch.get_all_vars())
         __count = 0
-        random_total = int(total * (2 ** (1 - len(self.mines_rules.rules))))
+        random_total = int(total * (2 ** (1 - len(self._generation_mines_rules()))))
         while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)", end="\r", flush=True)
@@ -725,7 +746,7 @@ class Summon:
         if model is None:
             switch = Switch()
             model = board.get_model()
-            for rule in self.mines_rules.rules + [
+            for rule in self._generation_mines_rules() + [
                 self.mines_clue_rule, self.clue_rule
             ]:
                 rule.create_constraints(board, switch)
@@ -745,7 +766,7 @@ class Summon:
             code = board.encode()
             board[pos] = board.get_config(pos.board_key, "MINES")
             model.Add(board.get_variable(pos, special='raw') == 1)
-            if len(self.mines_rules.rules) == 1:
+            if len(self._generation_mines_rules()) == 1:
                 total -= 1
             elif solver_model(model):
                 history.append((code, _model))
@@ -763,7 +784,7 @@ class Summon:
             board = type(board)(
                 code=code, rules={
                     "clue_rules": [self.clue_rule],
-                    "mines_rules": self.mines_rules.rules,
+                    "mines_rules": self._generation_mines_rules(),
                     "mines_clue_rules": [self.mines_clue_rule],
                 }
             )
