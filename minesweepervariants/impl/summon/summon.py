@@ -421,6 +421,29 @@ class Summon:
                     changed_positions.append(pos)
         return changed_positions
 
+    def _apply_visibility_assignment(
+        self,
+        board: 'AbstractBoard',
+        visibility_state: dict[str, dict[tuple[int, int], Optional[bool]]],
+        assignment: dict[tuple[str, int, int], bool],
+    ) -> list['AbstractPosition']:
+        changed_positions: list['AbstractPosition'] = []
+        for key in board.get_interactive_keys():
+            for (x, y), state in visibility_state.get(key, {}).items():
+                if state is None:
+                    continue
+                target = assignment.get((key, x, y), True)
+                if state == target:
+                    continue
+                pos = board.get_pos(x, y, key)
+                visibility_state[key][(x, y)] = target
+                if target:
+                    board.set_value(pos, self.answer_board.get_value(pos))
+                else:
+                    board.set_value(pos, None)
+                changed_positions.append(pos)
+        return changed_positions
+
     def dynamic_dig_unique(self, board: 'AbstractBoard'):
         if self.answer_board is None:
             self.logger.warn("动态删线索模式缺少 answer_board, 回退失败")
@@ -456,21 +479,60 @@ class Summon:
         best_visible = self._count_visible_dynamic(visibility_state)
         self.logger.info(f"动态删线索启动: rounds={self.dynamic_dig_rounds}, max_batch={self.dynamic_dig_max_batch}, 初始可见线索={best_visible}")
 
-        # 若规则提供删线索限制候选，则先按线索数从少到多尝试唯一解。
-        candidate_patterns = self.clue_rule.dynamic_dig_visibility_candidates(board, visibility_state)
-        if candidate_patterns:
-            def count_visible(pattern: dict[str, tuple[tuple[bool, ...], ...]]) -> int:
-                return sum(1 for matrix in pattern.values() for row in matrix for v in row if v)
+        # 新流程: 先仅对线索显示变量做最小化，再逐个做全盘唯一解验证；无效方案加入禁用约束。
+        candidate_positions = [
+            (key, x, y)
+            for key in board.get_interactive_keys()
+            for (x, y), state in visibility_state.get(key, {}).items()
+            if state is not None
+        ]
 
-            sorted_candidates = sorted(candidate_patterns, key=count_visible)
-            self.logger.info(f"[DynamicDig] 使用规则候选集合, 共{len(sorted_candidates)}个")
+        if candidate_positions:
+            vis_model = cp_model.CpModel()
+            vis_vars = {
+                p: vis_model.NewBoolVar(f"show_{p[0]}_{p[1]}_{p[2]}")
+                for p in candidate_positions
+            }
 
-            for idx, pattern in enumerate(sorted_candidates, start=1):
-                backup_board = board.clone()
-                backup_visibility = {k: dict(v) for k, v in visibility_state.items()}
+            if self.clue_rule.get_name() == "6V":
+                same_count_groups: dict[int, list[tuple[str, int, int]]] = {}
+                for key, x, y in candidate_positions:
+                    pos = board.get_pos(x, y, key)
+                    ans_obj = self.answer_board.get_value(pos)
+                    count = getattr(ans_obj, "count", None)
+                    if count is None:
+                        continue
+                    same_count_groups.setdefault(count, []).append((key, x, y))
 
-                changed_positions = self._apply_visibility_pattern(board, visibility_state, pattern)
+                for group in same_count_groups.values():
+                    if len(group) < 2:
+                        continue
+                    ref = vis_vars[group[0]]
+                    for p in group[1:]:
+                        vis_model.Add(vis_vars[p] == ref)
+
+            vis_model.Minimize(sum(vis_vars.values()))
+
+            vis_solver = cp_model.CpSolver()
+            vis_solver.parameters.random_seed = 42
+
+            rounds = max(1, self.dynamic_dig_rounds)
+            for idx in range(rounds):
+                status = timer(vis_solver.Solve)(vis_model)
+                if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+                    self.logger.info(f"[DynamicDig] 显示变量模型终止, status={status}")
+                    break
+
+                assignment = {
+                    p: bool(vis_solver.Value(vis_vars[p]))
+                    for p in candidate_positions
+                }
+                changed_positions = self._apply_visibility_assignment(board, visibility_state, assignment)
                 self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, changed_positions)
+
+                self.logger.debug(
+                    f"[DynamicDig] 变量候选{idx + 1}/{rounds} 当前线索展示:\n{board.show_board()}"
+                )
 
                 result_state = solver_by_csp(
                     self.mines_rules,
@@ -482,100 +544,28 @@ class Summon:
                 )
 
                 visible_count = self._count_visible_dynamic(visibility_state)
-                self.logger.info(f"[DynamicDig] 候选{idx}/{len(sorted_candidates)}: 可见线索={visible_count}, state={result_state}")
+                self.logger.info(
+                    f"[DynamicDig] 变量候选{idx + 1}/{rounds}: 可见线索={visible_count}, state={result_state}"
+                )
 
                 if result_state == 1:
-                    best_board = board.clone()
-                    best_visibility = {k: dict(v) for k, v in visibility_state.items()}
-                    best_visible = visible_count
-                    self.logger.info(f"[DynamicDig] 命中规则候选最优, 可见线索={best_visible}")
-                    break
+                    if visible_count < best_visible:
+                        best_visible = visible_count
+                        best_board = board.clone()
+                        best_visibility = {k: dict(v) for k, v in visibility_state.items()}
+                        self.logger.info(f"[DynamicDig] 更新最优: 可见线索={best_visible}")
 
-                self._copy_board_values(backup_board, board)
-                for key in visibility_state:
-                    visibility_state[key] = dict(backup_visibility.get(key, {}))
-                self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, [])
+                    if visible_count == 0:
+                        break
+                    vis_model.Add(sum(vis_vars.values()) <= visible_count - 1)
+                    continue
 
-        rounds = max(1, self.dynamic_dig_rounds)
-        for round_idx in range(rounds):
-            progress = round_idx / rounds
-            step = max(1, int(round(self.dynamic_dig_max_batch * (1 - progress))))
-
-            shown_positions = [
-                board.get_pos(x, y, key)
-                for key in board.get_interactive_keys()
-                for (x, y), vis in visibility_state.get(key, {}).items()
-                if vis is True
-            ]
-            if not shown_positions:
-                break
-
-            remove_count = min(step, len(shown_positions))
-            remove_positions = get_random().sample(shown_positions, remove_count)
-            self.logger.info(f"[DynamicDig] round={round_idx + 1}/{rounds}, step={step}, try_remove={remove_count}, shown={len(shown_positions)}")
-
-            snapshot_visible = {
-                (pos.board_key, pos.x, pos.y): visibility_state[pos.board_key][(pos.x, pos.y)]
-                for pos in remove_positions
-            }
-            snapshot_values = {
-                (pos.board_key, pos.x, pos.y): board.get_value(pos)
-                for pos in remove_positions
-            }
-
-            self._apply_dynamic_visibility(board, visibility_state, remove_positions, visible=False)
-            self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, remove_positions)
-
-            result_state = solver_by_csp(
-                self.mines_rules,
-                self.clue_rule,
-                self.mines_clue_rule,
-                board.clone(),
-                drop_r=self.drop_r,
-                answer_board=self.answer_board,
-            )
-
-            changed_positions = remove_positions[:]
-
-            if result_state != 1:
-                hidden_positions = [
-                    board.get_pos(x, y, key)
-                    for key in board.get_interactive_keys()
-                    for (x, y), vis in visibility_state.get(key, {}).items()
-                    if vis is False
+                # 禁用当前失败方案（no-good）
+                nogood = [
+                    vis_vars[p].Not() if assignment[p] else vis_vars[p]
+                    for p in candidate_positions
                 ]
-                if hidden_positions:
-                    add_count = max(1, len(remove_positions) // 2)
-                    add_positions = get_random().sample(hidden_positions, min(add_count, len(hidden_positions)))
-                    self._apply_dynamic_visibility(board, visibility_state, add_positions, visible=True)
-                    changed_positions.extend(add_positions)
-                    self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, changed_positions)
-                    result_state = solver_by_csp(
-                        self.mines_rules,
-                        self.clue_rule,
-                        self.mines_clue_rule,
-                        board.clone(),
-                        drop_r=self.drop_r,
-                        answer_board=self.answer_board,
-                    )
-
-            if result_state == 1:
-                visible_count = self._count_visible_dynamic(visibility_state)
-                self.logger.info(f"[DynamicDig] round={round_idx + 1} 唯一解通过, 当前可见线索={visible_count}")
-                if visible_count < best_visible:
-                    best_visible = visible_count
-                    best_board = board.clone()
-                    best_visibility = {k: dict(v) for k, v in visibility_state.items()}
-                    self.logger.info(f"[DynamicDig] 更新最优: 可见线索={best_visible}")
-                continue
-
-            # 回滚本轮改动
-            for pos in remove_positions:
-                key = (pos.board_key, pos.x, pos.y)
-                visibility_state[pos.board_key][(pos.x, pos.y)] = snapshot_visible[key]
-                board.set_value(pos, snapshot_values[key])
-            self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, remove_positions)
-            self.logger.info(f"[DynamicDig] round={round_idx + 1} 回滚")
+                vis_model.AddBoolOr(nogood)
 
         self._copy_board_values(best_board, board)
         for key in visibility_state:
