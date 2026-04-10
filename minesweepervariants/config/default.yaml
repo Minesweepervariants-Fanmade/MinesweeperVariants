@@ -17,3 +17,5 @@ used_r: false           # 默认不启用R推理
 output_path: ".\\output" # 保存到哪个文件夹内 默认为工作目录下的output内
 timeout: 0      # 求解器进行多少时间后算为超时 单位秒 0为无限制
 workes_number: 20    # 提示系统中多线程的数量
+dynamic_dig_rounds: 0 # 动态删线索模式迭代轮数, 0为关闭
+dynamic_dig_max_batch: 8 # 动态删线索每轮最大改动格数

@@ -40,6 +40,8 @@ def main(
         unseed: bool,  # 是否抛弃seed来生成
         image: bool,  # 是否生成图片
         file_name: str,  # 文件已什么开头
+        dynamic_dig_rounds: int = 0,  # 动态删线索迭代轮数
+        dynamic_dig_max_batch: int = 8,  # 动态删线索每轮最大改动格数
 ):
     rule_code = rules[:]
     rule_code_bk = rules[:]
@@ -47,7 +49,9 @@ def main(
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     s = Summon(size=size, total=total, rules=rules, board=board_class,
-               drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board)
+               drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
+               dynamic_dig_rounds=dynamic_dig_rounds,
+               dynamic_dig_max_batch=dynamic_dig_max_batch)
     if unseed:
         s.unseed = True
     total = s.total
@@ -59,7 +63,9 @@ def main(
     while attempts == -1 or attempt_index < attempts:
         attempt_index += 1
         s = Summon(size=size, total=total, rules=rule_code[:], board=board_class,
-                   drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board)
+                   drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
+                   dynamic_dig_rounds=dynamic_dig_rounds,
+                   dynamic_dig_max_batch=dynamic_dig_max_batch)
         if unseed:
             s.unseed = True
         logger.info(f"尝试第{attempt_index}次minesweepervariants..", end="\r")
@@ -78,8 +84,8 @@ def main(
         logger.info(f"<{attempt_index}>生成用时:{b_time - a_time}s")
         logger.info(f"总雷数: {total}/{n_num}")
         logger.info("\n" + _board.show_board())
-        if len([None for _ in _board("NF")]) == total:
-            logger.warn("题板生成失败 线索填充无法覆盖全盘")
+        if len([None for _ in _board("C")]) == 0:
+            logger.warn("题板生成失败: 没有可显示线索")
             continue
         info_list.append([
             b_time - a_time,

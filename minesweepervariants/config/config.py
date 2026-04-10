@@ -24,7 +24,11 @@ DEFAULT_CONFIG = {
 
     "output_path": ".\\output",   # 保存路径，默认为工作目录下的output
     "timeout": 0,                 # 求解器超时时间（秒），0为无限制
-    "workes_number": 5           # 多线程数量
+    "workes_number": 5,          # 多线程数量
+
+    # 动态删线索模式(默认关闭)
+    "dynamic_dig_rounds": 0,     # >0 时启用动态删线索迭代轮数
+    "dynamic_dig_max_batch": 8,  # 每轮最大改动格数，随后会逐渐衰减
 }
 
 IMAGE_CONFIG = config = {

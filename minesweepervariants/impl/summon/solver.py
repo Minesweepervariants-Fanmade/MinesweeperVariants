@@ -259,19 +259,48 @@ def solver_by_csp(
     solver = get_solver(True)
 
     if answer_board is not None:
+        # 先检查当前模型本身是否有解，避免“无解被误判为唯一解”。
+        status0 = timer(solver.Solve)(model)
+        if status0 == cp_model.INFEASIBLE:
+            logger.trace("求解器无解(answer_board分支)")
+            return 0
+        if status0 in (cp_model.UNKNOWN, cp_model.MODEL_INVALID):
+            logger.trace(f"求解器异常状态(answer_board分支): {status0}")
+            return 0
+
+        # 再检查 answer_board 是否满足当前约束模型。
+        model_answer = model.clone()
+        for key in board.get_interactive_keys():
+            for pos, _ in board("N", key=key):
+                value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
+                val = board.get_variable(pos, special='raw')
+                model_answer.Add(val == value)
+
+        status_answer = timer(solver.Solve)(model_answer)
+        if status_answer not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
+            logger.trace("answer_board 与当前模型不一致")
+            return 0
+
+        # 最后做“排除 answer_board”检查是否存在第二解。
+        model_alt = model.clone()
         current_solution = []
         logger.trace("设置预设不同值")
         for key in board.get_interactive_keys():
             for pos, _ in board("N", key=key):
                 value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
                 val = board.get_variable(pos, special='raw')
-                tmp = model.NewBoolVar(f"answer_tmp{pos}")
+                tmp = model_alt.NewBoolVar(f"answer_tmp{pos}")
                 current_solution.append(tmp)
                 logger.trace(f"[{pos}]{val} != {value} ({answer_board.get_type(pos, special='raw')})")
-                model.Add(val != value).OnlyEnforceIf(tmp)
-        model.AddBoolOr(current_solution)  # 新增排除当前解约束（至少有一个变量取反）
+                model_alt.Add(val != value).OnlyEnforceIf(tmp)
 
-        status2 = timer(solver.Solve)(model)
+        if current_solution:
+            model_alt.AddBoolOr(current_solution)
+        else:
+            # 没有可变 N 位，当前解天然唯一。
+            return 1
+
+        status2 = timer(solver.Solve)(model_alt)
         if status2 == cp_model.FEASIBLE or status2 == cp_model.OPTIMAL:
             logger.trace(f"求解器多解")
             return 2

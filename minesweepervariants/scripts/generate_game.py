@@ -45,6 +45,8 @@ def main(
         unseed: bool,  # 是否禁用种子来快速生成题目
         file_name: str = "",
         image: bool = True,  # 是否生成图片
+        dynamic_dig_rounds: int = 0,  # 动态删线索迭代轮数
+        dynamic_dig_max_batch: int = 8,  # 动态删线索每轮最大改动格数
 ):
     if "-" in query:
         a, b, *_ = query.split("-")
@@ -60,7 +62,9 @@ def main(
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     s = Summon(size=size, total=total, rules=rules, board=board_class,
-               drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board)
+               drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
+               dynamic_dig_rounds=dynamic_dig_rounds,
+               dynamic_dig_max_batch=dynamic_dig_max_batch)
 
     rule_text = ""
     for rule in rules:
@@ -90,7 +94,9 @@ def main(
 
     while True:
         s = Summon(size=size, total=total, rules=rule_code[:], board=board_class,
-                   drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board)
+                   drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
+                   dynamic_dig_rounds=dynamic_dig_rounds,
+                   dynamic_dig_max_batch=dynamic_dig_max_batch)
         if unseed:
             s.unseed = True
         get_random(seed, new=True)

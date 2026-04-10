@@ -23,6 +23,9 @@ class AbstractClueRule(AbstractRule):
     数字线索规则
     """
 
+    # 动态删线索模式能力标记。默认关闭，保持历史规则行为不变。
+    dynamic_dig_enabled = False
+
     @abstractmethod
     def fill(self, board: 'AbstractBoard') -> 'AbstractBoard':
         """
@@ -31,6 +34,39 @@ class AbstractClueRule(AbstractRule):
         :return: 题板
         """
         ...
+
+    def dynamic_init_visibility(self, board: 'AbstractBoard', visibility_state: Dict[str, Dict[tuple[int, int], bool | None]]):
+        """
+        动态删线索模式初始化回调。
+        visibility_state 采用 {key: {(x, y): Optional[bool]}}，
+        其中 True=显示, False=隐藏, None=该格不参与动态显隐。
+        """
+        return None
+
+    def dynamic_on_visibility_changed(
+        self,
+        board: 'AbstractBoard',
+        visibility_state: Dict[str, Dict[tuple[int, int], bool | None]],
+        changed_positions: List['AbstractPosition'],
+    ):
+        """
+        动态删线索模式回调: 显隐状态变更后重建线索值/约束前置状态。
+        默认空实现，老规则无需修改即可运行。
+        """
+        return None
+
+    def dynamic_dig_visibility_candidates(
+        self,
+        board: 'AbstractBoard',
+        visibility_state: Dict[str, Dict[tuple[int, int], bool | None]],
+    ) -> List[Dict[str, tuple[tuple[bool, ...], ...]]]:
+        """
+        动态删线索候选接口。
+        返回候选显隐方案集合，每项为 {key: 布尔矩阵}:
+            True 表示线索显示，False 表示线索隐藏。
+        若返回空列表，表示不提供候选限制，沿用默认随机删线索流程。
+        """
+        return []
 
 
 class AbstractClueValue(AbstractValue, ABC):
@@ -64,10 +100,10 @@ class AbstractClueValue(AbstractValue, ABC):
         if "compose" in type(self).__dict__:
             return self.compose(board)
         return Number(self.__repr__())
-    
+
     def weaker(self, board: AbstractBoard) -> AbstractValue:
         return board.get_config("VALUE", self.pos.board_key)
-    
+
     def weaker_times(self) -> int:
         return 1
 
