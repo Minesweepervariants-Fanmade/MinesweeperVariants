@@ -10,6 +10,7 @@
 import base64
 import os
 import time
+from typing import Optional
 
 from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board, encode_board
 from minesweepervariants.impl.summon import Summon
@@ -45,7 +46,7 @@ def main(
         unseed: bool,  # 是否禁用种子来快速生成题目
         file_name: str = "",
         image: bool = True,  # 是否生成图片
-        dynamic_dig_rounds: int = 0,  # 动态删线索迭代轮数
+        dynamic_dig_rounds: Optional[int] = None,  # 动态删线索迭代轮数(None时自动策略)
         dynamic_dig_max_batch: int = 8,  # 动态删线索每轮最大改动格数
 ):
     if "-" in query:

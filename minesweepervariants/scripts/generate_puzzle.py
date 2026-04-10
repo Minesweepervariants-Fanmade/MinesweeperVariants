@@ -7,6 +7,7 @@
 import base64
 import os
 import time
+from typing import Optional
 
 from minesweepervariants.impl.impl_obj import get_board, ModelGenerateError, encode_board
 from minesweepervariants.impl.summon import Summon
@@ -40,7 +41,7 @@ def main(
         unseed: bool,  # 是否抛弃seed来生成
         image: bool,  # 是否生成图片
         file_name: str,  # 文件已什么开头
-        dynamic_dig_rounds: int = 0,  # 动态删线索迭代轮数
+        dynamic_dig_rounds: Optional[int] = None,  # 动态删线索迭代轮数(None时自动策略)
         dynamic_dig_max_batch: int = 8,  # 动态删线索每轮最大改动格数
 ):
     rule_code = rules[:]

@@ -25,6 +25,8 @@ class AbstractClueRule(AbstractRule):
 
     # 动态删线索模式能力标记。默认关闭，保持历史规则行为不变。
     dynamic_dig_enabled = False
+    # 动态删线索是否启用“求解器最优化显示变量”路径，默认关闭。
+    dynamic_dig_use_visibility_optimizer = False
 
     @abstractmethod
     def fill(self, board: 'AbstractBoard') -> 'AbstractBoard':

@@ -73,7 +73,8 @@ class Summon:
         self.total = total
         self.vice_board = vice_board
         self.unseed = False
-        self.dynamic_dig_rounds = int(CONFIG.get("dynamic_dig_rounds", 0) if dynamic_dig_rounds is None else dynamic_dig_rounds)
+        self.dynamic_dig_rounds_override = (None if dynamic_dig_rounds is None else int(dynamic_dig_rounds))
+        self.dynamic_dig_rounds = 0
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
 
         # 题板初始化
@@ -320,11 +321,10 @@ class Summon:
         board_bytes = self.board.encode()
         for rule in self.mines_rules.rules + [self.clue_rule, self.mines_clue_rule]:
             rule.init_clear(self.board)
+        self.dynamic_dig_rounds = self._resolve_dynamic_dig_rounds()
         dig_fn = self.dig_unique
-        if self.dynamic_dig_rounds > 0 and self._supports_dynamic_dig():
+        if self.dynamic_dig_rounds > 0:
             dig_fn = self.dynamic_dig_unique
-        elif self.dynamic_dig_rounds > 0:
-            self.logger.warn("动态删线索模式已配置, 但当前右线未声明 dynamic_dig_enabled, 回退到默认删线索流程")
 
         if dig_fn(self.board) is None:
             raise GenerateError
@@ -366,6 +366,24 @@ class Summon:
             bool(getattr(self.clue_rule, "dynamic_dig_enabled", False)) and
             callable(getattr(self.clue_rule, "dynamic_on_visibility_changed", None))
         )
+
+    def _resolve_dynamic_dig_rounds(self) -> int:
+        # 优先使用显式传入值（CLI/调用方指定），保证可强制开关。
+        if self.dynamic_dig_rounds_override is not None:
+            return max(0, int(self.dynamic_dig_rounds_override))
+
+        # 未显式指定时：仅对声明 dynamic_dig_enabled 的右线默认开启100轮。
+        if self._supports_dynamic_dig():
+            return 100
+        return 0
+
+    def _should_use_visibility_optimizer(self) -> bool:
+        # 仅当规则显式声明了优化标志时，启用“求解器最优化显示变量”路径。
+        for rules in self.board.rules.values():
+            for rule in rules:
+                if bool(getattr(rule, "dynamic_dig_use_visibility_optimizer", False)):
+                    return True
+        return False
 
     def _count_visible_dynamic(self, visibility_state: dict[str, dict[tuple[int, int], Optional[bool]]]) -> int:
         return sum(
@@ -479,7 +497,10 @@ class Summon:
         best_visible = self._count_visible_dynamic(visibility_state)
         self.logger.info(f"动态删线索启动: rounds={self.dynamic_dig_rounds}, max_batch={self.dynamic_dig_max_batch}, 初始可见线索={best_visible}")
 
-        # 新流程: 先仅对线索显示变量做最小化，再逐个做全盘唯一解验证；无效方案加入禁用约束。
+        use_optimizer = self._should_use_visibility_optimizer()
+
+        # 新流程A(标志位开启): 先仅对线索显示变量做最小化，再逐个做全盘唯一解验证；无效方案加入禁用约束。
+        # 新流程B(标志位关闭): 退火式随机翻转显隐，按唯一性与线索数接受/回滚。
         candidate_positions = [
             (key, x, y)
             for key in board.get_interactive_keys()
@@ -487,7 +508,8 @@ class Summon:
             if state is not None
         ]
 
-        if candidate_positions:
+        if candidate_positions and use_optimizer:
+            self.logger.info("动态删线索策略: 求解器最优化显示变量")
             vis_model = cp_model.CpModel()
             vis_vars = {
                 p: vis_model.NewBoolVar(f"show_{p[0]}_{p[1]}_{p[2]}")
@@ -566,6 +588,81 @@ class Summon:
                     for p in candidate_positions
                 ]
                 vis_model.AddBoolOr(nogood)
+        elif candidate_positions:
+            self.logger.info("动态删线索策略: 退火式随机显隐")
+            rounds = max(1, self.dynamic_dig_rounds)
+
+            for idx in range(rounds):
+                # 每轮都从“当前最优解”出发生成候选，保证比较基线一致。
+                self._copy_board_values(best_board, board)
+                for key in visibility_state:
+                    visibility_state[key] = dict(best_visibility.get(key, {}))
+                self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, [])
+
+                batch = min(self.dynamic_dig_max_batch, len(candidate_positions))
+                batch = max(1, batch)
+                move_size = get_random().randint(1, batch)
+                picked = get_random().sample(candidate_positions, move_size)
+
+                # 先构造“全量保持现状”的赋值，再仅翻转本轮挑选的位置。
+                assignment = {
+                    p: bool(visibility_state.get(p[0], {}).get((p[1], p[2]), True))
+                    for p in candidate_positions
+                }
+                add_count = 0
+                del_count = 0
+                for p in picked:
+                    key, x, y = p
+                    cur_state = assignment[p]
+                    next_state = not cur_state
+                    assignment[p] = next_state
+                    if cur_state and not next_state:
+                        del_count += 1
+                    elif (not cur_state) and next_state:
+                        add_count += 1
+
+                # 约束：每轮候选的“增+删”线索总改动量必须小于当前最优线索数。
+                if add_count + del_count >= best_visible:
+                    self.logger.debug(
+                        f"[DynamicDig] 变量候选{idx + 1}/{rounds}: 跳过, add+del={add_count + del_count} >= best={best_visible}"
+                    )
+                    continue
+
+                # 在已有最优基线下，必须满足净减少（删的比加的多）才允许尝试。
+                if del_count <= add_count:
+                    self.logger.debug(
+                        f"[DynamicDig] 变量候选{idx + 1}/{rounds}: 跳过, del={del_count} <= add={add_count}"
+                    )
+                    continue
+
+                changed_positions = self._apply_visibility_assignment(board, visibility_state, assignment)
+                self.clue_rule.dynamic_on_visibility_changed(board, visibility_state, changed_positions)
+
+                self.logger.debug(
+                    f"[DynamicDig] 变量候选{idx + 1}/{rounds} 当前线索展示:\n{board.show_board()}"
+                )
+
+                result_state = solver_by_csp(
+                    self.mines_rules,
+                    self.clue_rule,
+                    self.mines_clue_rule,
+                    board.clone(),
+                    drop_r=self.drop_r,
+                    answer_board=self.answer_board,
+                )
+
+                visible_count = self._count_visible_dynamic(visibility_state)
+                self.logger.info(
+                    f"[DynamicDig] 变量候选{idx + 1}/{rounds}: 可见线索={visible_count}, state={result_state}"
+                )
+
+                if result_state == 1 and visible_count < best_visible:
+                    best_visible = visible_count
+                    best_board = board.clone()
+                    best_visibility = {k: dict(v) for k, v in visibility_state.items()}
+                    self.logger.info(f"[DynamicDig] 更新最优: 可见线索={best_visible}")
+                    if best_visible == 0:
+                        break
 
         self._copy_board_values(best_board, board)
         for key in visibility_state:

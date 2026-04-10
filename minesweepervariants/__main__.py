@@ -62,8 +62,8 @@ parser.add_argument("--no-image", action="store_true", default=defaults.get("no_
                     help="是否不生成图片")
 parser.add_argument("--file-name", default="",
                     help="文件名的前缀")
-parser.add_argument("--dynamic-dig-rounds", type=int, default=defaults.get("dynamic_dig_rounds"),
-                    help="动态删线索模式迭代轮数, 0为关闭")
+parser.add_argument("--dynamic-dig-rounds", type=int, default=None,
+                    help="动态删线索模式迭代轮数。未指定时: 动态规则自动100轮, 其他规则为0; 显式指定则强制使用")
 parser.add_argument("--dynamic-dig-max-batch", type=int, default=defaults.get("dynamic_dig_max_batch"),
                     help="动态删线索每轮最大改动格数")
 parser_list.add_argument("--shell", action="store_true", default=False)
