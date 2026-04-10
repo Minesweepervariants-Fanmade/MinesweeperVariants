@@ -193,11 +193,11 @@ class TerminalEmulator:
             # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端连接已关闭")
 
     @staticmethod
-    def _capture_output(process, output_queue):
+    def _capture_output(process: subprocess.Popen, output_queue):
         """捕获子进程输出"""
         try:
             while True:
-                line = process.stdout.read(4096)
+                line = process.stdout.readline()
                 if not line and process.poll() is not None:
                     break
                 if line:
