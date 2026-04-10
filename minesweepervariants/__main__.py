@@ -157,6 +157,12 @@ for rule_index in range(len(args.rules)):
         rule_name = rule_name.replace("$2", "|")
     if "$3" in rule_name:
         rule_name = rule_name.replace("$3", "&")
+    if "$4" in rule_name:
+        rule_name = rule_name.replace("$4", ">")
+    if "$5" in rule_name:
+        rule_name = rule_name.replace("$5", "<")
+    if "$6" in rule_name:
+        rule_name = rule_name.replace("$6", "%")
     args.rules[rule_index] = rule_name
 
 if args.test:
