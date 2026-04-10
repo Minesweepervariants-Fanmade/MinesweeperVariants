@@ -57,19 +57,6 @@ class AbstractClueRule(AbstractRule):
         """
         return None
 
-    def dynamic_dig_visibility_candidates(
-        self,
-        board: 'AbstractBoard',
-        visibility_state: Dict[str, Dict[tuple[int, int], bool | None]],
-    ) -> List[Dict[str, tuple[tuple[bool, ...], ...]]]:
-        """
-        动态删线索候选接口。
-        返回候选显隐方案集合，每项为 {key: 布尔矩阵}:
-            True 表示线索显示，False 表示线索隐藏。
-        若返回空列表，表示不提供候选限制，沿用默认随机删线索流程。
-        """
-        return []
-
 
 class AbstractClueValue(AbstractValue, ABC):
     """
