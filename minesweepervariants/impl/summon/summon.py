@@ -488,9 +488,9 @@ class Summon:
             drop_r=self.drop_r,
             answer_board=self.answer_board,
         )
-        if state != 1:
-            self.logger.warn("动态删线索模式初始盘面不唯一或不可解")
-            return None
+        # if state != 1:
+        #     self.logger.warn("动态删线索模式初始盘面不唯一或不可解")
+        #     return None
 
         best_board = board.clone()
         best_visibility = {k: dict(v) for k, v in visibility_state.items()}
