@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 class AbstractRule(ABC):
     # 规则名称
     name: Union[Tuple[str], List[str], str] = [""]
+    doc: str = ""
+    author: tuple[str, int]
     lib_only = False
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
@@ -186,13 +188,13 @@ class AbstractValue(ABC):
         :return: 是否修改了 True 修改 False 未修改  None:未实现该方法
         """
         return None
-    
+
     def weaker(self, board: 'AbstractBoard') -> 'AbstractValue':
         """
         返回一个比当前对象更弱的对象 用于生成阶段的多次删除线索
         """
         return self
-    
+
     def weaker_times(self) -> int:
         """
         返回可以被弱化的次数
