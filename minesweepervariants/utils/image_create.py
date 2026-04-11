@@ -7,12 +7,39 @@
 import math
 import os
 import pathlib
+from typing import Callable
 
 from .tool import get_logger
 from .. import __path__ as basepath
 from ..abs.board import AbstractBoard
 from ..config.config import IMAGE_CONFIG, DEFAULT_CONFIG
 import minesweepervariants
+
+
+def register_final_image_postprocess_callback(callback: Callable, key: str = None):
+    """注册最终题板图后处理回调。回调签名: fn(image, board=None, config=None) -> Image|None"""
+    if key:
+        callback_map = IMAGE_CONFIG.setdefault("final_image_postprocess_callback_map", {})
+        callback_map[key] = callback
+        return
+    callbacks = IMAGE_CONFIG.setdefault("final_image_postprocess_callbacks", [])
+    if callback not in callbacks:
+        callbacks.append(callback)
+
+
+def _apply_final_image_postprocess_callbacks(image, board, config):
+    callbacks = list(IMAGE_CONFIG.get("final_image_postprocess_callbacks", []))
+    callback_map = IMAGE_CONFIG.get("final_image_postprocess_callback_map", {})
+    if isinstance(callback_map, dict):
+        callbacks.extend(callback_map.values())
+    for callback in callbacks:
+        try:
+            result = callback(image, board=board, config=config)
+            if result is not None:
+                image = result
+        except Exception as exc:
+            get_logger().error(f"Final image postprocess callback failed: {exc}")
+    return image
 
 
 def _hex_to_rgb(hex_color: str):
@@ -623,6 +650,9 @@ def draw_board(
                   anchor="ms",
                   stroke_width=1 if best <= 14 else 0,
                   stroke_fill=stroke_color)
+
+    # 最终题板图后处理回调（例如规则注入A/B融合并直接替换最终图）
+    image = _apply_final_image_postprocess_callbacks(image, board, CONFIG)
 
     if not os.path.exists(CONFIG["output_path"]):
         os.makedirs(CONFIG["output_path"])

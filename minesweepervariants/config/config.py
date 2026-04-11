@@ -39,6 +39,9 @@ IMAGE_CONFIG = config = {
         "image": ""
     },
 
+    "final_image_postprocess_callbacks": [],
+    "final_image_postprocess_callback_map": {},
+
     # 网格线设置
     "grid_line": {
         "white_bg": "#000000",
