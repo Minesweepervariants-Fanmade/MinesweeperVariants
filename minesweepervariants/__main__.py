@@ -106,7 +106,7 @@ if args.command == "list":
                 names = ", ".join(i for i in rule["names"] if i not in [name, zh_name])
                 author = rule.get("author", "")
                 part = f"[{name}]{zh_name}{('(' + names + ')') if names else ''}{'[@Author='+author+']' if author else ''}: " + rule["doc"]
-                part = split_name_symbol.join(rule_list[rule_line][name]["names"] + [name] + [part])
+                part = split_name_symbol.join([name] + rule_list[rule_line][name]["names"] + [part])
                 result += part.encode(encode)
                 result += split_symbol.encode(encode)  # 如果原 join 是用分隔符连接
             result += (split_symbol * 2).encode(encode)
