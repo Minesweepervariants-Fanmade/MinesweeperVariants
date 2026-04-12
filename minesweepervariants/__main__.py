@@ -104,14 +104,24 @@ if args.command == "list":
                 unascii_name = [n for n in rule["names"] if not n.isascii()]
                 zh_name = unascii_name[0] if unascii_name else ""
                 names = ", ".join(i for i in rule["names"] if i not in [name, zh_name])
-                author = rule.get("author", "")
-                part = f"[{name}]{zh_name}{('(' + names + ')') if names else ''}{'[@Author='+author+']' if author else ''}: " + rule["doc"]
-                part = split_name_symbol.join([name] + rule_list[rule_line][name]["names"] + [part])
+                author = rule.get("author", ("", ""))
+                _author = ""
+                if type(author) is tuple:
+                    if author:
+                        _author = f"{author[0]}({author[1]})"
+                part = (
+                    f"[{name}]{zh_name}{('(' + names + ')') if names else ''}"
+                    f"{'[@Author='+_author+']' if _author else ''}: "
+                ) + rule["doc"]
+                part = split_name_symbol.join(
+                    [name] + rule_list[rule_line][name]["names"] +
+                    (list(author) if author else ["", ""]) + [part]
+                )
                 result += part.encode(encode)
                 result += split_symbol.encode(encode)  # 如果原 join 是用分隔符连接
-            result += (split_symbol * 2).encode(encode)
+            result += split_symbol.encode(encode)
         print("hex_start:" + result.hex() + ":hex_end", end="", flush=True)
-        print(result.decode(encode))
+        # print(result.decode(encode))
         sys.stdout.buffer.flush()
         sys.exit(0)
 
@@ -128,7 +138,12 @@ if args.command == "list":
             zh_name = unascii_name[0] if unascii_name else ""
             names = ", ".join(i for i in rule["names"] if i not in [name, zh_name])
             author = rule.get("author", "")
-            doc = f"[{name}]{zh_name}{('(' + names + ')') if names else ''}{'[@Author='+author+']' if author else ''}: " + rule["doc"]
+            if type(author) is tuple:
+                author = f"{author[0]}({author[1]})"
+            doc = (
+               f"[{name}]{zh_name}{('(' + names + ')') if names else ''}"
+               f"{'[@Author=' + author + ']' if author else ''}: "
+            ) + rule["doc"]
             print_with_indent(doc)
 
     sys.exit(0)
