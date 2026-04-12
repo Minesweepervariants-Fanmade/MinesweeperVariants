@@ -129,7 +129,7 @@ def main(
         if not clue_freq:
             logger.warn("生成失败")
             continue
-        game.logger.info("\n" + "=" * 50 + "\n" + str(clue_freq))
+        game.logger.info(f"线索图: {clue_freq}")
         time_used = time.time() - a_time
         n_num = len([None for _ in _board("N")])
         board_str = _board.show_board()
