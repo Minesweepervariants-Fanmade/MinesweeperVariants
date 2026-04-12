@@ -923,7 +923,10 @@ class GameSession:
                 self.apply(pos, 0 if imposs == "C" else 1)
                 if pos_clues[pos] not in clue_freq:
                     clue_freq[pos_clues[pos]] = 0
-                clue_freq[pos_clues[pos]] += 1
+            for hints, deduceds in grouped_hints:
+                if len(hints) != num_clues_used:
+                    continue
+                clue_freq[len(hints)] += 1
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
         self.board = _board
