@@ -91,7 +91,7 @@ class AbstractClueValue(AbstractValue, ABC):
         return Number(self.__repr__())
 
     def weaker(self, board: AbstractBoard) -> AbstractValue:
-        return board.get_config("VALUE", self.pos.board_key)
+        return board.get_config(self.pos.board_key, "VALUE")
 
     def weaker_times(self) -> int:
         return 1

@@ -72,7 +72,7 @@ class AbstractMinesValue(AbstractValue, ABC):
         return data
     
     def weaker(self, board: AbstractBoard) -> AbstractValue:
-        return board.get_config("MINES", self.pos.board_key)
+        return board.get_config(self.pos.board_key, "MINES")
     
     def weaker_times(self) -> int:
         return 1
