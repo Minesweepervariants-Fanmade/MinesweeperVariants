@@ -139,7 +139,7 @@ class TerminalEmulator:
             # 启动输出捕获线程
             threading.Thread(
                 target=self._capture_output,
-                args=(process, output_queue),
+                args=(process, output_queue, args),
                 daemon=True
             ).start()
 
@@ -193,7 +193,7 @@ class TerminalEmulator:
             # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端连接已关闭")
 
     @staticmethod
-    def _capture_output(process: subprocess.Popen, output_queue):
+    def _capture_output(process: subprocess.Popen, output_queue, args):
         """捕获子进程输出"""
         try:
             while True:
@@ -208,7 +208,7 @@ class TerminalEmulator:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 管道关闭: {str(e)}")
         except Exception as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 捕获输出时出错: {str(e)}")
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 退出")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {args}: 退出")
 
     @staticmethod
     def _send_output(client_socket, output_queue):
