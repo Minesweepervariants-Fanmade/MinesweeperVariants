@@ -149,7 +149,7 @@ def handle_list_shell_output(rule_list, image_map):
         part = build_rule_doc(name, rule_info, include_author_tag=True, image_name=image_name)
         part = split_name_symbol.join(
             [name] + rule_info["names"] +
-            (list(author) if author else ["", ""]) + [image_name, part]
+            (list(author) if author else ["", ""]) + [part]
         )
         result.extend(part.encode(encode))
         result.extend(split_symbol_bytes)
