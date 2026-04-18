@@ -8,6 +8,7 @@ import hashlib
 import hashlib
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from typing import TextIO
@@ -120,7 +121,7 @@ class Logger:
         if self.print_level > log_lv:
             return
         s = f"<{self.get_time()}>" + f"[{log_type}]:" + f'{msg}{end}'
-        print(s, end="", flush=True)
+        print(s, end="", flush=True, file=sys.stderr)
         self.file.write(s)
         self.file.flush()
 
