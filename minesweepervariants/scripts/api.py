@@ -35,10 +35,19 @@ def kill_process_tree(process):
 
 
 class TerminalEmulator:
-    def __init__(self, _port=5000, host='0.0.0.0', bat_file='run.bat'):
+    def __init__(
+        self, _port=5000,
+        host='0.0.0.0',
+        front_arg=None
+    ):
+        if front_arg is None:
+            front_arg = [
+                "D:\\python3.13t\\python.exe",
+                "-m", "minesweepervariants"
+            ]
         self.port = _port
         self.host = host
-        self.bat_file = bat_file
+        self.front_arg = front_arg
         self.server_socket = None
         self.running = False
         self.client_lock = threading.Lock()
@@ -55,7 +64,7 @@ class TerminalEmulator:
         self.running = True
 
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 终端服务器启动在 {self.host}:{self.port}")
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待连接，使用 {self.bat_file} 执行命令minesweepervariants..")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待连接，使用 {self.front_arg} 执行命令minesweepervariants..")
 
         # 启动主接收线程
         threading.Thread(target=self._accept_clients, daemon=True).start()
@@ -119,7 +128,7 @@ class TerminalEmulator:
 
             # 创建子进程执行命令
             process = subprocess.Popen(
-                [self.bat_file] + args,
+                self.front_arg + args,
                 cwd=os.getcwd(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -195,6 +204,7 @@ class TerminalEmulator:
     @staticmethod
     def _capture_output(process: subprocess.Popen, output_queue, args):
         """捕获子进程输出"""
+        output_queue.put(f"PID:[{process.pid}]\n")
         try:
             while True:
                 line = process.stdout.readline()
@@ -240,7 +250,7 @@ if __name__ == "__main__":
     emulator = TerminalEmulator(
         _port=int(port),  # 监听端口
         host='0.0.0.0',  # 监听所有接口
-        bat_file='run.bat'  # 要执行的批处理文件
+        # bat_file='run.bat'  # 要执行的批处理文件
     )
 
     print_rate = 60
