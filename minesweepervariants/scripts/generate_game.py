@@ -60,6 +60,7 @@ def main(
     if query[0] is not None and query[1] is not None and query[0] > query[1]:
         raise ValueError(f"范围从{query[0]}到{query[1]}吗? 你在干什么?")
     rule_code = rules[:]
+    DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)

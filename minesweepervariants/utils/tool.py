@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import TextIO
 from random import Random
 
+from minesweepervariants.config.config import DEFAULT_CONFIG
+
 SELF_PATH = os.getcwd()
 LOGGER = None
 RANDOM = None
@@ -86,6 +88,8 @@ class Logger:
         self.log_flag = log_flag
         self.log_path = os.path.join(SELF_PATH, self.log_root) \
             if log_path is None else log_path
+        self.file_name = str(DEFAULT_CONFIG.get("log_file_name", "")).strip()
+        self.use_file = bool(self.file_name)
 
         self.file_id = 0
         self.file = None
@@ -99,34 +103,34 @@ class Logger:
         return time.strftime(self.time_format, time.localtime())
 
     def __create_file(self):
-        if not os.path.exists(self.log_root):
-            os.makedirs(self.log_root)
-        file_name = os.path.join(self.log_root,
-                                 f"{self.name}_{self.file_id}.log")
+        if not self.use_file:
+            self.file = sys.stderr
+            return
+        if not os.path.exists(self.log_path):
+            os.makedirs(self.log_path)
+        file_path = os.path.join(self.log_path, f"{self.file_name}.log")
         while 1:
-            if not Path(file_name).exists():
-                open(file_name, 'x').close()
+            if not Path(file_path).exists():
+                open(file_path, 'x').close()
                 break
             else:
-                if os.path.getsize(file_name) > self.max_size:
+                if os.path.getsize(file_path) > self.max_size:
                     self.file_id += 1
-                    file_name = os.path.join(self.log_root, "{}_{}.log"
-                                             .format(self.name, self.file_id))
+                    file_path = os.path.join(self.log_path, f"{self.file_name}_{self.file_id}.log")
                     continue
                 else:
                     break
-        self.file = open(file_name, 'a', encoding='utf-8')
+        self.file = open(file_path, 'a', encoding='utf-8')
 
     def __log(self, log_type, msg, log_lv, end="\n"):
         if self.print_level > log_lv:
             return
         s = f"<{self.get_time()}>" + f"[{log_type}]:" + f'{msg}{end}'
-        print(s, end="", flush=True, file=sys.stderr)
-        self.file.write(s)
-        self.file.flush()
+        file_obj = self.file
+        print(s, end="", flush=True, file=file_obj)
 
-        if (self.max_size != -1 and
-                os.path.getsize(self.file.name) > self.max_size):
+        if (self.use_file and file_obj is not None and self.max_size != -1 and
+                os.path.getsize(file_obj.name) > self.max_size):
             self.__create_file()
 
     def start(self):
@@ -136,10 +140,11 @@ class Logger:
                 self.__log("INFO", f"{self.name} log start", 4)
 
     def close(self):
-        if not self.file.closed:
+        if self.file is not None and not self.file.closed:
             if self.log_flag:
                 self.__log("INFO", f"{self.name} log end\n", 4)
-            self.file.close()
+            if self.use_file:
+                self.file.close()
 
     def trace(self, msg, end="\n"):
         self.__log("TRACE", msg, log_lv=self.TRACE)

@@ -35,6 +35,7 @@ def main(
         unseed: bool,   # 是否不启用种子
         image: bool     # 是否生成图片
 ):
+    DEFAULT_CONFIG["log_file_name"] = ""
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)

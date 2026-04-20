@@ -47,6 +47,7 @@ def main(
 ):
     rule_code = rules[:]
     rule_code_bk = rules[:]
+    DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)

@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
     # 题板生成默认参数
     "seed": -1,                    # 随机种子
     "logger_lv": "INFO",           # 默认logger为info级别
+    "log_file_name": "",          # 默认不写入日志文件，输出到stderr
     "attempts": -1,                # 默认无限次尝试（无-q参数默认20次）
     "total": -1,                   # 默认自动计算总雷数数量
     "dye": "",                     # 默认无染色
