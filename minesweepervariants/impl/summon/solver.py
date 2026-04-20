@@ -230,7 +230,8 @@ def solver_by_csp(
         drop_r=False,
         bool_mode=False,
         answer_board=None,
-        model=None
+        model=None,
+        hint_board: AbstractBoard = None
 ) -> int:
     """
     返回int 0表示无解 1表示唯一解 2表示多解
@@ -278,6 +279,9 @@ def solver_by_csp(
         # model.AddAssumptions(switch.var_map.values())
         for switch_var in switch.get_all_vars():
             model.Add(switch_var == 1)
+
+        if hint_board is not None:
+            add_board_assignment_hints(model, board, hint_board)
 
     # 4.获取求解器并推导
     solver = get_solver(True)

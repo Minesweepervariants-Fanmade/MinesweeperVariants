@@ -584,6 +584,7 @@ class Summon:
                     board.clone(),
                     drop_r=self.drop_r,
                     answer_board=self.answer_board,
+                    hint_board=self.answer_board,
                 )
 
                 visible_count = self._count_visible_dynamic(visibility_state)
@@ -670,6 +671,7 @@ class Summon:
                     board.clone(),
                     drop_r=self.drop_r,
                     answer_board=self.answer_board,
+                    hint_board=self.answer_board,
                 )
 
                 visible_count = self._count_visible_dynamic(visibility_state)
