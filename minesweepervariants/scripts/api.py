@@ -131,7 +131,7 @@ class TerminalEmulator:
                 self.front_arg + args,
                 cwd=os.getcwd(),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stderr=subprocess.PIPE,
                 encoding='utf-8',  # 指定编码
                 errors='replace',  # 替换无法解码的字符
                 universal_newlines=True,   # 自动处理换行符
@@ -213,6 +213,11 @@ class TerminalEmulator:
                 if line:
                     # 将输出添加到队列
                     output_queue.put(line)
+            stderr = process.stderr.read()
+            if stderr:
+                output_queue.put("\n[STDERR]:\n" + stderr + "\n:[STDERR]")
+            else:
+                output_queue.put("\n[STDERR EMPTY]\n")
         except ValueError as e:
             # 当管道关闭时可能发生
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 管道关闭: {str(e)}")
