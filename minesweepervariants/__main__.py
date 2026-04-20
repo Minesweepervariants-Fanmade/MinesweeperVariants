@@ -18,6 +18,8 @@ from minesweepervariants import puzzle
 from minesweepervariants import test
 
 from minesweepervariants.config.config import DEFAULT_CONFIG
+from minesweepervariants.utils.tool import get_logger
+from minesweepervariants.utils import tool
 
 # ==== 获取默认值 ====
 defaults = {}
@@ -232,7 +234,6 @@ def main():
         from minesweepervariants.impl import rule
         rule_list = rule.get_all_rules()
         image_map = collect_rule_images(rule_list)
-        # print(rule_list)
 
         if args.shell:
             handle_list_shell_output(rule_list, image_map)
@@ -294,65 +295,82 @@ def main():
             rule_name = rule_name.replace("$6", "%")
         args.early_rules[rule_index] = rule_name
 
-    if args.test:
-        test(
-            log_lv=args.log_lv,
-            seed=args.seed,
-            size=size,
-            total=args.total,
-            rules=args.rules,
-            early_rules=args.early_rules,
-            dye=args.dye,
-            mask_dye=args.mask,
-            board_class=args.board_class,
-            unseed=not args.onseed,
-            image=not args.no_image,
-        )
-    elif not args.query:
-        if not args.no_image and find_spec("PIL") is None:
-            print("可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片.")
-            return
-        puzzle(
-            log_lv=args.log_lv,
-            seed=args.seed,
-            attempts=args.attempts,
-            size=size,
-            total=args.total,
-            rules=args.rules,
-            early_rules=args.early_rules,
-            dye=args.dye,
-            mask_dye=args.mask,
-            drop_r=(not args.used_r),
-            board_class=args.board_class,
-            vice_board=args.vice_board,
-            unseed=not args.onseed,
-            image=not args.no_image,
-            file_name=args.file_name,
-            dynamic_dig_rounds=args.dynamic_dig_rounds,
-            dynamic_dig_max_batch=args.dynamic_dig_max_batch,
-        )
-    else:
-        puzzle_query(
-            log_lv=args.log_lv,
-            seed=args.seed,
-            size=size,
-            total=args.total,
-            rules=args.rules,
-            early_rules=args.early_rules,
-            query=args.query,
-            attempts=args.attempts,
-            dye=args.dye,
-            mask_dye=args.mask,
-            drop_r=(not args.used_r),
-            early_stop=args.early_stop,
-            board_class=args.board_class,
-            vice_board=args.vice_board,
-            unseed=not args.onseed,
-            file_name=args.file_name,
-            image=not args.no_image,
-            dynamic_dig_rounds=args.dynamic_dig_rounds,
-            dynamic_dig_max_batch=args.dynamic_dig_max_batch,
-        )
+    DEFAULT_CONFIG["log_file_name"] = args.file_name
+    tool.LOGGER = None
+    get_logger().info(
+        f"题板信息: "
+        f"SIZE:{args.size} "
+        f"TOTAL:{args.total if args.total != -1 else '自动'} "
+        f"DYE:{args.dye if args.dye else '空'} "
+        f"MASK:{args.mask if args.mask else '空'}"
+    )
+    get_logger().info(f"使用规则: RULE:{args.rules} EARLY_RULE:{args.early_rules}")
+
+    try:
+        if args.test:
+            test(
+                log_lv=args.log_lv,
+                seed=args.seed,
+                size=size,
+                total=args.total,
+                rules=args.rules,
+                early_rules=args.early_rules,
+                dye=args.dye,
+                mask_dye=args.mask,
+                board_class=args.board_class,
+                unseed=not args.onseed,
+                image=not args.no_image,
+            )
+        elif not args.query:
+            if not args.no_image and find_spec("PIL") is None:
+                print("可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片.")
+                return
+            puzzle(
+                log_lv=args.log_lv,
+                seed=args.seed,
+                attempts=args.attempts,
+                size=size,
+                total=args.total,
+                rules=args.rules,
+                early_rules=args.early_rules,
+                dye=args.dye,
+                mask_dye=args.mask,
+                drop_r=(not args.used_r),
+                board_class=args.board_class,
+                vice_board=args.vice_board,
+                unseed=not args.onseed,
+                image=not args.no_image,
+                file_name=args.file_name,
+                dynamic_dig_rounds=args.dynamic_dig_rounds,
+                dynamic_dig_max_batch=args.dynamic_dig_max_batch,
+            )
+        else:
+            puzzle_query(
+                log_lv=args.log_lv,
+                seed=args.seed,
+                size=size,
+                total=args.total,
+                rules=args.rules,
+                early_rules=args.early_rules,
+                query=args.query,
+                attempts=args.attempts,
+                dye=args.dye,
+                mask_dye=args.mask,
+                drop_r=(not args.used_r),
+                early_stop=args.early_stop,
+                board_class=args.board_class,
+                vice_board=args.vice_board,
+                unseed=not args.onseed,
+                file_name=args.file_name,
+                image=not args.no_image,
+                dynamic_dig_rounds=args.dynamic_dig_rounds,
+                dynamic_dig_max_batch=args.dynamic_dig_max_batch,
+            )
+    except:
+        ...
+    finally:
+        get_logger().info("minesweepervariants END")
+
 
 if __name__ == "__main__":
     main()

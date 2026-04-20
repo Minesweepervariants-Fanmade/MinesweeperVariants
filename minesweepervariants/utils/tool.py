@@ -129,9 +129,9 @@ class Logger:
         file_obj = self.file
         print(s, end="", flush=True, file=file_obj)
 
-        if (self.use_file and file_obj is not None and self.max_size != -1 and
-                os.path.getsize(file_obj.name) > self.max_size):
-            self.__create_file()
+        # if (self.use_file and file_obj is not None and self.max_size != -1 and
+        #         os.path.getsize(file_obj.name) > self.max_size):
+        #     self.__create_file()
 
     def start(self):
         if self.file is None or self.file.closed:
