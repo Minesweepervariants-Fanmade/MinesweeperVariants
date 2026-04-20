@@ -447,12 +447,15 @@ def hint_by_csp(
 
     target_var = board.get_variable(pos, special='raw')
     model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
+    add_board_assignment_hints(model, board, answer_board)
     assumptions = switch.get_all_vars()
 
     get_logger().trace(f"pos {pos}: start\n", end="")
     results = _hint_by_csp(
         model, assumptions,
-        upper_bound, 0, pos
+        upper_bound, 0, pos,
+        board=board,
+        answer_board=answer_board
     )
     get_logger().trace(f"pos {pos}: {results}\n", end="")
     if results is None:
@@ -465,7 +468,9 @@ def _hint_by_csp(
     assumptions: List[IntVar],
     upper_bound=None,
     offset=0,
-    pos=None
+    pos=None,
+    board: AbstractBoard = None,
+    answer_board: AbstractBoard = None
 ):
     logger = get_logger()
     logger.trace(f"pos {pos} off {offset}: start\n", end="")
@@ -566,7 +571,9 @@ def _hint_by_csp(
             _assumptions[:],
             upper_bound=upper_bound,
             offset=offset + len(_results) + len(_mcs),
-            pos=pos
+            pos=pos,
+            board=board,
+            answer_board=answer_board
         )
         if result is None:
             # 该节点求解失败或者出现错误或者提前步出
