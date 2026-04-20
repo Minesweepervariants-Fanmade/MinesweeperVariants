@@ -383,6 +383,7 @@ class GameSession:
             self.summon.mines_clue_rule,
             board.clone(),
             answer_board=self.answer_board,
+            hint_board=self.answer_board,
             drop_r=True
         ) == 1:
             # 不使用R推会导致多解
