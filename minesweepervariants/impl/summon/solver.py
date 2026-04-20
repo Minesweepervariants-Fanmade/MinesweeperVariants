@@ -57,6 +57,18 @@ def add_board_solution_hints(
             model.AddHint(var, solver.Value(var))
 
 
+def add_board_assignment_hints(
+        model: cp_model.CpModel,
+        board: AbstractBoard,
+        assignment_board: AbstractBoard
+):
+    """将指定题板上的当前赋值作为 hint 提供给模型。"""
+    for key in board.get_interactive_keys():
+        for pos, _ in board("N", key=key):
+            var = board.get_variable(pos, special='raw')
+            model.AddHint(var, 1 if assignment_board.get_type(pos, special='raw') == "F" else 0)
+
+
 class Switch:
 
     def __init__(self):
@@ -287,6 +299,7 @@ def solver_by_csp(
                 value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
                 val = board.get_variable(pos, special='raw')
                 model_answer.Add(val == value)
+        add_board_assignment_hints(model_answer, board, answer_board)
 
         status_answer = timer(solver.Solve)(model_answer)
         if status_answer not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
@@ -311,6 +324,8 @@ def solver_by_csp(
         else:
             # 没有可变 N 位，当前解天然唯一。
             return 1
+
+        add_board_assignment_hints(model_alt, board, answer_board)
 
         status2 = timer(solver.Solve)(model_alt)
         if status2 == cp_model.FEASIBLE or status2 == cp_model.OPTIMAL:
