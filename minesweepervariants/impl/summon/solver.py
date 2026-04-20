@@ -45,6 +45,18 @@ def get_solver(b: bool):
     return solver
 
 
+def add_board_solution_hints(
+        model: cp_model.CpModel,
+        board: AbstractBoard,
+        solver: cp_model.CpSolver
+):
+    """将上一轮可行解作为 hint 提供给后续相近模型。"""
+    for key in board.get_interactive_keys():
+        for pos, _ in board("N", key=key):
+            var = board.get_variable(pos, special='raw')
+            model.AddHint(var, solver.Value(var))
+
+
 class Switch:
 
     def __init__(self):
@@ -364,6 +376,9 @@ def solver_by_csp(
                 current_solution.append(var)  # 这个变量不能为0，保持原变量
 
     model.AddBoolOr(current_solution)  # 新增排除当前解约束（至少有一个变量取反）
+
+    # 二次求解仅新增了“排除当前解”约束，给定上一轮可行解可加速分支搜索。
+    add_board_solution_hints(model, board, solver)
 
     status2 = timer(solver.Solve)(model)
     if status2 == cp_model.FEASIBLE or status2 == cp_model.OPTIMAL:
