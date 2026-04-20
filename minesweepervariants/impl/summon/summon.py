@@ -508,6 +508,7 @@ class Summon:
             board.clone(),
             drop_r=self.drop_r,
             answer_board=self.answer_board,
+            hint_board=self.answer_board,
         )
         # if state != 1:
         #     self.logger.warn("动态删线索模式初始盘面不唯一或不可解")
