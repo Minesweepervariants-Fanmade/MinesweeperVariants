@@ -367,8 +367,8 @@ def main():
                 dynamic_dig_max_batch=args.dynamic_dig_max_batch,
             )
     except Exception as e:
-        get_logger().error(e.__traceback__)
-        get_logger().error(e)
+        import traceback
+        get_logger().error("\n" + ''.join(traceback.format_exception(type(e), e, e.__traceback__)))
         raise e
     finally:
         get_logger().info("minesweepervariants END")
