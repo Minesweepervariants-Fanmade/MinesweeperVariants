@@ -357,6 +357,7 @@ class Summon:
 
     def summon_board(self):
         self.board.clear_board()
+        self.logger.info("开始初始化题板")
         if self.unseed:
             _board = self.random_fill(self.board, self.total)
         else:
