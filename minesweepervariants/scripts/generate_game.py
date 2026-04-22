@@ -115,6 +115,8 @@ def main(
             continue
         except GenerateError:
             continue
+        if game.board is None:
+            continue
         game.answer_board = get_board(board_class)(rules={}, code=s.answer_board_code)
         # game.board = get_board("0B")(code=b'')
         # game.answer_board = get_board("0B")(code=b'')
