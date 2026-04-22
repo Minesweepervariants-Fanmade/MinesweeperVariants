@@ -110,13 +110,14 @@ def main(
         logger.info(f"尝试第{attempt_index}次minesweepervariants..", end="\r")
         game = GameSession(s, mode=PUZZLE, drop_r=drop_r)
         try:
-            game.board = s.create_puzzle()
+            _board = s.create_puzzle()
         except ModelGenerateError:
             continue
         except GenerateError:
             continue
-        if game.board is None:
+        if _board is None:
             continue
+        game.board = _board
         game.answer_board = get_board(board_class)(rules={}, code=s.answer_board_code)
         # game.board = get_board("0B")(code=b'')
         # game.answer_board = get_board("0B")(code=b'')
