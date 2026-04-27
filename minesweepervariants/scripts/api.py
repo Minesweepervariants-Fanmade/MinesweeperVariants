@@ -275,13 +275,17 @@ class TerminalEmulator:
 
 if __name__ == "__main__":
     # 创建并启动终端仿真器
-    port = sys.argv[1] if len(sys.argv) > 1 else 31408
-    emulator = TerminalEmulator(
-        _port=int(port),  # 监听端口
-        host='0.0.0.0',  # 监听所有接口
-        # bat_file='run.bat'  # 要执行的批处理文件
-    )
+    import argparse
 
+    parser = argparse.ArgumentParser(description='终端仿真器')
+    parser.add_argument('-h', '--host', default='0.0.0.0', help='监听的主机地址 (默认: 0.0.0.0)')
+    parser.add_argument('-p', '--port', type=int, default=31408, help='监听的端口号 (默认: 31408)')
+    args = parser.parse_args()
+
+    emulator = TerminalEmulator(
+        _port=args.port,
+        host=args.host,
+    )
     print_rate = 60
     try:
         emulator.start_server()
