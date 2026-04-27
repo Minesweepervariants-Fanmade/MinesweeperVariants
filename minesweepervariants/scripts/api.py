@@ -278,7 +278,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='终端仿真器')
-    parser.add_argument('-h', '--host', default='0.0.0.0', help='监听的主机地址 (默认: 0.0.0.0)')
+    parser.add_argument('-H', '--host', default='0.0.0.0', help='监听的主机地址 (默认: 0.0.0.0)')
     parser.add_argument('-p', '--port', type=int, default=31408, help='监听的端口号 (默认: 31408)')
     args = parser.parse_args()
 
