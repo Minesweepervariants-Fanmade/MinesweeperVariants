@@ -42,7 +42,7 @@ parser.add_argument("-E", "--early-rules", nargs="+", default=[],
                     help="仅在初始题板生成阶段使用的左线规则名，可多个")
 parser.add_argument("-d", "--dye", default=defaults.get("dye"),
                     help="染色规则名称，如 @c")
-parser.add_argument("-m", "--mask",  default=defaults.get("dye"),
+parser.add_argument("-m", "--mask", default=defaults.get("dye"),
                     help="染色规则名称，如 @c")
 parser.add_argument("-r", "--used-r", action="store_true", default=defaults.get("used_r"),
                     help="推理是否加R")
@@ -58,7 +58,7 @@ parser.add_argument("-T", "--test", action="store_true", default=False,
                     help="启用后将仅生成一份使用了规则的答案题板")
 parser.add_argument("-S", "--seed", type=int, default=defaults.get("seed"),
                     help="随机种子")
-parser.add_argument("-O", "--onseed",  action="store_true", default=False,
+parser.add_argument("-O", "--onseed", action="store_true", default=False,
                     help="启用可循的种子来生成题板,速度会大幅降低")
 parser.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
                     help="日志等级，如 DEBUG、INFO、WARNING")
@@ -72,9 +72,15 @@ parser.add_argument("-D", "--dynamic-dig-rounds", type=int, default=None,
                     help="动态删线索模式迭代轮数。未指定时: 动态规则自动100轮, 其他规则为0; 显式指定则强制使用")
 parser.add_argument("-M", "--dynamic-dig-max-batch", type=int, default=defaults.get("dynamic_dig_max_batch"),
                     help="动态删线索每轮最大改动格数")
+
+parser.add_argument("--output-path", default=None,
+                    help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
+parser.add_argument("--log-path", default=None,
+                    help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
 parser_list.add_argument("-H", "--shell", action="store_true", default=False)
 parser_list.add_argument("--json", action="store_true", default=False)
 args = parser.parse_args()
+
 
 # ==== 调用生成 ====
 
@@ -229,6 +235,7 @@ def handle_list_json_output(rule_list, image_map):
     traverse_rule_list(rule_list, on_rule=on_rule)
     print(json.dumps(result, ensure_ascii=False), end="", flush=True)
 
+
 def main():
     if args.command == "list":
         from minesweepervariants.impl import rule
@@ -243,6 +250,19 @@ def main():
             handle_list_text_output(rule_list, image_map)
 
         return
+
+    if args.log_path:
+        output_path = Path(args.log_path).expanduser().absolute()
+        output_path.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG["log_path"] = str(output_path)
+        # 重新初始化 logger 以使用新路径
+        tool.LOGGER = None
+        get_logger()
+
+    if args.output_path:
+        output_path = Path(args.output_path).expanduser().absolute()
+        output_path.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG["output_path"] = str(output_path)
 
     if args.size is None:
         parser.print_help()
@@ -323,7 +343,8 @@ def main():
             )
         elif not args.query:
             if not args.no_image and find_spec("PIL") is None:
-                print("可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片.")
+                print(
+                    "可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片.")
                 return
             puzzle(
                 log_lv=args.log_lv,
