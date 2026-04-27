@@ -63,7 +63,31 @@ class TerminalEmulator:
         self.server_socket.listen(5)
         self.running = True
 
+        def get_all_ips():
+            import netifaces
+            ips = []
+            for iface in netifaces.interfaces():
+                addrs = netifaces.ifaddresses(iface)
+                # IPv4地址
+                if netifaces.AF_INET in addrs:
+                    for addr in addrs[netifaces.AF_INET]:
+                        ips.append(addr['addr'])
+                # IPv6地址（过滤掉链路本地地址和临时地址，根据需要保留）
+                # if netifaces.AF_INET6 in addrs:
+                #     for addr in addrs[netifaces.AF_INET6]:
+                #         ipv6 = addr['addr']
+                #         # 去掉IPv6地址末尾的百分号区域ID，例如 'fe80::1%eth0' -> 'fe80::1'
+                #         if '%' in ipv6:
+                #             ipv6 = ipv6.split('%')[0]
+                #         ips.append(ipv6)
+            return ips
+
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 终端服务器启动在 {self.host}:{self.port}")
+        if self.host == "0.0.0.0":
+            all_ips = get_all_ips()
+            print("本机所有IP地址：")
+            for ip in all_ips:
+                print(f"{ip}:{self.port}")
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待连接，使用 {self.front_arg} 执行命令minesweepervariants..")
 
         # 启动主接收线程
