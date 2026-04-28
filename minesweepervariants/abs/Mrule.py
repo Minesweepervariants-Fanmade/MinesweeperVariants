@@ -110,7 +110,7 @@ class MinesTag(AbstractMinesValue):
         return self
 
     def weaker_times(self) -> int:
-        return 0
+        return 1
 
 
 class Rule0F(AbstractMinesClueRule):
@@ -157,4 +157,4 @@ class ValueCircle(AbstractMinesValue):
         return self
 
     def weaker_times(self) -> int:
-        return 0
+        return 1
