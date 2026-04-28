@@ -3,6 +3,7 @@
 # @Time    : 2025/06/03 05:30
 # @Author  : Wu_RH
 # @FileName: summon.py
+import sys
 from calendar import c
 import threading
 import time
@@ -822,7 +823,7 @@ class Summon:
         init_clues_count = len([None for _ in board('C')])
         init_mines_count = len([None for _ in board('F')])
 
-        init_weak_times = sum(value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None)
+        init_value_num = len([value for _, value in board("always", key=None, mode="object") if value is not None])
 
         # 共享状态
         progress_info = {
@@ -865,7 +866,7 @@ class Summon:
                                      for _, c in board('F', key=_key)
                                      if c != board.get_config(_key, "MINES")])
 
-                total_all = init_weak_times + weak_times
+                total_all = init_value_num + weak_times
 
                 # 题板所有位置计数
                 total_blank = len([None for _ in board('N')])
@@ -946,5 +947,5 @@ class Summon:
         progress_info["running"] = False
         progress_info["step"] = False
         thread.join()
-        print(board.show_board())  # 清空残留
+        print("\n" + board.show_board())  # 清空残留
         return board

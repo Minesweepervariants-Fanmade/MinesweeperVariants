@@ -125,7 +125,7 @@ class ValueQuess(AbstractClueValue):
         return self
 
     def weaker_times(self) -> int:
-        return 1
+        return 0
 
 
 class ValueCross(AbstractClueValue):
@@ -156,4 +156,4 @@ class ValueCross(AbstractClueValue):
         return self
 
     def weaker_times(self) -> int:
-        return 1
+        return 0
