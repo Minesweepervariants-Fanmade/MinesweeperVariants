@@ -124,6 +124,9 @@ class ValueQuess(AbstractClueValue):
     def weaker(self, board: AbstractBoard) -> AbstractValue:
         return self
 
+    def weaker_times(self) -> int:
+        return 0
+
 
 class ValueCross(AbstractClueValue):
     """
@@ -151,3 +154,6 @@ class ValueCross(AbstractClueValue):
 
     def weaker(self, board: AbstractBoard) -> AbstractValue:
         return self
+
+    def weaker_times(self) -> int:
+        return 0
