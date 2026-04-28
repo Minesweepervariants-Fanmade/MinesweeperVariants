@@ -106,6 +106,9 @@ class MinesTag(AbstractMinesValue):
     def code(self) -> bytes:
         return b""
 
+    def weaker(self, board: AbstractBoard) -> AbstractValue:
+        return self
+
 
 class Rule0F(AbstractMinesClueRule):
     name = "_0F"
@@ -146,3 +149,6 @@ class ValueCircle(AbstractMinesValue):
     @classmethod
     def type(cls) -> bytes:
         return b"O"
+
+    def weaker(self, board: AbstractBoard) -> AbstractValue:
+        return self
