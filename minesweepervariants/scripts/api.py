@@ -301,6 +301,8 @@ if __name__ == "__main__":
                         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 当前运行中的进程数: {emulator.process_count}, 活跃客户端数: {active_clients}")
                     last_print_time = current_time
                     print_rate <<= 1
+                    if print_rate > 3600:
+                        print_rate = 3600
             if not emulator.process_count:
                 print_rate = 60
             time.sleep(1)
