@@ -109,7 +109,7 @@ class Summon:
         # 左线规则初始化
         self.mines_rules = MinesRules(mines_rules)
         for rule in mines_rules:
-            if "R" in rule.name:
+            if "R" in rule.id:
                 continue
             rules.append(rule.get_name())
 
@@ -204,7 +204,7 @@ class Summon:
                      board.rules["mines_clue_rules"])
 
         for existing_rule in all_rules:
-            if existing_rule.name == rule_id and existing_rule.__data == data:
+            if existing_rule.id == rule_id and existing_rule.__data == data:
                 return existing_rule
 
         # # 不需要添加直接返回

@@ -142,15 +142,9 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         """
 
     def get_name(self):
-        if type(self.name) is str:
-            name = self.name[:]
-        elif type(self.name) in [tuple, list]:
-            name = self.name[0][:]
-        else:
-            name = ""
         if self.__data is None:
-            return name
-        return name + ":" + self.__data
+            return self.id
+        return self.id + ":" + self.__data
 
     def onboard_init(self, board: 'AbstractBoard'):
         """
