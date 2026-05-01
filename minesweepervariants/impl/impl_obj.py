@@ -93,7 +93,64 @@ def get_board(name: Optional[str] = None):
                 return i
 
 
+def _iter_concrete_rule_classes():
+    for cls in get_all_subclasses(AbstractRule):
+        if cls in [
+            AbstractClueRule,
+            AbstractMinesClueRule,
+            AbstractMinesRule
+        ]:
+            continue
+        yield cls
+
+
+def _match_alias(alias_name: str, target: str, ignore_case: bool) -> bool:
+    if ignore_case:
+        return alias_name.casefold() == target.casefold()
+    return alias_name == target
+
+
+def _resolve_rule_alias(name: str) -> str:
+    current = name
+    seen = set()
+    while True:
+        if current in seen:
+            return current
+        seen.add(current)
+
+        matched_base = None
+        for cls in _iter_concrete_rule_classes():
+            aliases = getattr(cls, 'aliases', ()) or ()
+            for ignore_case in (False, True):
+                for alias in aliases:
+                    alias_name = alias[0] if isinstance(alias, tuple) else alias
+                    if not isinstance(alias_name, str):
+                        continue
+                    if not _match_alias(alias_name, current, ignore_case):
+                        continue
+
+                    if isinstance(alias, tuple) and len(alias) > 1:
+                        alias_obj = alias[1]
+                        base = getattr(alias_obj, 'base', None)
+                        if isinstance(base, str) and base.strip():
+                            matched_base = base.strip()
+                        else:
+                            matched_base = cls.id
+                    else:
+                        matched_base = cls.id
+                    break
+                if matched_base is not None:
+                    break
+            if matched_base is not None:
+                break
+
+        if matched_base is None:
+            return current
+        current = matched_base
+
+
 def get_rule(name: str) -> type:
+    rule_name = _resolve_rule_alias(name)
     all_sub_rule = get_all_subclasses(AbstractRule)
     for i in all_sub_rule:
         if i in [
@@ -102,7 +159,7 @@ def get_rule(name: str) -> type:
             AbstractMinesRule
         ]:
             continue
-        if hasattr(i, 'id') and i.id == name:
+        if hasattr(i, 'id') and i.id == rule_name:
             return i
     for i in all_sub_rule:
         if i in [
@@ -111,7 +168,7 @@ def get_rule(name: str) -> type:
             AbstractMinesRule
         ]:
             continue
-        if hasattr(i, 'id') and i.id.casefold() == name.casefold():
+        if hasattr(i, 'id') and i.id.casefold() == rule_name.casefold():
             return i
     raise ValueError(f"未找到规则[{name}]")
 
