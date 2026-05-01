@@ -10,6 +10,7 @@ import json
 import shutil
 import textwrap
 import sys
+import locale
 from pathlib import Path
 from importlib.util import find_spec
 
@@ -77,6 +78,8 @@ parser.add_argument("--output-path", default=None,
                     help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
 parser.add_argument("--log-path", default=None,
                     help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
+parser.add_argument("--lang", default=defaults.get("lang"),
+                    help="输出语言代码，例如: en_US, zh_CN。")
 parser_list.add_argument("--json", action="store_true", default=False)
 args = parser.parse_args()
 
@@ -101,24 +104,14 @@ def _build_list_display(rule_info, rule_key):
     """构建 list 命令输出的 display 字符串。"""
     import locale as locale_mod
 
-    # 从 name_map 中选择本地化名称
+    # 从 name_map 中选择本地化名称；优先当前 locale，再短码、再 default，最后回退到任意已有名称或 rule_key
     name_map = rule_info.get("name", {})
     if isinstance(name_map, str):
         display_name = name_map
     else:
-        lang = locale_mod.getdefaultlocale()[0]
-        candidates = [lang]
-        if lang and "_" in lang:
-            candidates.append(lang.split("_", 1)[0])
-        candidates.append("default")
+        lang = locale_mod.getlocale()[0]
+        display_name = name_map.get(lang) or name_map.get("default", rule_info.get("id", "Unknown"))
 
-        display_name = rule_key
-        for candidate in candidates:
-            if candidate and candidate in name_map and name_map[candidate]:
-                display_name = name_map[candidate]
-                break
-        if not display_name and name_map:
-            display_name = next(iter(name_map.values()), rule_key)
 
     # 构建作者文本
     author = rule_info.get("author", {})
@@ -168,6 +161,27 @@ def handle_list_json_output(rule_list):
 
 
 def main():
+    if args.log_path:
+        output_path = Path(args.log_path).expanduser().absolute()
+        output_path.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG["log_path"] = str(output_path)
+        # 重新初始化 logger 以使用新路径
+        tool.LOGGER = None
+        get_logger()
+
+    if args.lang:
+        try:
+            locale.setlocale(locale.LC_ALL, args.lang)
+            DEFAULT_CONFIG["lang"] = args.lang
+        except locale.Error as le:
+            get_logger().warning(f"无法设置语言: {args.lang}，使用系统默认。 错误: {le}")
+        get_logger().info(f"输出语言: {locale.getlocale()}")
+
+    if args.output_path:
+        output_path = Path(args.output_path).expanduser().absolute()
+        output_path.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG["output_path"] = str(output_path)
+
     if args.command == "list":
         from minesweepervariants.impl import rule
         rule_list = rule.get_all_rules()
@@ -178,19 +192,6 @@ def main():
             handle_list_text_output(rule_list)
 
         return
-
-    if args.log_path:
-        output_path = Path(args.log_path).expanduser().absolute()
-        output_path.mkdir(parents=True, exist_ok=True)
-        DEFAULT_CONFIG["log_path"] = str(output_path)
-        # 重新初始化 logger 以使用新路径
-        tool.LOGGER = None
-        get_logger()
-
-    if args.output_path:
-        output_path = Path(args.output_path).expanduser().absolute()
-        output_path.mkdir(parents=True, exist_ok=True)
-        DEFAULT_CONFIG["output_path"] = str(output_path)
 
     if args.size is None:
         parser.print_help()
