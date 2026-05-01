@@ -97,6 +97,56 @@ def print_with_indent(text, indent="\t"):
     print()
 
 
+def _build_list_display(rule_info, rule_key):
+    """构建 list 命令输出的 display 字符串。"""
+    import locale as locale_mod
+    
+    # 从 name_map 中选择本地化名称
+    name_map = rule_info.get("name", {})
+    if isinstance(name_map, str):
+        display_name = name_map
+    else:
+        lang = locale_mod.getdefaultlocale()[0]
+        candidates = [lang]
+        if lang and "_" in lang:
+            candidates.append(lang.split("_", 1)[0])
+        candidates.append("default")
+        
+        display_name = rule_key
+        for candidate in candidates:
+            if candidate and candidate in name_map and name_map[candidate]:
+                display_name = name_map[candidate]
+                break
+        if not display_name and name_map:
+            display_name = next(iter(name_map.values()), rule_key)
+    
+    # 构建作者文本
+    author = rule_info.get("author", {})
+    author_text = ""
+    if isinstance(author, dict):
+        a_name = author.get("name", "")
+        a_id = author.get("id", "")
+        if a_name and a_id:
+            author_text = f"{a_name}({a_id})"
+        else:
+            author_text = a_name or a_id
+    
+    # 构建 doc 文本
+    doc_map = rule_info.get("doc", {})
+    doc_text = ""
+    if isinstance(doc_map, dict):
+        doc_text = doc_map.get("default", "") or (next(iter(doc_map.values()), "") if doc_map else "")
+    
+    # 构建最终 display 字符串
+    rule_id = rule_info.get("id", rule_key)
+    image = rule_info.get("image", "")
+    
+    author_part = f"[@Author={author_text}]" if author_text else ""
+    image_part = f"[@Image={image}]" if image else ""
+    
+    return f"[{rule_id}]{display_name}{author_part}{image_part}: {doc_text}"
+
+
 def handle_list_text_output(rule_list):
     rule_line_name_map = {
         "L": "\n\n左线规则:",
@@ -108,7 +158,9 @@ def handle_list_text_output(rule_list):
         if rule_list.get(rule_line):
             print(rule_line_name_map[rule_line], flush=True)
         for rule_info in rule_list.get(rule_line, []):
-            print_with_indent(rule_info["display"])
+            rule_id = rule_info.get("id", "")
+            display = _build_list_display(rule_info, rule_id)
+            print_with_indent(display)
 
 
 def handle_list_json_output(rule_list):
