@@ -1,0 +1,118 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "CLI_LIST_RULE_DOCS"
+msgstr "List documentation for all rules"
+
+msgid "CLI_BOARD_SIZE"
+msgstr "Board size"
+
+msgid "CLI_TOTAL_MINES"
+msgstr "Total mines"
+
+msgid "CLI_RULE_NAMES"
+msgstr "Rule names"
+
+msgid "CLI_EARLY_RULE_NAMES"
+msgstr "Left-rule names used only during initial board generation; multiple allowed"
+
+msgid "CLI_DYE_RULE_NAME"
+msgstr "Dye rule name, e.g. @c"
+
+msgid "CLI_MASK_RULE_NAME"
+msgstr "Mask rule name, e.g. @c"
+
+msgid "CLI_USED_R"
+msgstr "Whether to enable R deduction"
+
+msgid "CLI_ATTEMPTS"
+msgstr "Number of board generation attempts"
+
+msgid "CLI_QUERY_RANGE"
+msgstr "Upper clue-count range for board generation. Use x-y for an inclusive range, e.g. 5-8 means between 5 and 8, -8 means at most 8, 5 means at least 5"
+
+msgid "CLI_EARLY_STOP"
+msgstr "Exit immediately when deduction reaches the specified clue count during board generation; this will make the clue board incorrect"
+
+msgid "CLI_VICE_BOARD"
+msgstr "Allow removing vice-board information during board generation"
+
+msgid "CLI_TEST_ONE_BOARD"
+msgstr "Generate only one answer board using the rules"
+
+msgid "CLI_SEED"
+msgstr "Random seed"
+
+msgid "CLI_REPRODUCIBLE_SEED"
+msgstr "Use a reproducible seed to generate the board; this will be much slower"
+
+msgid "CLI_LOG_LEVEL"
+msgstr "Log level, e.g. DEBUG, INFO, WARNING"
+
+msgid "CLI_BOARD_CLASS"
+msgstr "Board class name / board name; usually keep the default"
+
+msgid "CLI_NO_IMAGE"
+msgstr "Do not generate images"
+
+msgid "CLI_FILE_PREFIX"
+msgstr "File name prefix"
+
+msgid "CLI_DYNAMIC_DIG_ROUNDS"
+msgstr "Dynamic clue removal rounds. If omitted: dynamic rules use 100 rounds automatically, other rules use 0; if specified, the value is forced"
+
+msgid "CLI_DYNAMIC_DIG_MAX_BATCH"
+msgstr "Maximum number of cell changes per dynamic clue-removal round"
+
+msgid "CLI_OUTPUT_PATH"
+msgstr "Image output directory; images will be saved here (defaults to the configured path)"
+
+msgid "CLI_LOG_PATH"
+msgstr "Log output directory; logs will be saved here (defaults to the configured path)"
+
+msgid "CLI_LANG"
+msgstr "Output language code, e.g. en_US, zh_CN."
+
+msgid "OUT_LEFT_RULES"
+msgstr "Left rules:"
+
+msgid "OUT_MIDDLE_RULES"
+msgstr "Middle rules:"
+
+msgid "OUT_RIGHT_RULES"
+msgstr "Right rules:"
+
+msgid "OUT_BOARD_INFO"
+msgstr "Board info: "
+
+msgid "OUT_SIZE"
+msgstr "SIZE:"
+
+msgid "OUT_TOTAL"
+msgstr "TOTAL:"
+
+msgid "OUT_AUTO"
+msgstr "auto"
+
+msgid "OUT_DYE"
+msgstr "DYE:"
+
+msgid "OUT_EMPTY"
+msgstr "empty"
+
+msgid "OUT_MASK"
+msgstr "MASK:"
+
+msgid "OUT_USED_RULES"
+msgstr "Rules used: RULE:"
+
+msgid "OUT_EARLY_RULE"
+msgstr " EARLY_RULE:"
+
+msgid "OUT_IMAGE_MISSING"
+msgstr "Optional dependency `image` is not installed. Install it with `pip install minesweepervariants[image]`, or add --no-image to skip image rendering."
+
+msgid "OUT_END"
+msgstr "minesweepervariants END"

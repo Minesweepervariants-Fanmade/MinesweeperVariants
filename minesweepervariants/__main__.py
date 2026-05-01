@@ -7,9 +7,11 @@
 # @Version : 1.0.0
 import argparse
 import json
+import gettext
 import shutil
 import textwrap
 import sys
+import locale
 from pathlib import Path
 from importlib.util import find_spec
 
@@ -20,63 +22,71 @@ from minesweepervariants import test
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.utils.tool import get_logger
 from minesweepervariants.utils import tool
+from minesweepervariants.utils.i18n import init_gettext
 
 # ==== 获取默认值 ====
 defaults = {}
 defaults.update(DEFAULT_CONFIG)
+
+pre_parser = argparse.ArgumentParser(add_help=False)
+pre_parser.add_argument("--lang", default=defaults.get("lang"))
+pre_args, _ = pre_parser.parse_known_args()
+_ = init_gettext(pre_args.lang)
 
 # ==== 参数解析 ====
 parser = argparse.ArgumentParser(description="")
 
 subparsers = parser.add_subparsers(dest='command', required=False)
 
-parser_list = subparsers.add_parser('list', help='列出所有规则的文档说明')
+parser_list = subparsers.add_parser('list', help=_('CLI_LIST_RULE_DOCS'))
 
 parser.add_argument("-s", "--size", nargs="+",
-                    help="纸笔的题板边长")
+                    help=_("CLI_BOARD_SIZE"))
 parser.add_argument("-t", "--total", type=int, default=defaults.get("total"),
-                    help="总雷数")
+                    help=_("CLI_TOTAL_MINES"))
 parser.add_argument("-c", "--rules", nargs="+", default=[],
-                    help="所有规则名")
+                    help=_("CLI_RULE_NAMES"))
 parser.add_argument("-E", "--early-rules", nargs="+", default=[],
-                    help="仅在初始题板生成阶段使用的左线规则名，可多个")
+                    help=_("CLI_EARLY_RULE_NAMES"))
 parser.add_argument("-d", "--dye", default=defaults.get("dye"),
-                    help="染色规则名称，如 @c")
+                    help=_("CLI_DYE_RULE_NAME"))
 parser.add_argument("-m", "--mask", default=defaults.get("dye"),
-                    help="染色规则名称，如 @c")
+                    help=_("CLI_MASK_RULE_NAME"))
 parser.add_argument("-r", "--used-r", action="store_true", default=defaults.get("used_r"),
-                    help="推理是否加R")
+                    help=_("CLI_USED_R"))
 parser.add_argument("-a", "--attempts", type=int, default=defaults.get("attempts"),
-                    help="尝试生成题板次数")
+                    help=_("CLI_ATTEMPTS"))
 parser.add_argument("-q", "--query", default="",
-                    help="生成题板的最高线索数范围 使用x-y表示(包含), 例如 5-8 表示线索数在5到8之间, -8表示不超过8, 5表示不少于5")
+                    help=_("CLI_QUERY_RANGE"))
 parser.add_argument("-e", "--early-stop", action="store_true", default=False,
-                    help="生成题板的时候达到指定线索数量推理的时候 直接退出 这会导致线索图不正确")
+                    help=_("CLI_EARLY_STOP"))
 parser.add_argument("-v", "--vice-board", action="store_true", default=False,
-                    help="启用后生成题板的时候可以删除副板的信息")
+                    help=_("CLI_VICE_BOARD"))
 parser.add_argument("-T", "--test", action="store_true", default=False,
-                    help="启用后将仅生成一份使用了规则的答案题板")
+                    help=_("CLI_TEST_ONE_BOARD"))
 parser.add_argument("-S", "--seed", type=int, default=defaults.get("seed"),
-                    help="随机种子")
+                    help=_("CLI_SEED"))
 parser.add_argument("-O", "--onseed", action="store_true", default=False,
-                    help="启用可循的种子来生成题板,速度会大幅降低")
+                    help=_("CLI_REPRODUCIBLE_SEED"))
 parser.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
-                    help="日志等级，如 DEBUG、INFO、WARNING")
+                    help=_("CLI_LOG_LEVEL"))
 parser.add_argument("-B", "--board-class", default=defaults.get("board_class"),
-                    help="题板的类名/题板的名称 通常使用默认值即可")
+                    help=_("CLI_BOARD_CLASS"))
 parser.add_argument("-I", "--no-image", action="store_true", default=defaults.get("no_image"),
-                    help="是否不生成图片")
+                    help=_("CLI_NO_IMAGE"))
 parser.add_argument("-F", "--file-name", default="",
-                    help="文件名的前缀")
+                    help=_("CLI_FILE_PREFIX"))
 parser.add_argument("-D", "--dynamic-dig-rounds", type=int, default=None,
-                    help="动态删线索模式迭代轮数。未指定时: 动态规则自动100轮, 其他规则为0; 显式指定则强制使用")
+                    help=_("CLI_DYNAMIC_DIG_ROUNDS"))
 parser.add_argument("-M", "--dynamic-dig-max-batch", type=int, default=defaults.get("dynamic_dig_max_batch"),
-                    help="动态删线索每轮最大改动格数")
+                    help=_("CLI_DYNAMIC_DIG_MAX_BATCH"))
 
 parser.add_argument("--output-path", default=None,
-                    help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
+                    help=_("CLI_OUTPUT_PATH"))
 parser.add_argument("--log-path", default=None,
-                    help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
+                    help=_("CLI_LOG_PATH"))
+parser.add_argument("--lang", default=defaults.get("lang"),
+                    help=_("CLI_LANG"))
 parser_list.add_argument("--json", action="store_true", default=False)
 args = parser.parse_args()
 
@@ -101,24 +111,14 @@ def _build_list_display(rule_info, rule_key):
     """构建 list 命令输出的 display 字符串。"""
     import locale as locale_mod
 
-    # 从 name_map 中选择本地化名称
+    # 从 name_map 中选择本地化名称；优先当前 locale，再短码、再 default，最后回退到任意已有名称或 rule_key
     name_map = rule_info.get("name", {})
     if isinstance(name_map, str):
         display_name = name_map
     else:
-        lang = locale_mod.getdefaultlocale()[0]
-        candidates = [lang]
-        if lang and "_" in lang:
-            candidates.append(lang.split("_", 1)[0])
-        candidates.append("default")
+        lang = locale_mod.getlocale()[0]
+        display_name = name_map.get(lang) or name_map.get("default", rule_info.get("id", "Unknown"))
 
-        display_name = rule_key
-        for candidate in candidates:
-            if candidate and candidate in name_map and name_map[candidate]:
-                display_name = name_map[candidate]
-                break
-        if not display_name and name_map:
-            display_name = next(iter(name_map.values()), rule_key)
 
     # 构建作者文本
     author = rule_info.get("author", {})
@@ -149,9 +149,9 @@ def _build_list_display(rule_info, rule_key):
 
 def handle_list_text_output(rule_list):
     rule_line_name_map = {
-        "L": "\n\n左线规则:",
-        "M": "\n\n中线规则:",
-        "R": "\n\n右线规则:",
+        "L": "\n\n" + _("OUT_LEFT_RULES"),
+        "M": "\n\n" + _("OUT_MIDDLE_RULES"),
+        "R": "\n\n" + _("OUT_RIGHT_RULES"),
     }
 
     for rule_line in ["L", "M", "R"]:
@@ -168,6 +168,20 @@ def handle_list_json_output(rule_list):
 
 
 def main():
+    if args.log_path:
+        output_path = Path(args.log_path).expanduser().absolute()
+        output_path.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG["log_path"] = str(output_path)
+        # 重新初始化 logger 以使用新路径
+        tool.LOGGER = None
+        get_logger()
+
+
+    if args.output_path:
+        output_path = Path(args.output_path).expanduser().absolute()
+        output_path.mkdir(parents=True, exist_ok=True)
+        DEFAULT_CONFIG["output_path"] = str(output_path)
+
     if args.command == "list":
         from minesweepervariants.impl import rule
         rule_list = rule.get_all_rules()
@@ -178,19 +192,6 @@ def main():
             handle_list_text_output(rule_list)
 
         return
-
-    if args.log_path:
-        output_path = Path(args.log_path).expanduser().absolute()
-        output_path.mkdir(parents=True, exist_ok=True)
-        DEFAULT_CONFIG["log_path"] = str(output_path)
-        # 重新初始化 logger 以使用新路径
-        tool.LOGGER = None
-        get_logger()
-
-    if args.output_path:
-        output_path = Path(args.output_path).expanduser().absolute()
-        output_path.mkdir(parents=True, exist_ok=True)
-        DEFAULT_CONFIG["output_path"] = str(output_path)
 
     if args.size is None:
         parser.print_help()
@@ -246,13 +247,13 @@ def main():
     DEFAULT_CONFIG["log_file_name"] = args.file_name
     tool.LOGGER = None
     get_logger().info(
-        f"题板信息: "
-        f"SIZE:{args.size} "
-        f"TOTAL:{args.total if args.total != -1 else '自动'} "
-        f"DYE:{args.dye if args.dye else '空'} "
-        f"MASK:{args.mask if args.mask else '空'}"
+        f"{_('OUT_BOARD_INFO')}"
+        f"{_('OUT_SIZE')}{args.size} "
+        f"{_('OUT_TOTAL')}{args.total if args.total != -1 else _('OUT_AUTO')} "
+        f"{_('OUT_DYE')}{args.dye if args.dye else _('OUT_EMPTY')} "
+        f"{_('OUT_MASK')}{args.mask if args.mask else _('OUT_EMPTY')}"
     )
-    get_logger().info(f"使用规则: RULE:{args.rules} EARLY_RULE:{args.early_rules}")
+    get_logger().info(f"{_('OUT_USED_RULES')}{args.rules}{_('OUT_EARLY_RULE')}{args.early_rules}")
 
     try:
         if args.test:
@@ -271,8 +272,7 @@ def main():
             )
         elif not args.query:
             if not args.no_image and find_spec("PIL") is None:
-                print(
-                    "可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片.")
+                print(_("OUT_IMAGE_MISSING"))
                 return
             puzzle(
                 log_lv=args.log_lv,
@@ -320,7 +320,7 @@ def main():
         get_logger().error("\n" + ''.join(traceback.format_exception(type(e), e, e.__traceback__)))
         raise e
     finally:
-        get_logger().info("minesweepervariants END")
+        get_logger().info(_("OUT_END"))
 
 
 if __name__ == "__main__":

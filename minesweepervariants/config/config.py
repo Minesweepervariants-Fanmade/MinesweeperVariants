@@ -26,6 +26,7 @@ DEFAULT_CONFIG = {
     "output_path": ".\\output",   # 保存路径，默认为工作目录下的output
     "timeout": 0,                 # 求解器超时时间（秒），0为无限制
     "workes_number": 5,          # 多线程数量
+    "lang": "zh_CN",           # 输出语言，默认中文
 
     # 动态删线索模式(默认关闭)
     "dynamic_dig_rounds": 0,     # >0 时启用动态删线索迭代轮数
