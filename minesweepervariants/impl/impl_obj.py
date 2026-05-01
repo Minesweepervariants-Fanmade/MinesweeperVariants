@@ -151,25 +151,20 @@ def _resolve_rule_alias(name: str) -> str:
 
 def get_rule(name: str) -> type:
     rule_name = _resolve_rule_alias(name)
-    all_sub_rule = get_all_subclasses(AbstractRule)
-    for i in all_sub_rule:
-        if i in [
+    all_sub_rule = [
+        i for i in get_all_subclasses(AbstractRule) if i not in [
             AbstractClueRule,
             AbstractMinesClueRule,
             AbstractMinesRule
-        ]:
-            continue
-        if hasattr(i, 'id') and i.id == rule_name:
-            return i
-    for i in all_sub_rule:
-        if i in [
-            AbstractClueRule,
-            AbstractMinesClueRule,
-            AbstractMinesRule
-        ]:
-            continue
-        if hasattr(i, 'id') and i.id.casefold() == rule_name.casefold():
-            return i
+        ]
+    ]
+    for _name in [name, rule_name]:
+        for i in all_sub_rule:
+            if hasattr(i, 'id') and i.id == _name:
+                return i
+        for i in all_sub_rule:
+            if hasattr(i, 'id') and i.id.casefold() == _name.casefold():
+                return i
     raise ValueError(f"未找到规则[{name}]")
 
 
