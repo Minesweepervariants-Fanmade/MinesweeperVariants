@@ -1,0 +1,118 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "CLI_LIST_RULE_DOCS"
+msgstr "列出所有规则的文档说明"
+
+msgid "CLI_BOARD_SIZE"
+msgstr "纸笔的题板边长"
+
+msgid "CLI_TOTAL_MINES"
+msgstr "总雷数"
+
+msgid "CLI_RULE_NAMES"
+msgstr "所有规则名"
+
+msgid "CLI_EARLY_RULE_NAMES"
+msgstr "仅在初始题板生成阶段使用的左线规则名，可多个"
+
+msgid "CLI_DYE_RULE_NAME"
+msgstr "染色规则名称，如 @c"
+
+msgid "CLI_MASK_RULE_NAME"
+msgstr "染色规则名称，如 @c"
+
+msgid "CLI_USED_R"
+msgstr "推理是否加R"
+
+msgid "CLI_ATTEMPTS"
+msgstr "尝试生成题板次数"
+
+msgid "CLI_QUERY_RANGE"
+msgstr "生成题板的最高线索数范围 使用x-y表示(包含), 例如 5-8 表示线索数在5到8之间, -8表示不超过8, 5表示不少于5"
+
+msgid "CLI_EARLY_STOP"
+msgstr "生成题板的时候达到指定线索数量推理的时候 直接退出 这会导致线索图不正确"
+
+msgid "CLI_VICE_BOARD"
+msgstr "启用后生成题板的时候可以删除副板的信息"
+
+msgid "CLI_TEST_ONE_BOARD"
+msgstr "启用后将仅生成一份使用了规则的答案题板"
+
+msgid "CLI_SEED"
+msgstr "随机种子"
+
+msgid "CLI_REPRODUCIBLE_SEED"
+msgstr "启用可循的种子来生成题板,速度会大幅降低"
+
+msgid "CLI_LOG_LEVEL"
+msgstr "日志等级，如 DEBUG、INFO、WARNING"
+
+msgid "CLI_BOARD_CLASS"
+msgstr "题板的类名/题板的名称 通常使用默认值即可"
+
+msgid "CLI_NO_IMAGE"
+msgstr "是否不生成图片"
+
+msgid "CLI_FILE_PREFIX"
+msgstr "文件名的前缀"
+
+msgid "CLI_DYNAMIC_DIG_ROUNDS"
+msgstr "动态删线索模式迭代轮数。未指定时: 动态规则自动100轮, 其他规则为0; 显式指定则强制使用"
+
+msgid "CLI_DYNAMIC_DIG_MAX_BATCH"
+msgstr "动态删线索每轮最大改动格数"
+
+msgid "CLI_OUTPUT_PATH"
+msgstr "图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）"
+
+msgid "CLI_LOG_PATH"
+msgstr "日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）"
+
+msgid "CLI_LANG"
+msgstr "输出语言代码，例如: en_US, zh_CN。"
+
+msgid "OUT_LEFT_RULES"
+msgstr "左线规则:"
+
+msgid "OUT_MIDDLE_RULES"
+msgstr "中线规则:"
+
+msgid "OUT_RIGHT_RULES"
+msgstr "右线规则:"
+
+msgid "OUT_BOARD_INFO"
+msgstr "题板信息: "
+
+msgid "OUT_SIZE"
+msgstr "SIZE:"
+
+msgid "OUT_TOTAL"
+msgstr "TOTAL:"
+
+msgid "OUT_AUTO"
+msgstr "自动"
+
+msgid "OUT_DYE"
+msgstr "DYE:"
+
+msgid "OUT_EMPTY"
+msgstr "空"
+
+msgid "OUT_MASK"
+msgstr "MASK:"
+
+msgid "OUT_USED_RULES"
+msgstr "使用规则: RULE:"
+
+msgid "OUT_EARLY_RULE"
+msgstr " EARLY_RULE:"
+
+msgid "OUT_IMAGE_MISSING"
+msgstr "可选依赖`image`未安装，请使用`pip install minesweepervariants[image]`安装, 或者添加--no-image参数不绘制图片."
+
+msgid "OUT_END"
+msgstr "minesweepervariants END"
