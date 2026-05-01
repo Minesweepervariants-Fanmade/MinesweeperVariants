@@ -58,7 +58,7 @@ def recursive_import(module):
                     sys.modules[mod_name] = mod  # 先注册到 sys.modules，避免循环导入问题
                     spec.loader.exec_module(mod)  # 执行模块代码
                 except Exception as e:
-                    get_logger().error(f"Failed to import {mod_name}: {e}")  # 打印错误信息（可选）
+                    get_logger().warning(f"Failed to import RULE script [{mod_name}]: {e}")  # 打印错误信息（可选）
                     continue  # 跳过失败的模块
 
 

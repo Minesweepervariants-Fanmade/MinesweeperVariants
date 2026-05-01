@@ -63,7 +63,31 @@ class TerminalEmulator:
         self.server_socket.listen(5)
         self.running = True
 
+        def get_all_ips():
+            import netifaces
+            ips = []
+            for iface in netifaces.interfaces():
+                addrs = netifaces.ifaddresses(iface)
+                # IPv4地址
+                if netifaces.AF_INET in addrs:
+                    for addr in addrs[netifaces.AF_INET]:
+                        ips.append(addr['addr'])
+                # IPv6地址（过滤掉链路本地地址和临时地址，根据需要保留）
+                # if netifaces.AF_INET6 in addrs:
+                #     for addr in addrs[netifaces.AF_INET6]:
+                #         ipv6 = addr['addr']
+                #         # 去掉IPv6地址末尾的百分号区域ID，例如 'fe80::1%eth0' -> 'fe80::1'
+                #         if '%' in ipv6:
+                #             ipv6 = ipv6.split('%')[0]
+                #         ips.append(ipv6)
+            return ips
+
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 终端服务器启动在 {self.host}:{self.port}")
+        if self.host == "0.0.0.0":
+            all_ips = get_all_ips()
+            print("本机所有IP地址：")
+            for ip in all_ips:
+                print(f"{ip}:{self.port}")
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待连接，使用 {self.front_arg} 执行命令minesweepervariants..")
 
         # 启动主接收线程
@@ -131,7 +155,7 @@ class TerminalEmulator:
                 self.front_arg + args,
                 cwd=os.getcwd(),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stderr=subprocess.PIPE,
                 encoding='utf-8',  # 指定编码
                 errors='replace',  # 替换无法解码的字符
                 universal_newlines=True,   # 自动处理换行符
@@ -213,6 +237,11 @@ class TerminalEmulator:
                 if line:
                     # 将输出添加到队列
                     output_queue.put(line)
+            stderr = process.stderr.read()
+            if stderr:
+                output_queue.put("\n[STDERR]:\n" + stderr + "\n:[STDERR]")
+            else:
+                output_queue.put("\n[STDERR EMPTY]\n")
         except ValueError as e:
             # 当管道关闭时可能发生
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 管道关闭: {str(e)}")
@@ -246,13 +275,17 @@ class TerminalEmulator:
 
 if __name__ == "__main__":
     # 创建并启动终端仿真器
-    port = sys.argv[1] if len(sys.argv) > 1 else 31408
-    emulator = TerminalEmulator(
-        _port=int(port),  # 监听端口
-        host='0.0.0.0',  # 监听所有接口
-        # bat_file='run.bat'  # 要执行的批处理文件
-    )
+    import argparse
 
+    parser = argparse.ArgumentParser(description='终端仿真器')
+    parser.add_argument('-H', '--host', default='0.0.0.0', help='监听的主机地址 (默认: 0.0.0.0)')
+    parser.add_argument('-p', '--port', type=int, default=31408, help='监听的端口号 (默认: 31408)')
+    args = parser.parse_args()
+
+    emulator = TerminalEmulator(
+        _port=args.port,
+        host=args.host,
+    )
     print_rate = 60
     try:
         emulator.start_server()
@@ -268,6 +301,8 @@ if __name__ == "__main__":
                         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 当前运行中的进程数: {emulator.process_count}, 活跃客户端数: {active_clients}")
                     last_print_time = current_time
                     print_rate <<= 1
+                    if print_rate > 3600:
+                        print_rate = 3600
             if not emulator.process_count:
                 print_rate = 60
             time.sleep(1)

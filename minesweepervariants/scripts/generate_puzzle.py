@@ -18,12 +18,7 @@ from minesweepervariants.utils.tool import get_logger, get_random
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.impl_obj import get_seed
 
-from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
-
-# ==== 获取默认值 ====
-CONFIG = {}
-CONFIG.update(DEFAULT_CONFIG)
-CONFIG.update(PUZZLE_CONFIG)
+from minesweepervariants.config.config import DEFAULT_CONFIG
 
 
 def main(
@@ -125,8 +120,8 @@ def main(
     if size_c > 1:
         rule_text += f"x{size_c}"
 
-    if not os.path.exists(CONFIG["output_path"]):
-        os.mkdir(CONFIG["output_path"])
+    if not os.path.exists(DEFAULT_CONFIG["output_path"]):
+        os.mkdir(DEFAULT_CONFIG["output_path"])
 
     i, mask = 1, 0
     for key in _board.get_board_keys():
@@ -142,7 +137,7 @@ def main(
     mask = mask.to_bytes(byte_length, "big", signed=False)
     rule_code = [base64.urlsafe_b64encode(rule.encode("utf-8")).decode("utf-8") for rule in rule_code]
 
-    with open(os.path.join(CONFIG["output_path"], f"{file_name or 'demo'}.txt"), "a", encoding="utf-8") as f:
+    with open(os.path.join(DEFAULT_CONFIG["output_path"], f"{file_name or 'demo'}.txt"), "a", encoding="utf-8") as f:
         f.write("\n" + ("=" * 100) + "\n\n生成时间" + logger.get_time() + "\n")
         f.write(f"生成用时:{time_used}s\n")
         f.write(f"总雷数: {total}/{n_num}\n")

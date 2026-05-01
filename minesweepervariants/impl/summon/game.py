@@ -890,12 +890,12 @@ class GameSession:
                 else:
                     break
 
-            print(f"{n_num - len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])}"
-                  f"/{n_num}", end="\r")
+            # print(f"{n_num - len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])}"
+            #       f"/{n_num}", end="\r", flush=True)
             num_clues_used = float("inf")
 
             n_length = len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])
-            print(f"{n_num - n_length}/{n_num}", end="\r")
+            print(f"{n_num - n_length}/{n_num}", end="\r", flush=True)
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
             grouped_hints = self.hint().items()

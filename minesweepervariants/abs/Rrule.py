@@ -121,6 +121,12 @@ class ValueQuess(AbstractClueValue):
     def high_light(self, board: 'AbstractBoard') -> List['AbstractPosition'] | None:
         return []
 
+    def weaker(self, board: AbstractBoard) -> AbstractValue:
+        return self
+
+    def weaker_times(self) -> int:
+        return 0
+
 
 class ValueCross(AbstractClueValue):
     """
@@ -145,3 +151,9 @@ class ValueCross(AbstractClueValue):
 
     def code(self) -> bytes:
         return b""
+
+    def weaker(self, board: AbstractBoard) -> AbstractValue:
+        return self
+
+    def weaker_times(self) -> int:
+        return 0
