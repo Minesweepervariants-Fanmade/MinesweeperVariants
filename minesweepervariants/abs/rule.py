@@ -5,8 +5,9 @@
 # @Author  : Wu_RH
 # @FileName: rule.py
 
-from abc import ABC, abstractmethod
-from typing import List, Union, TYPE_CHECKING, Dict, Tuple, Optional
+from abc import ABC, ABCMeta, abstractmethod
+import locale
+from typing import Any, List, Union, TYPE_CHECKING, Dict, Tuple, Optional
 
 from minesweepervariants.impl.board.dye import sp
 
@@ -15,10 +16,74 @@ if TYPE_CHECKING:
     from minesweepervariants.impl.summon.solver import Switch
 
 
-class AbstractRule(ABC):
+class I18n:
+    def __init__(self, default_val=""):
+        self.default = default_val
+
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+
+    def __str__(self):
+        lang =  locale.getdefaultlocale()[0]
+        if lang in self.__dict__:
+            return self.__dict__[lang]
+        else:
+            return self.default
+
+    def __repr__(self):
+        attrs = ", ".join({f"{k}={v!r}" for k, v in self.__dict__.items() if k != 'default'})
+        if self.default:
+            return f"I18n(default={self.default!r}, {attrs})"
+        return f"I18n({attrs})"
+
+    def __getitem__(self, key):
+        return self.__dict__.get(key)
+
+    def __getattr__(self, name):
+        return self.default
+
+    def __iter__(self):
+        yield from self.__dict__.items()
+
+
+class I18nAutoDict(dict):
+    def __getitem__(self, key: str) -> Any:
+        if key in ("name", "doc", "author"):
+            if key not in self:
+                self[key] = I18n()
+            return super().__getitem__(key)
+        return super().__getitem__(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in ('name', 'doc', 'author'):
+            if isinstance(self.get(key), I18n):
+                self[key].default = value
+                return
+            else:
+                value = I18n(value)
+        super().__setitem__(key, value)
+
+class I18nMeta(ABCMeta):
+    @classmethod
+    def __prepare__(mcs, name: str, bases: tuple, **kwargs: Any) -> dict:
+        return I18nAutoDict()
+    def __new__(mcs, name: str, bases: tuple, namespace: dict, **kwargs: Any):
+        cls = super().__new__(mcs, name, bases, namespace, **kwargs)
+        try:
+            abstract = set(getattr(cls, '__abstractmethods__', set()))
+            for k in ('name', 'doc', 'author'):
+                if k in abstract:
+                    abstract.discard(k)
+            cls.__abstractmethods__ = frozenset(abstract)
+        except Exception:
+            pass
+        return cls
+
+class AbstractRule(ABC, metaclass=I18nMeta):
     # 规则名称
-    name: Union[Tuple[str], List[str], str] = [""]
-    doc: str = ""
+    id: str
+    name: I18n | Any = ""
+    doc: I18n | Any = ""
     author: tuple[str, int]
     lib_only = False
 
