@@ -940,8 +940,7 @@ class Summon:
 
                 if solver_by_csp(
                         self.mines_rules, self.clue_rule, self.mines_clue_rule,
-                    board.clone(), drop_r=self.drop_r, answer_board=self.answer_board,
-                    hint_board=self.answer_board
+                    board.clone(), drop_r=self.drop_r, answer_board=self.answer_board
                 ) == 1:
                     continue
                 board.set_value(pos, clue)
