@@ -94,7 +94,8 @@ def get_board(name: Optional[str] = None):
 
 
 def get_rule(name: str) -> type:
-    for i in get_all_subclasses(AbstractRule):
+    all_sub_rule = get_all_subclasses(AbstractRule)
+    for i in all_sub_rule:
         if i in [
             AbstractClueRule,
             AbstractMinesClueRule,
@@ -102,6 +103,15 @@ def get_rule(name: str) -> type:
         ]:
             continue
         if hasattr(i, 'id') and i.id == name:
+            return i
+    for i in all_sub_rule:
+        if i in [
+            AbstractClueRule,
+            AbstractMinesClueRule,
+            AbstractMinesRule
+        ]:
+            continue
+        if hasattr(i, 'id') and i.id.casefold() == name.casefold():
             return i
     raise ValueError(f"未找到规则[{name}]")
 
