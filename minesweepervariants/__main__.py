@@ -5,11 +5,11 @@
 # @Author  : Wu_RH
 # @FileName: run.py
 # @Version : 1.0.0
-import shutil
-import sys
 import argparse
-import textwrap
 import json
+import shutil
+import textwrap
+import sys
 from pathlib import Path
 from importlib.util import find_spec
 
@@ -77,7 +77,6 @@ parser.add_argument("--output-path", default=None,
                     help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
 parser.add_argument("--log-path", default=None,
                     help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
-parser_list.add_argument("-H", "--shell", action="store_true", default=False)
 parser_list.add_argument("--json", action="store_true", default=False)
 args = parser.parse_args()
 
@@ -98,172 +97,33 @@ def print_with_indent(text, indent="\t"):
     print()
 
 
-def build_rule_doc(name, rule_info, include_author_tag=True, image_name=""):
-    unascii_name = [n for n in rule_info["names"] if not n.isascii()]
-    zh_name = unascii_name[0] if unascii_name else ""
-    names = ", ".join(i for i in rule_info["names"] if i not in [name, zh_name])
-    author = rule_info.get("author", "")
-    if isinstance(author, tuple):
-        author = f"{author[0]}({author[1]})" if author else ""
-    author_part = f"[@Author={author}]" if include_author_tag and author else ""
-    image_part = f"[@Image={image_name}]" if image_name else ""
-    return (
-        f"[{name}]{zh_name}{('(' + names + ')') if names else ''}"
-        f"{author_part}{image_part}: "
-    ) + rule_info["doc"]
-
-
-def collect_rule_images(rule_list):
-    image_dir = Path(__file__).resolve().parent / "impl" / "rule" / "image"
-    image_names = []
-    if image_dir.exists() and image_dir.is_dir():
-        image_names = sorted(p.name for p in image_dir.iterdir() if p.is_file())
-
-    image_map = {}
-    for rule_line in ["L", "M", "R"]:
-        for name in rule_list[rule_line].keys():
-            prefix = f"{name}_"
-            image_name = ""
-            for candidate in image_names:
-                if candidate.startswith(prefix):
-                    image_name = candidate
-                    break
-            image_map[name] = image_name
-    return image_map
-
-
-def traverse_rule_list(rule_list, on_rule, on_line_start=None, on_line_end=None):
-    for rule_line in ["L", "M", "R"]:
-        if on_line_start:
-            on_line_start(rule_line)
-        for name, rule_info in rule_list[rule_line].items():
-            on_rule(rule_line, name, rule_info)
-        if on_line_end:
-            on_line_end(rule_line)
-
-
-def handle_list_shell_output(rule_list, image_map):
-    import random
-
-    encode = "utf-8"
-    split_symbol = ''.join([chr(random.randint(33, 126)) for _ in range(50)])
-    split_name_symbol = ''.join([chr(random.randint(33, 126)) for _ in range(10)])
-    split_symbol_bytes = split_symbol.encode(encode)
-    result = bytearray(split_symbol_bytes + split_name_symbol.encode(encode))
-
-    def on_rule(_, name, rule_info):
-        author = rule_info.get("author", ("", ""))
-        image_name = image_map.get(name, "")
-        part = build_rule_doc(name, rule_info, include_author_tag=True, image_name=image_name)
-        part = split_name_symbol.join(
-            [name] + rule_info["names"] +
-            (list(author) if author else ["", ""]) + [part]
-        )
-        result.extend(part.encode(encode))
-        result.extend(split_symbol_bytes)
-
-    def on_line_end(_):
-        result.extend(split_symbol_bytes)
-
-    traverse_rule_list(rule_list, on_rule=on_rule, on_line_end=on_line_end)
-
-    print("hex_start:" + result.hex() + ":hex_end", end="", flush=True)
-
-
-def handle_list_text_output(rule_list, image_map):
+def handle_list_text_output(rule_list):
     rule_line_name_map = {
         "L": "\n\n左线规则:",
         "M": "\n\n中线规则:",
         "R": "\n\n右线规则:",
     }
 
-    def on_line_start(rule_line):
-        if rule_list[rule_line]:
+    for rule_line in ["L", "M", "R"]:
+        if rule_list.get(rule_line):
             print(rule_line_name_map[rule_line], flush=True)
-
-    def on_rule(_, name, rule_info):
-        doc = build_rule_doc(
-            name,
-            rule_info,
-            include_author_tag=True,
-            image_name=image_map.get(name, ""),
-        )
-        print_with_indent(doc)
-
-    traverse_rule_list(rule_list, on_rule=on_rule, on_line_start=on_line_start)
+        for rule_info in rule_list.get(rule_line, []):
+            print_with_indent(rule_info["display"])
 
 
-def handle_list_json_output(rule_list, image_map):
-    result = {
-        "L": [],
-        "M": [],
-        "R": [],
-    }
-
-    def on_rule(rule_line, name, rule_info):
-        image_name = image_map.get(name, "")
-        # produce full i18n mappings for names/doc in JSON output
-        names_map = rule_info.get("names_i18n") if rule_info.get("names_i18n") else {}
-        if not names_map:
-            # fallback: derive mapping from names list
-            fallback_names = rule_info.get("names", [])
-            if isinstance(fallback_names, list) and fallback_names:
-                names_map = {"default": fallback_names[0]}
-            else:
-                names_map = {"default": str(name)}
-
-        doc_map = rule_info.get("doc_i18n") if rule_info.get("doc_i18n") else {}
-        if not doc_map:
-            # fallback: use doc string
-            doc_str = rule_info.get("doc", "")
-            doc_map = {"default": doc_str} if doc_str else {}
-
-        raw_author = rule_info.get("author", "")
-        author_name = ""
-        author_id = ""
-        if isinstance(raw_author, tuple):
-            if len(raw_author) > 0:
-                author_name = str(raw_author[0])
-            if len(raw_author) > 1:
-                author_id = str(raw_author[1])
-        elif isinstance(raw_author, str):
-            author_name = raw_author
-
-        result[rule_line].append({
-            "rule_line": rule_line,
-            "name": name,
-            "names": names_map,
-            "author": {
-                "name": author_name,
-                "id": author_id,
-            },
-            "image": image_name,
-            "doc": doc_map,
-            "id": rule_info.get("id", ""),
-            "display": build_rule_doc(
-                name,
-                rule_info,
-                include_author_tag=True,
-                image_name=image_name,
-            ),
-        })
-
-    traverse_rule_list(rule_list, on_rule=on_rule)
-    print(json.dumps(result, ensure_ascii=False), end="", flush=True)
+def handle_list_json_output(rule_list):
+    print(json.dumps(rule_list, ensure_ascii=False), end="", flush=True)
 
 
 def main():
     if args.command == "list":
         from minesweepervariants.impl import rule
         rule_list = rule.get_all_rules()
-        image_map = collect_rule_images(rule_list)
 
-        if args.shell:
-            handle_list_shell_output(rule_list, image_map)
-        elif args.json:
-            handle_list_json_output(rule_list, image_map)
+        if args.json:
+            handle_list_json_output(rule_list)
         else:
-            handle_list_text_output(rule_list, image_map)
+            handle_list_text_output(rule_list)
 
         return
 
