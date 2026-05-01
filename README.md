@@ -1,232 +1,237 @@
 # MinesweeperVariants
 
-## **版本：1.3**
+ [简体中文](./README_zh-CN.md)
 
-**14 Minesweeper Variants（简称 14mv）** 是一款扫雷变体的解谜游戏生成器+游戏服务器(前端项目请使用[Minesweeper Variants-Vue](https://koolshow.github.io/MinesweeperVariants-Vue/))。
-支持多种扫雷规则组合，可生成具有**唯一解**的纸笔类谜题。
+## Version 1.3
+
+Minesweeper Variants, also known as 14mv, is a puzzle generator and game server for Minesweeper variants. For the front-end project, use [Minesweeper Variants-Vue](https://koolshow.github.io/MinesweeperVariants-Vue/).
+It supports multiple rule combinations and can generate paper-style puzzles with a unique solution.
 
 ---
 
-## 安装
+## Installation
 
-### 系统要求
+### Requirements
 
-本项目要求安装 Python 3.13（推荐）。请从 [https://www.python.org](https://www.python.org) 下载并安装对应平台的安装包。
+Python 3.13 is recommended. Download the installer for your platform from [https://www.python.org](https://www.python.org).
 
-> 注意：如果你使用虚拟环境（venv/virtualenv）或 Poetry，也可以在虚拟环境中安装本包，推荐在隔离环境中操作以避免与系统包冲突。
+> If you use a virtual environment such as venv/virtualenv or Poetry, install the package there instead. An isolated environment is recommended to avoid conflicts with system packages.
 
-### 通过 pip 安装
-
-使用 pip 安装发布版：
+### Install with pip
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install minesweepervariants
 ```
 
-## 运行
+---
 
-下面给出两种常用的运行方式：启动服务器和运行生成脚本。
+## Running
 
-启动服务器：
+There are two common entry points: the server and the generator CLI.
+
+Start the server:
 
 ```bash
 python -m minesweepervariants.server
-# 运行后不要关闭, 请在浏览器内打开https://koolshow.github.io/MinesweeperVariants-Vue/
+# Keep it running, then open https://koolshow.github.io/MinesweeperVariants-Vue/ in your browser.
 ```
 
-运行生成脚本（生成题板/使用命令行工具）：
+Run the generator CLI:
 
 ```bash
 python -m minesweepervariants
 ```
 
-你可以在运行生成脚本时附加命令行参数，例如 `-s` 指定尺寸，`-t` 指定总雷数，更多参数见下文示例与参数说明。
+You can add command-line options such as `-s` for size and `-t` for total mines. See the examples and options below.
 
 ---
 
-## 开发环境配置
+## Development Setup
 
-本项目推荐使用 [Poetry](https://python-poetry.org/) 进行依赖管理和环境配置。
+Poetry is recommended for dependency management and environment setup.
 
-### 1. 安装 Python（推荐 3.13）
+### 1. Install Python 3.13
 
-Windows 可至 [https://www.python.org](https://www.python.org) 下载官方安装包。
+On Windows, download the official installer from [https://www.python.org](https://www.python.org).
 
-### 2. 安装 Poetry
+### 2. Install Poetry
 
-请参考官方文档安装 Poetry：[https://python-poetry.org/docs/#installation](https://python-poetry.org/docs/#installation)
+Follow the official installation guide: [https://python-poetry.org/docs/#installation](https://python-poetry.org/docs/#installation)
 
-### 3. 安装依赖并自动创建虚拟环境
+### 3. Install dependencies and create a virtual environment
 
-在项目根目录下执行：
+From the project root:
 
 ```bash
 poetry install
 ```
 
-Poetry 会自动为项目创建隔离的虚拟环境并安装所有依赖。
+Poetry will create an isolated virtual environment and install all dependencies automatically.
 
-### 4. 运行项目
+### 4. Run the project
 
-无需手动激活虚拟环境，直接使用 Poetry 运行项目脚本：
+You do not need to activate the virtual environment manually. Use Poetry to run scripts directly:
 
 ```bash
-poetry run python run.py [参数列表]
+poetry run python run.py [arguments]
 ```
 
-其它命令同理，均可用 `poetry run <命令>` 方式执行。
+You can use the same pattern for other commands: `poetry run <command>`.
 
-### 4. C 扩展构建环境（Windows）
+### 5. C extension build tools on Windows
 
-部分依赖可能需要编译 C 扩展，必须安装：
+Some dependencies may require compiled C extensions. Install:
 
-* Visual C++ Build Tools：
+* Visual C++ Build Tools
 
-可从以下地址下载安装：
+Download it from:
 
 > [https://visualstudio.microsoft.com/visual-cpp-build-tools/](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
-勾选内容包括：
+Make sure these components are selected:
 
-* C++ 生成工具（含 MSVC、Windows SDK）
+* C++ build tools, including MSVC and the Windows SDK
 * CMake
 
-安装完成后请重新启动终端。
+Restart the terminal after installation.
 
 ---
 
-## 使用说明
+## Usage
 
-### 运行方式
+### Run command
 
 ```bash
-run [参数列表]
+run [arguments]
 ```
 
-调用主程序，生成谜题。
+This invokes the main generator.
 
 ---
 
-### 常用参数（run）
+### Common run options
 
-|参数|类型|说明|
-|---|---|---|
-|`-s, --size`|整数（必填）|谜题尺寸|
-|`-t, --total`|整数|地雷总数|
-|`-c, --rules`|字符串列表|所有规则列表（如 `2F 1Q V 1K 1F`），会自动分类为左中右线规则|
-|`-E, --early-rules`|字符串列表|仅在最初生成题板阶段生效的附加规则，可多个，且必须是左线规则|
-|`-d, --dye`|字符串|染色函数名（如 `@c`）|
-|`-m, --mask`|字符串|掩码染色规则名称，如 `@c`|
-|`-r, --used-r`|布尔开关|是否在推理中启用 R（默认不启用）|
-|`-a, --attempts`|整数|生成谜题的最大尝试次数|
-|`-q, --query`|字符串范围|线索数量范围过滤，如 `5-8`、`-8`、`5`|
-|`-e, --early-stop`|布尔开关|query 模式下达到线索目标时提前退出（可能导致线索图不正确）|
-|`-v, --vice-board`|布尔开关|允许在生成中删除副板信息|
-|`-T, --test`|布尔开关|仅生成一份使用了规则的答案题板|
-|`-S, --seed`|整数|随机种子（显式设置后会自动将 attempts 设为 1）|
-|`-O, --onseed`|布尔开关|启用可复现种子生成（速度会下降）|
-|`-L, --log-lv`|字符串|日志等级，支持 `DEBUG`、`INFO`、`WARNING` 等|
-|`-B, --board-class`|字符串|底层实现的题板类名/题板名称，通常使用默认值即可|
-|`-I, --no-image`|布尔开关|不生成图片文件|
-|`-F, --file-name`|字符串|输出文件名前缀|
-|`-D, --dynamic-dig-rounds`|整数|动态删线索迭代轮数（不填时按规则自动决定）|
-|`-M, --dynamic-dig-max-batch`|整数|动态删线索每轮最大改动格数|
-|`list`||列出当前所有实现的规则内容|
+| Option                          | Type              | Description                                                                                            |
+| ------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
+| `-s, --size`                  | integer, required | Puzzle size                                                                                            |
+| `-t, --total`                 | integer           | Total mines                                                                                            |
+| `-c, --rules`                 | string list       | All rule names, such as `2F 1Q V 1K 1F`; they are automatically grouped into left/middle/right rules |
+| `-E, --early-rules`           | string list       | Extra left-rule names used only during the initial generation phase; multiple allowed                  |
+| `-d, --dye`                   | string            | Dye rule name, such as `@c`                                                                          |
+| `-m, --mask`                  | string            | Mask dye rule name, such as `@c`                                                                     |
+| `-r, --used-r`                | flag              | Enable R deduction (disabled by default)                                                               |
+| `-a, --attempts`              | integer           | Maximum number of generation attempts                                                                  |
+| `-q, --query`                 | string range      | Clue-count filter, such as `5-8`, `-8`, or `5`                                                   |
+| `-e, --early-stop`            | flag              | Stop early when the query target is reached (may produce an incorrect clue board)                      |
+| `-v, --vice-board`            | flag              | Allow removing vice-board information during generation                                                |
+| `-T, --test`                  | flag              | Generate only one answer board using the rules                                                         |
+| `-S, --seed`                  | integer           | Random seed (setting it explicitly forces attempts to 1)                                               |
+| `-O, --onseed`                | flag              | Use a reproducible seed for generation; this is slower                                                 |
+| `-L, --log-lv`                | string            | Log level, such as `DEBUG`, `INFO`, or `WARNING`                                                 |
+| `-B, --board-class`           | string            | Board class / board name; the default is usually fine                                                  |
+| `-I, --no-image`              | flag              | Do not generate images                                                                                 |
+| `-F, --file-name`             | string            | Output file name prefix                                                                                |
+| `-D, --dynamic-dig-rounds`    | integer           | Dynamic clue-removal rounds (auto-detected when omitted)                                               |
+| `-M, --dynamic-dig-max-batch` | integer           | Maximum number of cell changes per dynamic clue-removal round                                          |
+| `--output-path`               | string            | Output directory for generated images                                                                  |
+| `--log-path`                  | string            | Output directory for logs                                                                              |
+| `--lang`                      | string            | Output language code, for example en_US or zh_CN                                                       |
+| `list`                        |                   | Show all implemented rule documentation                                                                |
 
 ---
 
-### 运行示例
+### Example runs
 
 ```bash
 run -s 5 -c 2F 1k 1q V -d c -r -q 2-4 -I
-# 仅初始生成阶段附加左线规则示例
+# Example with extra left-rule names during initial generation only
 run -s 5 -c 1Q V -E 2F 3L -I
 ```
 
-> 生成一道 5×5 题板，棋盘格染色，规则使用 2F、1Q（左线），V、1K（右线）
-> 携带 R 推理，仅保留线索数在 2 到 4 之间的题板，并关闭图片输出
-> 注：规则名大小写不敏感
+> Generate a 5x5 board with checkerboard dyeing, using 2F and 1Q as left rules, and V and 1K as right rules.
+> Enable R deduction, keep only boards whose clue count is between 2 and 4, and disable image output.
+> Note: rule names are case-insensitive.
 
-`list` 子命令补充参数：
+Additional options for `list`:
 
-|参数|类型|说明|
-|---|---|---|
-|`-H, --shell`|布尔开关|输出机器可解析格式（用于脚本）|
+| Option     | Type | Description                       |
+| ---------- | ---- | --------------------------------- |
+| `--json` | flag | Output rule documentation as JSON |
 
 ---
 
-### 运行结果输出（run）
+### Output files
 
-运行成功后将在 `output/` 目录中生成以下文件：
+Successful runs create the following files under `output/`:
 
 ```
 output/
-├─ output.png   (img 图片默认输出文件)
-├─ demo.txt     (历史所有可推理解密文本)
-├─ demo.png     (题目图片)
-└─ answer.png   (答案图片)
+├─ output.png   (default image output from img)
+├─ demo.txt     (historical deduction text)
+├─ demo.png     (puzzle image)
+└─ answer.png   (solution image)
 ```
 
-`demo.txt` 中将包含以下内容：
+`demo.txt` contains:
 
-* 生成时间
-* 线索表（仅使用 `-q` 时生效）
-* 生成用时
-* 总雷数：格式为 总雷数 / 总空格
-* 种子 / 题号：一串整数数字
-* 题板的题目内容
-* 题板的答案和无问号时内容
-* 题板图片的命令生成指令（以 `img` 开头）
-* 答案图片的命令生成指令
+* Generation time
+* Clue table, when `-q` is used
+* Time spent generating
+* Total mines, formatted as total mines / total cells
+* Seed / puzzle ID as an integer string
+* Puzzle content
+* Solution and non-question-mark content
+* The generated command for the puzzle image, prefixed with `img`
+* The generated command for the answer image
 
 ---
 
-### 图像输出方式
+### Image output command
 
 ```bash
-img [参数列表]
+img [arguments]
 ```
 
-调用图像输出子命令。
+This invokes the image output subcommand.
 
 ---
 
-### 参数列表（img）
+### img options
 
-| 参数                  | 类型     | 说明                             |
-| --------------------- | -------- | -------------------------------- |
-| `-c, --code`        | 字符串   | 题板字节码，表示固定题板内容     |
-| `-r, --rule-text`   | 字符串   | 规则字符串（含空格需加引号）     |
-| `-s, --size`        | 整数     | 单元格尺寸                       |
-| `-o, --output`      | 字符串   | 输出文件名（不含后缀）           |
-| `-w, --white-base`  | 布尔开关 | 是否使用白底                     |
-| `-b, --board-class` | 字符串   | 底层实现的board类,使用默认值即可 |
+| Option                | Type    | Description                                         |
+| --------------------- | ------- | --------------------------------------------------- |
+| `-c, --code`        | string  | Board bytecode representing fixed board content     |
+| `-r, --rule-text`   | string  | Rule string; quote it if it contains spaces         |
+| `-s, --size`        | integer | Cell size                                           |
+| `-o, --output`      | string  | Output file name without extension                  |
+| `-w, --white-base`  | flag    | Use a white background                              |
+| `-b, --board-class` | string  | Underlying board class; the default is usually fine |
 
 ---
 
-### 运行示例
+### Example image command
 
 ```bash
 img -c ... -r "[V]-R*/15-4395498" -o demo -s 100 -w
 ```
 
-> 生成图片 底部文字使用[V]-R*/15-4395498 输出保存至output/demo.png
-> 每个格子的大小是100x100像素的 白底的图片
+> Generate an image using `[V]-R*/15-4395498` as the bottom text and save it to `output/demo.png`.
+> Each cell is 100x100 pixels on a white background.
 
-> 注: `...`需要替换为题板的代码值 其内容被保存至output/demo.txt内部
+> Note: replace `...` with the board code value, which is saved in `output/demo.txt`.
 
 ---
 
-## 开发者文档结构
+## Developer documentation
 
-项目包含完整的开发文档，位于 [`doc/`](./doc) 目录中：
+The full developer documentation lives in the [`doc/`](./doc) directory:
 
-| 文档                                          | 说明               |
-| --------------------------------------------- | ------------------ |
-| [README.md](./doc/README.md)                     | 入口文件           |
-| [dev/rule_mines.md](./doc/dev/rule_mines.md)     | 左线规则接口说明   |
-| [dev/rule_clue_mines.md](./doc/dev/rule_clue.md) | 中线规则接口说明   |
-| [dev/rule_clue.md](./doc/dev/rule_clue.md)       | 右线规则接口说明   |
-| [dev/board_api.md](./doc/dev/board_api.md)       | 题板结构与坐标系统 |
-| [dev/utils.md](./doc/dev/utils.md)               | 工具模块接口       |
+| Document                                      | Description                           |
+| --------------------------------------------- | ------------------------------------- |
+| [README.md](./doc/README.md)                     | Entry point                           |
+| [dev/rule_mines.md](./doc/dev/rule_mines.md)     | Left-rule interface documentation     |
+| [dev/rule_clue_mines.md](./doc/dev/rule_clue.md) | Middle-rule interface documentation   |
+| [dev/rule_clue.md](./doc/dev/rule_clue.md)       | Right-rule interface documentation    |
+| [dev/board_api.md](./doc/dev/board_api.md)       | Board structure and coordinate system |
+| [dev/utils.md](./doc/dev/utils.md)               | Utility module interface              |
