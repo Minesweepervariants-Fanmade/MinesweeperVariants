@@ -100,7 +100,7 @@ def print_with_indent(text, indent="\t"):
 def _build_list_display(rule_info, rule_key):
     """构建 list 命令输出的 display 字符串。"""
     import locale as locale_mod
-    
+
     # 从 name_map 中选择本地化名称
     name_map = rule_info.get("name", {})
     if isinstance(name_map, str):
@@ -111,7 +111,7 @@ def _build_list_display(rule_info, rule_key):
         if lang and "_" in lang:
             candidates.append(lang.split("_", 1)[0])
         candidates.append("default")
-        
+
         display_name = rule_key
         for candidate in candidates:
             if candidate and candidate in name_map and name_map[candidate]:
@@ -119,7 +119,7 @@ def _build_list_display(rule_info, rule_key):
                 break
         if not display_name and name_map:
             display_name = next(iter(name_map.values()), rule_key)
-    
+
     # 构建作者文本
     author = rule_info.get("author", {})
     author_text = ""
@@ -130,20 +130,20 @@ def _build_list_display(rule_info, rule_key):
             author_text = f"{a_name}({a_id})"
         else:
             author_text = a_name or a_id
-    
+
     # 构建 doc 文本
     doc_map = rule_info.get("doc", {})
     doc_text = ""
     if isinstance(doc_map, dict):
         doc_text = doc_map.get("default", "") or (next(iter(doc_map.values()), "") if doc_map else "")
-    
+
     # 构建最终 display 字符串
     rule_id = rule_info.get("id", rule_key)
     image = rule_info.get("image", "")
-    
+
     author_part = f"[@Author={author_text}]" if author_text else ""
     image_part = f"[@Image={image}]" if image else ""
-    
+
     return f"[{rule_id}]{display_name}{author_part}{image_part}: {doc_text}"
 
 
