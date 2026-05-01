@@ -48,14 +48,14 @@ class I18n:
 
 class I18nAutoDict(dict):
     def __getitem__(self, key: str) -> Any:
-        if key in ("name", "doc", "author"):
+        if key in ("name", "doc"):
             if key not in self:
                 self[key] = I18n()
             return super().__getitem__(key)
         return super().__getitem__(key)
 
     def __setitem__(self, key: str, value: Any) -> None:
-        if key in ('name', 'doc', 'author'):
+        if key in ('name', 'doc'):
             if isinstance(self.get(key), I18n):
                 self[key].default = value
                 return
@@ -71,7 +71,7 @@ class I18nMeta(ABCMeta):
         cls = super().__new__(mcs, name, bases, namespace, **kwargs)
         try:
             abstract = set(getattr(cls, '__abstractmethods__', set()))
-            for k in ('name', 'doc', 'author'):
+            for k in ('name', 'doc'):
                 if k in abstract:
                     abstract.discard(k)
             cls.__abstractmethods__ = frozenset(abstract)

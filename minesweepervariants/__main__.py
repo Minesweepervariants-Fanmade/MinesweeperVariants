@@ -202,7 +202,22 @@ def handle_list_json_output(rule_list, image_map):
 
     def on_rule(rule_line, name, rule_info):
         image_name = image_map.get(name, "")
-        names = list(rule_info.get("names", []))
+        # produce full i18n mappings for names/doc in JSON output
+        names_map = rule_info.get("names_i18n") if rule_info.get("names_i18n") else {}
+        if not names_map:
+            # fallback: derive mapping from names list
+            fallback_names = rule_info.get("names", [])
+            if isinstance(fallback_names, list) and fallback_names:
+                names_map = {"default": fallback_names[0]}
+            else:
+                names_map = {"default": str(name)}
+
+        doc_map = rule_info.get("doc_i18n") if rule_info.get("doc_i18n") else {}
+        if not doc_map:
+            # fallback: use doc string
+            doc_str = rule_info.get("doc", "")
+            doc_map = {"default": doc_str} if doc_str else {}
+
         raw_author = rule_info.get("author", "")
         author_name = ""
         author_id = ""
@@ -217,13 +232,14 @@ def handle_list_json_output(rule_list, image_map):
         result[rule_line].append({
             "rule_line": rule_line,
             "name": name,
-            "names": names,
+            "names": names_map,
             "author": {
                 "name": author_name,
                 "id": author_id,
             },
             "image": image_name,
-            "doc": rule_info.get("doc", ""),
+            "doc": doc_map,
+            "id": rule_info.get("id", ""),
             "display": build_rule_doc(
                 name,
                 rule_info,
