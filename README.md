@@ -3,7 +3,7 @@
  [简体中文](./README_zh-CN.md)
 
 > To browse rules, visit the [Minesweeper Variants Rule List](https://minesweepervariants-fanmade.github.io/rule/)
-> For the front-end project, use [Minesweeper Variants-Vue](https://koolshow.github.io/MinesweeperVariants-Vue/)
+> For the front-end project, use [Minesweeper Variants-Vue](https://minesweepervariants-fanmade.github.io/MinesweeperVariants-Vue/)
 
 ## Version 1.3
 
