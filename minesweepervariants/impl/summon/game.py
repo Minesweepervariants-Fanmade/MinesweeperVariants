@@ -12,6 +12,7 @@ import threading
 import time
 from typing import Any, Union, Callable, List, Tuple, Optional
 
+from minesweepervariants.abs.rule import AbstractValue
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -354,14 +355,15 @@ class GameSession:
                      + [self.summon.clue_rule,
                         self.summon.mines_clue_rule]):
             rule.init_clear(board)
-        clues = [i for i in board("CF")]
-        all_schedule = len(clues)
+        clues: list[tuple[AbstractPosition, AbstractValue]] = [i for i in board("CF")]
+        all_schedule = len(clues) + sum(clue[1].weaker_times() for clue in clues)
         self.create_schedule_data = [0.0, time.time()]
         print("game init:", board.show_board(), clues)
         get_random().shuffle(clues)
+        _pos = None
         while clues:
             while True:
-                self.create_schedule_data[0] = (all_schedule - len(clues)) / all_schedule
+                self.create_schedule_data[0] = (all_schedule - len(clues) - sum(clue[1].weaker_times() for clue in clues)) / all_schedule
                 if not clues:
                     break
                 pos, clue = clues.pop()
@@ -373,9 +375,23 @@ class GameSession:
                         self.summon.mines_rules,
                         self.summon.clue_rule,
                         self.summon.mines_clue_rule,
-                        board.clone(), drop_r=False) == 0:
+                        board.clone(), drop_r=self.drop_r) == 0:
                     board.set_value(pos, None)
+                    _pos = pos
                     break
+                if _pos:
+                    board.set_value(pos, clue.weaker(board))
+                    if self.answer_board.get_type(_pos, special='raw') == "C":
+                        board.set_value(pos, MINES_TAG)
+                    elif self.answer_board.get_type(_pos, special='raw') == "F":
+                        board.set_value(pos, self.clue_tag)
+                    if solver_by_csp(
+                        self.summon.mines_rules,
+                        self.summon.clue_rule,
+                        self.summon.mines_clue_rule,
+                        board.clone(), drop_r=self.drop_r
+                    ) == 0:
+                        break
                 board.set_value(pos, clue)
         if solver_by_csp(
             self.summon.mines_rules,
@@ -390,6 +406,7 @@ class GameSession:
             self.drop_r = False
         self.board = board
         self.origin_board = board.clone()
+        print(board)
         return board
 
     def chord_clue(self, clue_pos: AbstractPosition) -> list[AbstractPosition]:
