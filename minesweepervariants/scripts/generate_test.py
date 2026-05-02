@@ -35,9 +35,11 @@ def main(
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     attempt_index = 0
-    s = Summon(size=size, total=total, rules=rules, early_rules=early_rules, board=board_class, mask=mask_dye, dye=dye)
-    if unseed:
-        s.unseed = unseed
+    s = Summon(
+        size=size, total=total, rules=rules, early_rules=early_rules,
+        board=board_class, mask=mask_dye, dye=dye, unseed=unseed
+    )
+    unseed = s.unseed
     total = s.total
     logger.info(f"total mines: {total}")
     _board = None

@@ -91,12 +91,12 @@ def main(
     attempt_index = 0
 
     while True:
-        s = Summon(size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
-                   drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
-                   dynamic_dig_rounds=dynamic_dig_rounds,
-                   dynamic_dig_max_batch=dynamic_dig_max_batch)
-        if unseed:
-            s.unseed = True
+        s = Summon(
+            size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
+            drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board, unseed=unseed,
+            dynamic_dig_rounds=dynamic_dig_rounds, dynamic_dig_max_batch=dynamic_dig_max_batch
+        )
+        unseed = s.unseed
         get_random(seed, new=True)
         a_time = time.time()
         if attempts != -1 and attempt_index >= attempts:

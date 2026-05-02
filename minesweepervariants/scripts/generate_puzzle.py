@@ -48,10 +48,9 @@ def main(
     get_random(seed, new=True)
     s = Summon(size=size, total=total, rules=rules, early_rules=early_rules, board=board_class,
                drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
-               dynamic_dig_rounds=dynamic_dig_rounds,
+               dynamic_dig_rounds=dynamic_dig_rounds, unseed=unseed,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
-    if unseed:
-        s.unseed = True
+    unseed = s.unseed
     total = s.total
     logger.info(f"total mines: {total}")
     _board = None
@@ -62,10 +61,8 @@ def main(
         attempt_index += 1
         s = Summon(size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
                    drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
-                   dynamic_dig_rounds=dynamic_dig_rounds,
+                   dynamic_dig_rounds=dynamic_dig_rounds, unseed=unseed,
                    dynamic_dig_max_batch=dynamic_dig_max_batch)
-        if unseed:
-            s.unseed = True
         logger.info(f"尝试第{attempt_index}次minesweepervariants..", end="\r")
         get_random(seed, new=True)
         a_time = time.time()

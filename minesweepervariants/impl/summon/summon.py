@@ -57,6 +57,7 @@ class Summon:
         vice_board: bool = False,
         dynamic_dig_rounds: Optional[int] = None,
         dynamic_dig_max_batch: Optional[int] = None,
+        unseed: bool = False
     ):
         """
         :param size: 题板的尺寸
@@ -74,7 +75,7 @@ class Summon:
         self.answer_board_code = None
         self.total = total
         self.vice_board = vice_board
-        self.unseed = False
+        self.unseed = unseed
         self.early_mines_rules: list[AbstractMinesRule] = []
         self.dynamic_dig_rounds_override = (None if dynamic_dig_rounds is None else int(dynamic_dig_rounds))
         self.dynamic_dig_rounds = 0
@@ -102,6 +103,8 @@ class Summon:
         clue_rules = self.board.rules["clue_rules"]
         mines_rules = self.board.rules["mines_rules"]
         mines_clue_rules = self.board.rules["mines_clue_rules"]
+        if not [i for i in mines_rules if not isinstance(i, Rule0R)] and not early_rules:
+            self.unseed = False
 
         # 清空列表来让他遍历所有规则名
         rules.clear()
