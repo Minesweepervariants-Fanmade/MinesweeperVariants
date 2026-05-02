@@ -2,10 +2,12 @@
 
  [简体中文](./README_zh-CN.md)
 
+> To browse rules, visit the [Minesweeper Variants Rule List](https://minesweepervariants-fanmade.github.io/rule/)
+> For the front-end project, use [Minesweeper Variants-Vue](https://koolshow.github.io/MinesweeperVariants-Vue/)
+
 ## Version 1.3
 
-Minesweeper Variants, also known as 14mv, is a puzzle generator and game server for Minesweeper variants. For the front-end project, use [Minesweeper Variants-Vue](https://koolshow.github.io/MinesweeperVariants-Vue/).
-It supports multiple rule combinations and can generate paper-style puzzles with a unique solution.
+Minesweeper Variants, also known as 14mv, is a puzzle generator and game server for Minesweeper variants. It supports multiple rule combinations and can generate paper-style puzzles with a unique solution.
 
 ---
 
