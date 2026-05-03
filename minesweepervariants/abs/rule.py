@@ -85,6 +85,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
     name: I18n | Any = ""
     doc: I18n | Any = ""
     author: tuple[str, int]
+    tags: list[str] = ["Untagged"]
     lib_only = False
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
