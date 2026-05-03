@@ -169,14 +169,14 @@ def main(
                 f.write("(已启用-e参数 线索图不准确)\n")
             f.write(f'{clue_freq}\n')
             f.write(f"生成用时:{time_used}s\n")
-            f.write(f"总雷数: {total}/{n_num}\n")
+            f.write(f"总雷数: {s.total}/{n_num}\n")
             f.write(f"种子: {get_seed()}\n")
             f.write("\n" + rule_text)
             f.write("\n" + board_str)
             f.write("\n" + answer)
 
             f.write(f"\n答案: img -c {encode_board(answer_code)} ")
-            f.write(f"-r \"{rule_text}-R{total}/")
+            f.write(f"-r \"{rule_text}-R{s.total}/")
             f.write(f"{n_num}")
             if unseed:
                 f.write(f"-{get_seed()}\" ")
@@ -185,7 +185,7 @@ def main(
             f.write("-o answer\n")
 
             f.write(f"\n题板: img -c {encode_board(board_code)} ")
-            f.write(f"-r \"{rule_text}-R{'*' if drop_r else total}/")
+            f.write(f"-r \"{rule_text}-R{'*' if drop_r else s.total}/")
             f.write(f"{n_num}")
             if unseed:
                 f.write(f"-{get_seed()}\" ")
@@ -198,12 +198,12 @@ def main(
         if image:
             draw_board(board=_board, cell_size=100, output=file_name + "demo",
                     bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
-                                    f"-R{'*' if drop_r else total}/{n_num}" +
+                                    f"-R{'*' if drop_r else s.total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
             draw_board(board=game.answer_board, output=file_name + "answer", cell_size=100,
                     bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
-                                    f"-R{total}/{n_num}" +
+                                    f"-R{s.total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
         return
