@@ -54,7 +54,7 @@ def main(
         if _board is None:
             continue
         logger.info(f"<{attempt_index}>生成用时:{(time_used := time.time() - a_time)}s")
-        logger.info(f"总雷数: {total}")
+        logger.info(f"总雷数: {s.total}")
         logger.info("\n" + _board.show_board())
 
         rule_text = ""
@@ -73,13 +73,13 @@ def main(
         with open(os.path.join(DEFAULT_CONFIG["output_path"], "demo.txt"), "a", encoding="utf-8") as f:
             f.write("\n" + ("=" * 100) + "\n\n生成时间" + logger.get_time() + "\n")
             f.write(f"生成用时:{time_used}s\n")
-            f.write(f"总雷数: {total}\n")
+            f.write(f"总雷数: {s.total}\n")
             f.write(f"种子: {get_seed()}\n")
             f.write(rule_text)
             f.write("\n"+_board.show_board())
 
             f.write(f"\n题板: img -c {_board.encode().hex()} ")
-            f.write(f"-r \"{rule_text}-R{total}")
+            f.write(f"-r \"{rule_text}-R{s.total}")
             if unseed:
                 f.write(" ")
             else:
@@ -89,13 +89,13 @@ def main(
         if image:
             def d():
                 draw_board(board=_board, cell_size=100, output="answer",
-                        bottom_text=rule_text + f"-R{total}-{get_seed()}\n")
+                        bottom_text=rule_text + f"-R{s.total}-{get_seed()}\n")
             threading.Thread(target=d, daemon=True).start()
 
         logger.info("\n\n" + "=" * 20 + "\n")
         logger.info("\n生成时间" + logger.get_time() + "\n")
         logger.info(f"生成用时:{time_used}s\n")
-        logger.info(f"总雷数: {total}\n")
+        logger.info(f"总雷数: {s.total}\n")
         logger.info("\n" + _board.show_board() + "\n")
 
         input("检查完毕后输入回车继续尝试 使用ctrl+c终止进程\r")

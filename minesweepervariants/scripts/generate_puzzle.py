@@ -28,7 +28,7 @@ def main(
         size: tuple[int, int],  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 规则id集合
-    early_rules: list[str],  # 仅初始生成阶段生效的左线规则
+        early_rules: list[str],  # 仅初始生成阶段生效的左线规则
         dye: str,  # 染色规则
         mask_dye: str,  # 异形题板
         drop_r: bool,  # 在推理时候是否隐藏R推理
@@ -51,6 +51,8 @@ def main(
                dynamic_dig_rounds=dynamic_dig_rounds, unseed=unseed,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
     unseed = s.unseed
+    # if total == -2:
+    #     s.random_fill(s.board, s.total)
     total = s.total
     logger.info(f"total mines: {total}")
     _board = None
@@ -77,7 +79,7 @@ def main(
             continue
         n_num = len([None for _ in _board("N")])
         logger.info(f"<{attempt_index}>生成用时:{b_time - a_time}s")
-        logger.info(f"总雷数: {total}/{n_num}")
+        logger.info(f"总雷数: {s.total}/{n_num}")
         logger.info("\n" + _board.show_board())
         info_list.append([
             b_time - a_time,
@@ -137,14 +139,14 @@ def main(
     with open(os.path.join(DEFAULT_CONFIG["output_path"], f"{file_name or 'demo'}.txt"), "a", encoding="utf-8") as f:
         f.write("\n" + ("=" * 100) + "\n\n生成时间" + logger.get_time() + "\n")
         f.write(f"生成用时:{time_used}s\n")
-        f.write(f"总雷数: {total}/{n_num}\n")
+        f.write(f"总雷数: {s.total}/{n_num}\n")
         f.write(f"种子: {get_seed()}\n")
         f.write(rule_text)
         f.write(board_str)
         f.write(answer)
 
         f.write(f"\n答案: img -c {encode_board(answer_code)} ")
-        f.write(f"-r \"{rule_text}-R{total}/")
+        f.write(f"-r \"{rule_text}-R{s.total}/")
         f.write(f"{n_num}")
         if unseed:
             f.write(f"-{get_seed()}\" ")
@@ -153,7 +155,7 @@ def main(
         f.write("-o answer\n")
 
         f.write(f"\n题板: img -c {encode_board(board_code)} ")
-        f.write(f"-r \"{rule_text}-R{'*' if drop_r else total}/")
+        f.write(f"-r \"{rule_text}-R{'*' if drop_r else s.total}/")
         f.write(f"{n_num}")
         if unseed:
             f.write(f"-{get_seed()}\" ")
@@ -172,18 +174,18 @@ def main(
     if image:
         draw_board(board=get_board(board_class)(code=board_code, rules={}), cell_size=100, output=file_name + "demo",
                 bottom_text=(rule_text +
-                                f"-R{'*' if drop_r else total}/{n_num}" +
+                                f"-R{'*' if drop_r else s.total}/{n_num}" +
                                 ("\n" if unseed else f"-{get_seed()}\n")))
 
         draw_board(board=get_board(board_class)(code=answer_code, rules={}), output=file_name + "answer", cell_size=100,
                 bottom_text=(rule_text +
-                                f"-R{total}/{n_num}" +
+                                f"-R{s.total}/{n_num}" +
                                 ("\n" if unseed else f"-{get_seed()}\n")))
 
     logger.info("\n\n" + "=" * 20 + "\n")
     logger.info("\n生成时间" + logger.get_time() + "\n")
     logger.info(f"生成用时:{time_used}s\n")
-    logger.info(f"总雷数: {total}/{n_num}\n")
+    logger.info(f"总雷数: {s.total}/{n_num}\n")
     logger.info(board_str + "\n")
     logger.info(answer + "\n")
     logger.info(f"{board_code}")

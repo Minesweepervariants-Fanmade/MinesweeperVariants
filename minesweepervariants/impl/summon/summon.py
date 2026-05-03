@@ -97,6 +97,8 @@ class Summon:
         # 增量式添加规则
         for rule in rules:
             rule_id, data = self._parse_rule_data(rule)
+            if rule_id == "R" and total == -2:
+                data = "2"
             self.add_rule(self.board, rule_id, data=data)
 
         clue_rules = self.board.rules["clue_rules"]
@@ -139,7 +141,7 @@ class Summon:
                     self.logger.warning("TODO: 多个右线中存在标签")
                     self.clue_rule = rule
                     break
-            else: # 未发现标签规则
+            else:   # 未发现标签规则
                 self.clue_rule = RuleClueSharp(board=self.board, data=clue_rules)
                 rules.append("#")
         else:
@@ -176,11 +178,18 @@ class Summon:
             self.board.dyed(dye)
 
         # 雷总数初始化
-        if total == -1:
-            self.init_total()
-        else:
+        if total > 0:
             self.total = total
-        set_total(total=self.total)
+            set_total(total=self.total)
+        elif total == -1:
+            target_total, _ = self.init_total()
+            self.total = target_total
+            set_total(total=target_total)
+        elif total == -2:
+            # 在total为-2的情况下做不到强制真随机且不固定总雷数
+            self.unseed = True
+        else:
+            raise ValueError("未知的总雷数设置标志")
 
     def _generation_mines_rules(self) -> list[AbstractMinesRule]:
         return self.mines_rules.rules + self.early_mines_rules
@@ -288,7 +297,8 @@ class Summon:
             "interactive": [key for key in self.board.get_board_keys() if
                             self.board.get_config(key, "interactive")],
             "hard_fns": [],
-            "soft_fn": soft_fn
+            "soft_fn": soft_fn,
+            "soft_conds": soft_conds
         }
         for rule in self._generation_mines_rules() + [self.clue_rule, self.mines_clue_rule]:
             rule.suggest_total(info)
@@ -309,9 +319,7 @@ class Summon:
                 continue
 
             if len(info["hard_fns"]) == 0:
-                self.total = n
-                set_total(total=n)
-                return
+                return n, info
 
             model = cp_model.CpModel()
 
@@ -328,14 +336,13 @@ class Summon:
 
             if status in (cp_model.FEASIBLE, cp_model.OPTIMAL):
                 self.logger.debug(f"total set to: {n}")
-                self.total = n
-                set_total(total=n)
-                return
+                return n, info
 
             self.logger.debug(f"total {n} fail, status: {status}")
 
             att_index += 1
             symbol = not symbol
+        return -1, info
 
     def create_puzzle(self):
         if self.summon_board() is None:
@@ -705,6 +712,20 @@ class Summon:
         switch = Switch()
         random = get_random()
         model = board.get_model()
+        if self.total == -2:
+            _, total_info = self.init_total()
+            all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
+            total_var = sum(all_variable)
+            # 添加所有的硬性约束
+            hard_fns = total_info["hard_fns"]
+            for hard_fn in hard_fns:
+                hard_fn(model, total_var)
+            # 对平均所有的总雷数预期值并设置Minimize
+            soft_conds = total_info["soft_conds"][1:]
+            avg_target = int(sum(soft_conds) / len(soft_conds))
+            diff = model.NewIntVar(0, len(all_variable), "diff")
+            model.AddAbsEquality(diff, total_var - avg_target)
+            model.Minimize(diff)
         for rule in self._generation_mines_rules() + [
             self.mines_clue_rule, self.clue_rule
         ]:
@@ -737,14 +758,20 @@ class Summon:
             status, solver = solver_model(model, True)
         if not status:
             return None
+        mines_total = 0
         for key in board.get_board_keys():
             for pos, var in board(mode="variable", key=key, special='raw'):
                 if solver.Value(var):
                     board[pos] = board.get_config(key, "MINES")
+                    if self.total == -2:
+                        mines_total += 1
                 else:
                     board[pos] = board.get_config(key, "VALUE")
         print("\n\n", board)
         print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
+        if self.total == -2:
+            self.total = mines_total
+            set_total(mines_total)
         return board
 
     def fill_valid(self, board: 'AbstractBoard', total: int, model=None) -> Union[AbstractBoard, None]:
