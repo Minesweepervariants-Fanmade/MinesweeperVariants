@@ -178,7 +178,7 @@ class Summon:
             self.board.dyed(dye)
 
         # 雷总数初始化
-        if total > 0:
+        if total >= 0:
             self.total = total
             set_total(total=self.total)
         elif total == -1:
