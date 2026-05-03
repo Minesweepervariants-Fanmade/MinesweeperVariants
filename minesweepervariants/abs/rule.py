@@ -7,7 +7,7 @@
 
 from abc import ABC, ABCMeta, abstractmethod
 import locale
-from typing import Any, List, Union, TYPE_CHECKING, Dict, Tuple, Optional
+from typing import Any, List, Literal, Union, TYPE_CHECKING, Dict, Tuple, Optional
 
 from minesweepervariants.impl.board.dye import sp
 
@@ -79,13 +79,22 @@ class I18nMeta(ABCMeta):
             pass
         return cls
 
+type Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
+                   'Strict R', 'Strict Shape', 'Strong', 'Weak',
+                   'Anti-Construction', 'Connectivity', 'Construction',
+                   'Extensive trial', 'Cryptic', 'Mine-Counting', 'Mine-Value',
+                   'Mine-Position', 'Dyed', 'Fun', 'Number Clue',
+                   'Arrow Clue', 'Multi-Board', 'Aux Board'
+                   'Vanilla Variant', 'Light', 'Heavy',
+                   'WIP', 'Parameter', 'Meta', 'Untagged']
+
 class AbstractRule(ABC, metaclass=I18nMeta):
     # 规则名称
     id: str
     name: I18n | Any = ""
     doc: I18n | Any = ""
     author: tuple[str, int]
-    tags: list[str] = ["Untagged"]
+    tags: list[Tag] = ["Untagged"]
     lib_only = False
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
