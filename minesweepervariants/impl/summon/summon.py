@@ -9,7 +9,6 @@ import threading
 import time
 from typing import Union, List, Optional
 from unittest import result
-from venv import logger
 
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
@@ -137,7 +136,7 @@ class Summon:
         elif len(clue_rules) > 1:
             for rule in clue_rules:
                 if isinstance(rule, AbstractClueSharp):
-                    logger.warning("TODO: 多个右线中存在标签")
+                    self.logger.warning("TODO: 多个右线中存在标签")
                     self.clue_rule = rule
                     break
             else: # 未发现标签规则
