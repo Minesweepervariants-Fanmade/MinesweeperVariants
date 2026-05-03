@@ -5,7 +5,7 @@
 # @Author  : Wu_RH
 # @FileName: Lrule.py
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from ..utils.impl_obj import get_total
 from ..utils.tool import get_logger
@@ -49,16 +49,21 @@ class MinesRules:
 
 class Rule0R(AbstractMinesRule):
     name = "0R"
-    subrules = [[True, "R"]]
     """
     总雷数规则
     """
+
+    def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
+        super().__init__(board, data)
+        self.data: Optional[str] = data
+
     def create_constraints(self, board: 'AbstractBoard', switch):
-        if not self.subrules[0][0]:
-            return
         model = board.get_model()
+        s = switch.get(model, self)
+        if self.data == "2" and get_total() == -1:
+            return
         all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
-        model.Add(sum(all_variable) == get_total()).OnlyEnforceIf(switch.get(model, self))
+        model.Add(sum(all_variable) == get_total()).OnlyEnforceIf(s)
         get_logger().trace(f"[R]: model add {all_variable} == {get_total()}")
 
     def suggest_total(self, info: dict):
