@@ -84,7 +84,7 @@ type Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
                    'Anti-Construction', 'Connectivity', 'Construction',
                    'Extensive trial', 'Cryptic', 'Mine-Counting', 'Mine-Value',
                    'Mine-Position', 'Dyed', 'Fun', 'Number Clue',
-                   'Arrow Clue', 'Multi-Board', 'Aux Board'
+                   'Arrow Clue', 'Multi-Board', 'Aux Board',
                    'Vanilla Variant', 'Light', 'Heavy',
                    'WIP', 'Parameter', 'Meta', 'Untagged']
 
@@ -96,6 +96,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
     author: tuple[str, int]
     tags: list[Tag] = ["Untagged"]
     lib_only = False
+    creation_time = ""
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
         self.__data = data
