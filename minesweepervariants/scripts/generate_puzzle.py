@@ -88,7 +88,8 @@ def main(
             _board.encode(),
             "\n" + s.answer_board_str,
             s.answer_board_code,
-            _board
+            _board,
+            s.answer_board
         ])
 
         break
@@ -97,7 +98,7 @@ def main(
         raise ValueError("未在有效次数内得出结果")
 
     info_list.sort(key=lambda x: x[0])
-    time_used, n_num, board_str, board_code, answer, answer_code, _board = info_list[0]
+    time_used, n_num, board_str, board_code, answer, answer_code, _board, answer_board = info_list[0]
 
     rule_text = ""
     for rule in rule_code_bk:
@@ -187,5 +188,7 @@ def main(
     logger.info(f"生成用时:{time_used}s\n")
     logger.info(f"总雷数: {s.total}/{n_num}\n")
     logger.info(board_str + "\n")
+    logger.info("[Discord Spoiler Format - Full Answer]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=False) + "\n")
+    logger.info("[Discord Spoiler Format - Hide Clues]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=True) + "\n")
     logger.info(answer + "\n")
     logger.info(f"{board_code}")

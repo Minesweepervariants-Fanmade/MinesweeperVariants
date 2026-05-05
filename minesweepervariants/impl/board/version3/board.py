@@ -802,6 +802,95 @@ class Board(AbstractBoard):
             r += "\n\n"
         return r[:-2]
 
+    def show_board_discord(self, answer_board=None, hide_clues=False):
+        """
+        展示题板，使用Discord剧透格式（||spoiler||）包裹未挖出的格子，
+        并使用Discord emoji和格式化字符显示特殊值。
+
+        参数:
+            answer_board: 答案题板，用于在未挖出格子处显示正确答案（用剧透包裹）
+            hide_clues: 是否隐藏未挖出的线索（仅显示问号和雷），默认False
+
+        - 已挖出的格子：直接显示其值，使用emoji和格式化
+        - 未挖出的格子(None)：
+          - 当hide_clues=False时：显示答案题板中对应位置的值，用||xxx||包裹（剧透）
+          - 当hide_clues=True时：如果是线索数字则用||___||隐藏，问号和雷则用||xxx||显示
+        - 单数字线索(0-9)：使用数字emoji (0️⃣-9️⃣)
+        - 雷标签(F)：:flag:
+        - 问号(?)：❓
+        """
+        digit_emojis = {
+            '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣',
+            '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣'
+        }
+
+        def format_value(value, is_spoiler=False):
+            """格式化单个值以供Discord显示"""
+            if value is None:
+                content = "__"
+            else:
+                value_str = str(value)
+
+                # 处理雷标签
+                if value is MINES_TAG or value_str == "雷" or value_str == "F":
+                    content = ":flag:"
+                # 处理问号
+                elif value is VALUE_QUESS or value_str == "?":
+                    content = "❓"
+                # 处理单数字
+                elif value_str.isdigit() and len(value_str) == 1:
+                    content = digit_emojis[value_str]
+                else:
+                    content = value_str
+
+            # 如果是剧透（未挖出的格子），包裹在||...||中
+            if is_spoiler:
+                return f"||{content}||"
+            else:
+                return content
+
+        r = ""
+        for key in self.board_data:
+            size = self.board_data[key]["config"]["size"]
+            if len(self.board_data.keys()) > 1:
+                r += key + "\n"
+            for i in range(size[0]):
+                for j in range(size[1]):
+                    pos = self.get_pos(i, j, key)
+                    if pos is None:
+                        continue
+
+                    current_value = self[pos]
+
+                    # 如果当前值为None（未挖出），尝试从答案题板获取值
+                    if current_value is None and answer_board is not None:
+                        answer_value = answer_board[pos]
+
+                        # 判断是否需要隐藏线索数字
+                        hide_as_unknown = False
+                        if hide_clues and answer_value is not None:
+                            answer_str = str(answer_value)
+                            # 如果是线索数字（不是问号、雷），则隐藏为问号或雷
+                            if answer_str.isdigit() and len(answer_str) == 1:
+                                hide_as_unknown = True
+
+                        if hide_as_unknown:
+                            # 雷线索隐藏为flag，数字线索隐藏为问号
+                            if answer_value is MINES_TAG or str(answer_value) in ("雷", "F"):
+                                formatted = "||:flag:||"
+                            else:
+                                formatted = "||❓||"
+                        else:
+                            formatted = format_value(answer_value, is_spoiler=True)
+                    else:
+                        # 已挖出的格子直接显示
+                        formatted = format_value(current_value, is_spoiler=False)
+
+                    r += formatted
+                r += "\n"
+            r += "\n"
+        return r.rstrip()
+
     def pos_label(self, pos: 'AbstractPosition') -> str:
         labels = self.get_config(pos.board_key, "labels")
         if type(labels) is dict:
