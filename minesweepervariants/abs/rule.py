@@ -7,9 +7,10 @@
 
 from abc import ABC, ABCMeta, abstractmethod
 import locale
-from typing import Any, List, Literal, Union, TYPE_CHECKING, Dict, Tuple, Optional
+from typing import Any, List, Literal, Union, TYPE_CHECKING, Dict, Tuple, Optional, get_args
 
 from minesweepervariants.impl.board.dye import sp
+from minesweepervariants.utils.tool import get_logger
 
 if TYPE_CHECKING:
     from minesweepervariants.abs.board import AbstractBoard, AbstractPosition
@@ -79,27 +80,95 @@ class I18nMeta(ABCMeta):
             pass
         return cls
 
-type Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
+_Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
                    'Strict R', 'Strict Shape', 'Strong', 'Weak',
                    'Anti-Construction', 'Connectivity', 'Construction',
-                   'Extensive trial', 'Cryptic', 'Mine-Counting', 'Mine-Value',
+                   'Extensive Trial', 'Cryptic', 'Mine-Counting', 'Mine-Value',
                    'Mine-Position', 'Dyed', 'Fun', 'Number Clue',
                    'Arrow Clue', 'Multi-Board', 'Aux Board',
                    'Vanilla Variant', 'Light', 'Heavy',
                    'WIP', 'Parameter', 'Meta', 'Untagged']
-
+type Tag = _Tag
 class AbstractRule(ABC, metaclass=I18nMeta):
     # 规则名称
     id: str
-    name: I18n | Any = ""
-    doc: I18n | Any = ""
+    name: I18n | Any
+    doc: I18n | Any
     author: tuple[str, int]
-    tags: list[Tag] = ["Untagged"]
+    tags: list[Tag]
+    creation_time: str
+
     lib_only = False
-    creation_time = ""
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
         self.__data = data
+
+    @classmethod
+    def get_info(cls) -> Dict[str, Any]:
+        """
+        返回当前规则类的基础元信息。
+        """
+        # 从 Tag 类型注解中动态提取有效的标签值
+        VALID_TAGS = set(get_args(_Tag))
+
+        def _normalize_i18n(value: Any) -> Any:
+            if isinstance(value, I18n):
+                data = {k: v for k, v in value if k != "default" and v}
+                if value.default:
+                    data.setdefault("default", value.default)
+                return data or value.default
+            return value
+
+        def _warn(field_name: str, expected: str, value: Any) -> None:
+            get_logger().warning(
+                f"{cls.__name__}.get_info: field '{field_name}' expected {expected}, got {type(value).__name__}: {value!r}"
+            )
+
+        def _check(field_name: str, value: Any, predicate, expected: str) -> Any:
+            if not predicate(value):
+                _warn(field_name, expected, value)
+            return value
+
+        info = {
+            "id": _check("id", cls.id, lambda value: isinstance(value, str), "str"),
+            "name": _normalize_i18n(cls.name),
+            "doc": _normalize_i18n(cls.doc),
+            "author": _check(
+                "author",
+                cls.author,
+                lambda value: (
+                    isinstance(value, (tuple, list))
+                    and len(value) == 2
+                    and isinstance(value[0], str)
+                    and isinstance(value[1], (int, str))
+                ),
+                "tuple[str, int | str]",
+            ),
+            "tags": _check(
+                "tags",
+                cls.tags,
+                lambda value: (
+                    isinstance(value, list)
+                    and all(isinstance(item, str) for item in value)
+                    and all(item in VALID_TAGS for item in value)
+                ),
+                f"list[{' | '.join(sorted(VALID_TAGS))}]",
+            ),
+            "creation_time": _check(
+                "creation_time",
+                cls.creation_time,
+                lambda value: isinstance(value, str),
+                "str",
+            ),
+            "lib_only": _check(
+                "lib_only",
+                cls.lib_only,
+                lambda value: isinstance(value, bool),
+                "bool",
+            ),
+        }
+
+        return info
 
     def create_constraints(self, board: 'AbstractBoard', switch: 'Switch'):
         """

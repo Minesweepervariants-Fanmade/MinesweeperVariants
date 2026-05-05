@@ -158,13 +158,17 @@ def get_rule(name: str) -> type:
             AbstractMinesRule
         ]
     ]
+    def _show_rule_info(rule_cls: type) -> type:
+        get_logger().info(f"rule info: {rule_cls.get_info()}")
+        return rule_cls
+
     for _name in [name, rule_name]:
         for i in all_sub_rule:
             if hasattr(i, 'id') and i.id == _name:
-                return i
+                return _show_rule_info(i)
         for i in all_sub_rule:
             if hasattr(i, 'id') and i.id.casefold() == _name.casefold():
-                return i
+                return _show_rule_info(i)
     raise ValueError(f"未找到规则[{name}]")
 
 

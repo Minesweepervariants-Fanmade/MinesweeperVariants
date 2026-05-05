@@ -70,10 +70,10 @@ class AbstractMinesValue(AbstractValue, ABC):
             return self.compose(board)
         data = Number(self.__repr__())
         return data
-    
+
     def weaker(self, board: AbstractBoard) -> AbstractValue:
         return board.get_config(self.pos.board_key, "MINES")
-    
+
     def weaker_times(self) -> int:
         return 1
 
@@ -114,7 +114,12 @@ class MinesTag(AbstractMinesValue):
 
 
 class Rule0F(AbstractMinesClueRule):
+    id = "_0F"
     name = "_0F"
+    doc = ""
+    author = ("", 0)
+    tags = ["Untagged"]
+    creation_time = ""
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
         super().__init__(board, data)

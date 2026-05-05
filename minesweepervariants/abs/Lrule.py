@@ -48,10 +48,15 @@ class MinesRules:
 
 
 class Rule0R(AbstractMinesRule):
-    name = "0R"
     """
     总雷数规则
     """
+    id = "0R"
+    name = "0R"
+    doc = "Total number of mines is given"
+    author = ("", 0)
+    tags = ["Untagged"]
+    creation_time = ""
 
     def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
         super().__init__(board, data)
