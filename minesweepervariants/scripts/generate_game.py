@@ -66,8 +66,9 @@ def main(
 
     rule_text = ""
     for rule in rules:
-        rule_text += "[" + (rule.split(PUZZLE_CONFIG['delimiter'])[0] if
-                            PUZZLE_CONFIG['delimiter'] in rule else rule) + "]"
+        # rule_text += "[" + (rule.split(PUZZLE_CONFIG['delimiter'])[0] if
+        #                     PUZZLE_CONFIG['delimiter'] in rule else rule) + "]"
+        rule_text += "[" + rule + "]"
     if rule_text == "":
         rule_text = "[V]"
     if dye:
