@@ -159,7 +159,7 @@ def get_rule(name: str) -> type:
         ]
     ]
     def _show_rule_info(rule_cls: type) -> type:
-        get_logger().info(f"rule info: {rule_cls.get_info()}")
+        get_logger().debug(f"rule info: {rule_cls.get_info()}")
         return rule_cls
 
     for _name in [name, rule_name]:

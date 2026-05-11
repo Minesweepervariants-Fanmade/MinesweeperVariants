@@ -359,9 +359,9 @@ class Summon:
 
         if dig_fn(self.board) is None:
             raise GenerateError
-        for rules in self.board.rules.values():
-            for rule in rules:
-                rule.init_board(self.board)
+        # for rules in self.board.rules.values():
+        #     for rule in rules:
+        #         rule.init_board(self.board)
         self.logger.debug(board_bytes, end="\n\n")
         return self.board
 
@@ -839,8 +839,8 @@ class Summon:
             drop_r=self.drop_r
         )
         if state == 0:
-            self.logger.warn("题板无解 需要重新设计")
-            self.logger.warn("warn board:\n" + board.show_board())
+            self.logger.error("题板无解 需要重新设计")
+            self.logger.error("warn board:\n" + board.show_board())
             return None
         if state == 2:
             self.logger.warn("题板多解 需要重新设计/+R")
