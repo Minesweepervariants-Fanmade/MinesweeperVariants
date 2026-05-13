@@ -269,6 +269,7 @@ def main():
                 board_class=args.board_class,
                 unseed=not args.onseed,
                 image=not args.no_image,
+                attempts=args.attempts,
             )
         elif not args.query:
             if not args.no_image and find_spec("PIL") is None:

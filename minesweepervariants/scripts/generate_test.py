@@ -28,7 +28,8 @@ def main(
         mask_dye: str,   # 异形题板
         board_class: str,  # 题板的名称
         unseed: bool,   # 是否不启用种子
-        image: bool     # 是否生成图片
+        image: bool,     # 是否生成图片
+        attempts: int = -1,     # 最大尝试次数
 ):
     DEFAULT_CONFIG["log_file_name"] = ""
     tool.LOGGER = None
@@ -44,6 +45,8 @@ def main(
     logger.info(f"total mines: {total}")
     _board = None
     while True:
+        if attempt_index == attempts:
+            break
         attempt_index += 1
         logger.info(f"尝试第{attempt_index}次minesweepervariants..", end="\r")
         get_random(seed, new=True)
