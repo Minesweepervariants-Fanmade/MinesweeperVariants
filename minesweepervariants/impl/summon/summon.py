@@ -848,7 +848,7 @@ class Summon:
             self.logger.warn("warn board:\n" + board.show_board())
             return None
 
-        phases = max(value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None) + 1
+        phases = max([value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None] + [0]) + 1
 
         # 初始统计
         init_clues_count = len([None for _ in board('C')])
