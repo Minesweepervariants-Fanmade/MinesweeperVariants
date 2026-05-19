@@ -519,8 +519,7 @@ class Summon:
             self.mines_clue_rule,
             board.clone(),
             drop_r=self.drop_r,
-            answer_board=self.answer_board,
-            hint_board=self.answer_board,
+            answer_board=self.answer_board
         )
         # if state != 1:
         #     self.logger.warn("动态删线索模式初始盘面不唯一或不可解")
@@ -597,7 +596,6 @@ class Summon:
                     board.clone(),
                     drop_r=self.drop_r,
                     answer_board=self.answer_board,
-                    hint_board=self.answer_board,
                 )
 
                 visible_count = self._count_visible_dynamic(visibility_state)
@@ -684,7 +682,6 @@ class Summon:
                     board.clone(),
                     drop_r=self.drop_r,
                     answer_board=self.answer_board,
-                    hint_board=self.answer_board,
                 )
 
                 visible_count = self._count_visible_dynamic(visibility_state)
@@ -840,11 +837,12 @@ class Summon:
             drop_r=self.drop_r
         )
         if state == 0:
-            self.logger.error("题板无解 需要重新设计")
+            self.logger.error("题板无解 请检查规则约束与fill是否语义对齐")
             self.logger.error("warn board:\n" + board.show_board())
+            raise ValueError("题板无解 请检查规则约束与fill是否语义对齐")
             return None
         if state == 2:
-            self.logger.warn("题板多解 需要重新设计/+R")
+            self.logger.warn("题板多解 可能是右线规则约束过弱 需要重试/+R")
             self.logger.warn("warn board:\n" + board.show_board())
             return None
 
