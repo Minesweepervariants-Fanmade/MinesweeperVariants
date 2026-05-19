@@ -101,5 +101,5 @@ def main(
         logger.info(f"总雷数: {s.total}\n")
         logger.info("\n" + _board.show_board() + "\n")
 
-        input("检查完毕后输入回车继续尝试 使用ctrl+c终止进程\r")
-        attempt_index = 0
+        if attempt_index != attempts:
+            input("检查完毕后输入回车继续尝试 使用ctrl+c终止进程\r")
