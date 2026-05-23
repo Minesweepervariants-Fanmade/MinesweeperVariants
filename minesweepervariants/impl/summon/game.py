@@ -852,8 +852,8 @@ class GameSession:
                             info = name.split("|", 2)
                             result.add(
                                 board.get_pos(
-                                    int(info[0]),
                                     int(info[1]),
+                                    int(info[0]),
                                     info[2]
                                 ))
                     result = tuple(result)
