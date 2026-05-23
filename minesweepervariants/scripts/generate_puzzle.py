@@ -21,6 +21,29 @@ from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.config.config import DEFAULT_CONFIG
 
 
+def _build_rule_text(base_rules: list[str], board) -> str:
+    rule_names = list(base_rules)
+    seen = set(rule_names)
+    hidden_defaults = {"R", "V", "F", "F#", "#"}
+
+    rules = getattr(board, "rules", {})
+    if isinstance(rules, dict):
+        for rule_group in rules.values():
+            for rule in rule_group:
+                if rule is None:
+                    continue
+                rule_name = rule.get_name()
+                if rule_name in seen or rule_name in hidden_defaults:
+                    continue
+                seen.add(rule_name)
+                rule_names.append(rule_name)
+
+    if not rule_names:
+        rule_names = ["V"]
+
+    return "".join(f"[{rule}]" for rule in rule_names)
+
+
 def main(
         log_lv: str,  # 日志等级
         seed: int,  # 随机种子
@@ -100,15 +123,6 @@ def main(
     info_list.sort(key=lambda col: col[0])
     time_used, n_num, board_str, board_code, answer, answer_code, _board, answer_board = info_list[0]
 
-    rule_text = ""
-    for rule in rule_code_bk:
-        rule_text += "[" + rule + "]"
-    if rule_text == "":
-        rule_text = "[V]"
-    if dye:
-        rule_text += f"[@{dye}]"
-    if mask_dye:
-        rule_text += f"[&{mask_dye}]"
     size_a = 0
     size_b = 0
     size_c = len(_board.get_interactive_keys())
@@ -116,6 +130,11 @@ def main(
         bound = _board.boundary(key)
         size_a = max(size_a, bound.col + 1)
         size_b = max(size_b, bound.row + 1)
+    rule_text = _build_rule_text(rule_code_bk, _board)
+    if dye:
+        rule_text += f"[@{dye}]"
+    if mask_dye:
+        rule_text += f"[&{mask_dye}]"
     rule_text += f"{size_a}x{size_b}"
     if size_c > 1:
         rule_text += f"x{size_c}"

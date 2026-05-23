@@ -24,6 +24,29 @@ from minesweepervariants.utils.tool import get_logger, get_random
 from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
 
 
+def _build_rule_text(base_rules: list[str], board) -> str:
+    rule_names = list(base_rules)
+    seen = set(rule_names)
+    hidden_defaults = {"R", "V", "F", "F#", "#"}
+
+    rules = getattr(board, "rules", {})
+    if isinstance(rules, dict):
+        for rule_group in rules.values():
+            for rule in rule_group:
+                if rule is None:
+                    continue
+                rule_name = rule.get_name()
+                if rule_name in seen or rule_name in hidden_defaults:
+                    continue
+                seen.add(rule_name)
+                rule_names.append(rule_name)
+
+    if not rule_names:
+        rule_names = ["V"]
+
+    return "".join(f"[{rule}]" for rule in rule_names)
+
+
 def main(
         log_lv: str,  # 日志等级
         seed: int,  # 随机种子
@@ -64,18 +87,6 @@ def main(
                dynamic_dig_rounds=dynamic_dig_rounds,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
 
-    rule_text = ""
-    for rule in rules:
-        # rule_text += "[" + (rule.split(PUZZLE_CONFIG['delimiter'])[0] if
-        #                     PUZZLE_CONFIG['delimiter'] in rule else rule) + "]"
-        rule_text += "[" + rule + "]"
-    if rule_text == "":
-        rule_text = "[V]"
-    if dye:
-        rule_text += f"[@{dye}]"
-    if mask_dye:
-        rule_text += f"[&{mask_dye}]"
-
     size_a = 0
     size_b = 0
     size_c = len(s.board.get_interactive_keys())
@@ -83,9 +94,6 @@ def main(
         bound = s.board.boundary(key)
         size_a = max(size_a, bound.x + 1)
         size_b = max(size_b, bound.y + 1)
-    rule_text += f"{size.cols}x{size.rows}"
-    if size_c > 1:
-        rule_text += f"x{size_c}"
     total = s.total
     logger.info(f"total mines: {total}")
 
@@ -137,6 +145,14 @@ def main(
         answer = game.answer_board.show_board()
         board_code = _board.encode()
         answer_code = game.answer_board.encode()
+        rule_text = _build_rule_text(rule_code, _board)
+        if dye:
+            rule_text += f"[@{dye}]"
+        if mask_dye:
+            rule_text += f"[&{mask_dye}]"
+        rule_text += f"{size.cols}x{size.rows}"
+        if size_c > 1:
+            rule_text += f"x{size_c}"
 
         if query[0] is not None and max(clue_freq.keys()) < query[0]:
             continue
