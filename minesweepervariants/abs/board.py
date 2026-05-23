@@ -585,7 +585,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_pos(self, col, row, key=MASTER_BOARD) -> 'AbstractPosition':
+    def get_pos(self, row, col, key=MASTER_BOARD) -> 'AbstractPosition':
         """
         返回位置实体
         创建时需要遵守board实现的位置规则

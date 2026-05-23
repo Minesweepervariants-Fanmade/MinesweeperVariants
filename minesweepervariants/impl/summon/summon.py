@@ -23,7 +23,7 @@ from .solver import solver_by_csp, solver_model, Switch
 from ...utils.tool import get_random, get_logger
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
-from ...abs.board import AbstractBoard, AbstractPosition
+from ...abs.board import AbstractBoard, AbstractPosition, Size
 
 from ..impl_obj import get_rule, get_board
 from ...impl.rule.Mrule.sharp import RuleSharp as RuleMinesSharp
@@ -67,6 +67,8 @@ class Summon:
         :param vice_board: 启用删除副板
         """
         # summon初始化
+        if not isinstance(size, Size):
+            size = Size(size[0], size[1])
         self.answer_board = None
         self.drop_r = drop_r
         self.logger = get_logger()
@@ -710,6 +712,7 @@ class Summon:
         switch = Switch()
         random = get_random()
         model = board.get_model()
+        self.logger.info("开始构建所有规则的约束")
         if self.total == -2:
             _, total_info = self.init_total()
             all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]

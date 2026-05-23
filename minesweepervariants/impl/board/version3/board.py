@@ -396,8 +396,8 @@ class Board(AbstractBoard):
                         elif mode == "none":
                             yield pos, None
 
-    def has(self, target: str, key: str = '') -> bool:
-        if key not in self.get_board_keys() + ['']:
+    def has(self, target: str, key: Optional[str] = None) -> bool:
+        if key not in self.get_board_keys() + [None]:
             return False
         for pos, type_obj in self(mode="type", key=key):
             if type_obj == target:
@@ -415,7 +415,7 @@ class Board(AbstractBoard):
                 random.shuffle(positions)
                 for pos in positions:
                     variables[pos] = \
-                        self._model.NewBoolVar(f"var({self.get_pos(pos.col, pos.row, pos.board_key)})")
+                        self._model.NewBoolVar(f"var({self.get_pos(pos.row, pos.col, pos.board_key)})")
 
                 get_logger().trace(f"构建新变量:{variables}")
                 self.board_data[_key]["variable"] = variables
@@ -452,6 +452,7 @@ class Board(AbstractBoard):
             if len(labels_code) == 1 and labels_code[0] == 0:
                 labels = []
             elif labels_code[0] == 1:
+                exit(1)
                 labels = labels_code[1:].decode("ascii").split(";")
             elif labels_code[0] == 2:
                 labels = {}
@@ -550,7 +551,7 @@ class Board(AbstractBoard):
                 flags = (flags << 1) | int(self.board_data[board_key]["config"].get(name, False))
             for col_idx in range(size.cols):
                 for row_idx in range(size.rows):
-                    pos = self.get_pos(col_idx, row_idx, board_key)
+                    pos = self.get_pos(row_idx, col_idx, board_key)
                     mask <<= 1
                     if pos is None:
                         mask |= 1
@@ -715,7 +716,7 @@ class Board(AbstractBoard):
 
             if (pos.col, pos.row) not in self.board_data[key]["variable_special"][special]:
                 self.board_data[key]["variable_special"][special][(pos.col, pos.row)] = \
-                    self._model.NewIntVar(-999, 999, f"var_{special}({self.get_pos(pos.col, pos.row, key)})")
+                    self._model.NewIntVar(-999, 999, f"var_{special}({self.get_pos(pos.row, pos.col, key)})")
             return self.board_data[key]["variable_special"][special][(pos.col, pos.row)]
 
     def clear_variable(self):
@@ -779,7 +780,7 @@ class Board(AbstractBoard):
         return pos_list
 
 
-    def get_pos(self, col: int, row: int, key=MASTER_BOARD) -> Union['Position', None]:
+    def get_pos(self, row: int, col: int, key=MASTER_BOARD) -> Union['Position', None]:
         size = self.board_data[key]["config"]["size"]
         if -size.cols < col < size.cols and -size.rows < row < size.rows:
             col = col if col >= 0 else size.cols + col
@@ -800,7 +801,7 @@ class Board(AbstractBoard):
         result = []
         for row in range(r_min, r_max + 1):
             for col in range(c_min, c_max + 1):
-                result.append(self.get_pos(col, row, key=pos1.board_key))
+                result.append(self.get_pos(row, col, key=pos1.board_key))
         return result
 
     def batch(self, positions: List['Position'],
@@ -844,7 +845,7 @@ class Board(AbstractBoard):
                 r += key + "\n"
             for row_idx in range(size.rows):
                 for col_idx in range(size.cols):
-                    pos = self.get_pos(col_idx, row_idx, key)
+                    pos = self.get_pos(row_idx, col_idx, key)
                     if pos is None:
                         r += "\t\t" if show_tag else "\t"
                         continue
@@ -912,7 +913,7 @@ class Board(AbstractBoard):
                 r += key + "\n"
             for row in range(size.rows):
                 for col in range(size.cols):
-                    pos = self.get_pos(col, row, key)
+                    pos = self.get_pos(row, col, key)
                     if pos is None:
                         continue
 
@@ -954,8 +955,8 @@ class Board(AbstractBoard):
                 return labels[pos]
             else:
                 return ""
-        txt = chr(64 + pos.row // 26) if pos.row > 25 else ''
-        txt += chr(pos.row % 26 + 65)
+        txt = chr(64 + pos.col // 26) if pos.col > 25 else ''
+        txt += chr(pos.col % 26 + 65)
         txt += '='
-        txt += labels[pos.col] if pos.col < len(labels) else str(pos.col)
+        txt += labels[pos.row] if pos.row < len(labels) else str(pos.row)
         return txt

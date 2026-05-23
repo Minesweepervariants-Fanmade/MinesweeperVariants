@@ -447,7 +447,7 @@ def hint_by_csp(
 
     target_var = board.get_variable(pos, special='raw')
     model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
-    add_board_assignment_hints(model, board, answer_board)
+    # add_board_assignment_hints(model, board, answer_board)
     assumptions = switch.get_all_vars()
 
     get_logger().trace(f"pos {pos}: start\n", end="")
@@ -473,6 +473,7 @@ def _hint_by_csp(
     answer_board: AbstractBoard = None
 ):
     logger = get_logger()
+    logger.trace(f"pos {pos} assumptions: {assumptions}\n", end="")
     logger.trace(f"pos {pos} off {offset}: start\n", end="")
     future_to_param = {}
     _results = []
