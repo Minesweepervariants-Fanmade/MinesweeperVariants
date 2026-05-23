@@ -287,10 +287,10 @@ class Summon:
             soft_conds.append(total)
 
         self.board: AbstractBoard
-        ub = sum([size[0] * size[1] for key in self.board.get_board_keys()
+        ub = sum([size.cols * size.rows for key in self.board.get_board_keys()
                   for size in [self.board.get_config(key, "size")]])
         info = {
-            "size": {key: (size[0], size[1]) for key in self.board.get_board_keys()
+            "size": {key: (size.cols, size.rows) for key in self.board.get_board_keys()
                      for size in [self.board.get_config(key, "size")]},
             "total": {key: len([_ for _, _ in self.board(key=key)])
                       for key in self.board.get_board_keys()},

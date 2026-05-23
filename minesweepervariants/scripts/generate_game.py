@@ -83,7 +83,7 @@ def main(
         bound = s.board.boundary(key)
         size_a = max(size_a, bound.x + 1)
         size_b = max(size_b, bound.y + 1)
-    rule_text += f"{size[0]}x{size[1]}"
+    rule_text += f"{size.cols}x{size.rows}"
     if size_c > 1:
         rule_text += f"x{size_c}"
     total = s.total

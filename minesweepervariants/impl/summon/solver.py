@@ -104,7 +104,7 @@ class Switch:
                 pos = obj
             if pos is None:
                 raise ValueError("pos cannot be None")
-            pos = f"|{pos.x}|{pos.y}|{pos.board_key}"
+            pos = f"|{pos.col}|{pos.row}|{pos.board_key}"
             name = "POS" + pos
         elif isinstance(obj, str):
             name = obj

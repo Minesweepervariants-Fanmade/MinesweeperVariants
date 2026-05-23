@@ -68,7 +68,7 @@ def main(
             rule_text = "[V]"
         if dye:
             rule_text += f"[@{dye}]"
-        rule_text += f"{size[0]}x{size[1]}"
+        rule_text += f"{size.cols}x{size.rows}"
 
         if not os.path.exists(DEFAULT_CONFIG["output_path"]):
             os.mkdir(DEFAULT_CONFIG["output_path"])

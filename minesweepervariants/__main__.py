@@ -14,11 +14,13 @@ import sys
 import locale
 from pathlib import Path
 from importlib.util import find_spec
+from typing import Callable
 
 from minesweepervariants import puzzle_query
 from minesweepervariants import puzzle
 from minesweepervariants import test
 
+from minesweepervariants.abs.board import Size
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.utils.tool import get_logger
 from minesweepervariants.utils import tool
@@ -30,8 +32,8 @@ defaults.update(DEFAULT_CONFIG)
 
 pre_parser = argparse.ArgumentParser(add_help=False)
 pre_parser.add_argument("--lang", default=defaults.get("lang"))
-pre_args, _ = pre_parser.parse_known_args()
-_ = init_gettext(pre_args.lang)
+pre_args = pre_parser.parse_known_args()[0]
+_: Callable[..., str] = init_gettext(pre_args.lang)
 
 # ==== 参数解析 ====
 parser = argparse.ArgumentParser(description="")
@@ -201,9 +203,9 @@ def main():
             parser.print_help()
             return
         elif len(args.size) == 1:
-            size = (int(args.size[0]), int(args.size[0]))
+            size = Size(int(args.size[0]), int(args.size[0]))
         else:
-            size = (int(args.size[0]), int(args.size[1]))
+            size = Size(cols = int(args.size[0]), rows = int(args.size[1]))
 
     if args.seed != defaults.get("seed"):
         args.attempts = 1

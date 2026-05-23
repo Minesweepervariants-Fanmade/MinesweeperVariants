@@ -97,7 +97,7 @@ def main(
     if not info_list:
         raise ValueError("未在有效次数内得出结果")
 
-    info_list.sort(key=lambda x: x[0])
+    info_list.sort(key=lambda col: col[0])
     time_used, n_num, board_str, board_code, answer, answer_code, _board, answer_board = info_list[0]
 
     rule_text = ""
@@ -114,8 +114,8 @@ def main(
     size_c = len(_board.get_interactive_keys())
     for key in _board.get_interactive_keys():
         bound = _board.boundary(key)
-        size_a = max(size_a, bound.x + 1)
-        size_b = max(size_b, bound.y + 1)
+        size_a = max(size_a, bound.col + 1)
+        size_b = max(size_b, bound.row + 1)
     rule_text += f"{size_a}x{size_b}"
     if size_c > 1:
         rule_text += f"x{size_c}"

@@ -6,7 +6,7 @@
 
 import re
 import traceback
-from typing import List, Union, Tuple, Any, Generator, TYPE_CHECKING
+from typing import List, Optional, TypedDict, Union, Tuple, Any, Generator, TYPE_CHECKING
 import heapq
 
 import gc
@@ -17,7 +17,7 @@ from ....abs.rule import AbstractValue
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
 from ....utils.tool import get_logger, get_random
-from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD
+from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, Size
 from ....abs.Rrule import AbstractClueValue
 from ....abs.Mrule import AbstractMinesValue
 
@@ -30,11 +30,11 @@ def get_value(pos=None, code=None):
     return get_value(pos, code)
 
 
-def alpha(n: int) -> str:
+def alpha(col: int) -> str:
     alpha_map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    if n < 26:
-        return alpha_map[n]
-    return alpha_map[n // 26 - 1] + alpha_map[n % 26]
+    if col < 26:
+        return alpha_map[col]
+    return alpha_map[col // 26 - 1] + alpha_map[col % 26]
 
 
 def encode_int_7bit(n: int) -> bytes:
@@ -65,59 +65,59 @@ def decode_bytes_7bit(data: bytes) -> int:
 class Position(AbstractPosition):
     def __repr__(self):
         return (f"{self.board_key+':' if self.board_key != MASTER_BOARD else ''}"
-                f"{alpha(self.y)}{self.x+1}")
+                f"{alpha(self.col)}{self.row+1}")
 
     def _up(self, n: int = 1):
-        self.x -= n
+        self.row -= n
 
     def _down(self, n: int = 1):
-        self.x += n
+        self.row += n
 
     def _left(self, n: int = 1):
-        self.y -= n
+        self.col -= n
 
     def _right(self, n: int = 1):
-        self.y += n
+        self.col += n
 
-    def _deviation(self, pos: 'Position'):
-        self.x += pos.x
-        self.y += pos.y
+    def _deviation(self, pos):
+        self.row += pos.row
+        self.col += pos.col
 
-    def _north(self, n: int = 1):
-        if self.y % 2 == 1:
-            self.x -= n
-            self.y -= n
-        else:
-            self.y -= n
+    # def _north(self, n: int = 1):
+    #     if self.row % 2 == 1:
+    #         self.col -= n
+    #         self.row -= n
+    #     else:
+    #         self.row -= n
 
-    def _east(self, n: int = 1):
-        if self.y % 2 == 1:
-            self.x -= n
-            self.y += n
-        else:
-            self.y += n
+    # def _east(self, n: int = 1):
+    #     if self.row % 2 == 1:
+    #         self.col -= n
+    #         self.row += n
+    #     else:
+    #         self.row += n
 
-    def _west(self, n: int = 1):
-        if self.y % 2 == 1:
-            self.y -= n
-        else:
-            self.x += n
-            self.y -= n
+    # def _west(self, n: int = 1):
+    #     if self.row % 2 == 1:
+    #         self.row -= n
+    #     else:
+    #         self.col += n
+    #         self.row -= n
 
-    def _south(self, n: int = 1):
-        if self.y % 2 == 1:
-            self.y += n
-        else:
-            self.x += n
-            self.y += n
+    # def _south(self, n: int = 1):
+    #     if self.row % 2 == 1:
+    #         self.row += n
+    #     else:
+    #         self.col += n
+    #         self.row += n
 
-    def in_bounds(self, bound_pos: 'Position') -> bool:
+    def in_bounds(self, bound_pos) -> bool:
         if bound_pos.board_key != self.board_key:
             return False
-        return (0 <= self.x <= bound_pos.x and
-                0 <= self.y <= bound_pos.y)
+        return (0 <= self.col <= bound_pos.col and
+                0 <= self.row <= bound_pos.row)
 
-    def neighbors(self, *args: int) -> list['Position']:
+    def neighbors(self, *args: int):
         """
         按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
 
@@ -147,7 +147,7 @@ class Position(AbstractPosition):
         if high < low:
             return []
 
-        x0, y0 = self.x, self.y
+        x0, y0 = self.col, self.row
         directions = [(dx, dy) for dx in (-1, 0, 1)
                       for dy in (-1, 0, 1) if (dx, dy) != (0, 0)]
 
@@ -190,65 +190,114 @@ class Position(AbstractPosition):
 
         return result
 
-    def hex_neighbors(self, *args: int) -> list['Position']:
-        """
-        按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
+    # def hex_neighbors(self, *args: int):
+    #     """
+    #     按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
 
-        调用方式（类似 range）：
-            hex_neighbors(end_layer)
-                返回距离 ≤ end_layer 的位置（从第 1 层开始）。
-            hex_neighbors(start_layer, end_layer)
-                返回距离 ∈ [start_layer, end_layer] 的位置。
+    #     调用方式（类似 range）：
+    #         hex_neighbors(end_layer)
+    #             返回距离 ≤ end_layer 的位置（从第 1 层开始）。
+    #         hex_neighbors(start_layer, end_layer)
+    #             返回距离 ∈ [start_layer, end_layer] 的位置。
 
-        :param args: 一个或两个整数
-            - 若提供一个参数 end_layer，视为从 1 到 end_layer。
-            - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
-            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
+    #     :param args: 一个或两个整数
+    #         - 若提供一个参数 end_layer，视为从 1 到 end_layer。
+    #         - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
+    #         - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
 
-        :return: 位置列表，按距离从近到远排序。
-        """
-        # 参数处理
-        if len(args) == 1:
-            low, high = 1, args[0]
-        elif len(args) == 2:
-            low, high = args
-        else:
-            return []
+    #     :return: 位置列表，按距离从近到远排序。
+    #     """
+    #     # 参数处理
+    #     if len(args) == 1:
+    #         low, high = 1, args[0]
+    #     elif len(args) == 2:
+    #         low, high = args
+    #     else:
+    #         return []
 
-        # 处理无效参数
-        if high < low or low < 1:
-            return []
+    #     # 处理无效参数
+    #     if high < low or low < 1:
+    #         return []
 
-        result = []
-        visited = {(self.x, self.y)}
-        current_layer = [self]  # 当前层的位置列表
+    #     result = []
+    #     visited = {(self.col, self.row)}
+    #     current_layer = [self]  # 当前层的位置列表
 
-        for distance in range(1, high + 1):
-            next_layer = []
-            for pos in current_layer:
-                # 获取六个邻接方向
-                hex_adjacent = [
-                    pos.up(),
-                    pos.down(),
-                    pos.north(),
-                    pos.east(),
-                    pos.west(),
-                    pos.south(),
-                ]
-                for neighbor in hex_adjacent:
-                    key = (neighbor.x, neighbor.y)
-                    if key not in visited:
-                        visited.add(key)
-                        next_layer.append(neighbor)
-                        # 如果距离在目标范围内，添加到结果
-                        if low <= distance <= high:
-                            result.append(neighbor)
+    #     for distance in range(1, high + 1):
+    #         next_layer = []
+    #         for pos in current_layer:
+    #             # 获取六个邻接方向
+    #             hex_adjacent = [
+    #                 pos.up(),
+    #                 pos.down(),
+    #                 pos.north(),
+    #                 pos.east(),
+    #                 pos.west(),
+    #                 pos.south(),
+    #             ]
+    #             for neighbor in hex_adjacent:
+    #                 key = (neighbor.col, neighbor.row)
+    #                 if key not in visited:
+    #                     visited.add(key)
+    #                     next_layer.append(neighbor)
+    #                     # 如果距离在目标范围内，添加到结果
+    #                     if low <= distance <= high:
+    #                         result.append(neighbor)
 
-            if not next_layer:
-                break
-            current_layer = next_layer
+    #         if not next_layer:
+    #             break
+    #         current_layer = next_layer
 
-        return result
+    #     return result
+
+class Matrix[T]:
+    def __init__(self, size: Size, default: T = None):
+        self.size = size
+        self._data: list[list[T]] = [[default for _ in range(self.size.cols)] for _ in range(self.size.rows)]
+
+    def _check(self, pos: AbstractPosition):
+        if pos.row < 0 or pos.col < 0:
+            raise IndexError("position out of bounds")
+        rows = len(self._data)
+        cols = len(self._data[0]) if rows else 0
+        if pos.row >= rows or pos.col >= cols:
+            raise IndexError("position out of bounds")
+
+    def get(self, pos: AbstractPosition) -> T:
+        self._check(pos)
+        return self._data[pos.row][pos.col]
+
+    def set(self, pos: AbstractPosition, value: T) -> None:
+        self._check(pos)
+        self._data[pos.row][pos.col] = value
+
+    def __getitem__(self, pos: AbstractPosition) -> T:
+        return self.get(pos)
+
+    def __setitem__(self, pos: AbstractPosition, value: T) -> None:
+        self.set(pos, value)
+
+class Config(TypedDict):
+    size: Size
+    VALUE: AbstractValue
+    MINES: AbstractValue
+    mask: List[Position]
+    labels: Union[List[str], dict[Position, str]]
+    row_col: bool
+    interactive: bool
+    by_mini: bool
+    pos_label: bool
+
+class BoardData(TypedDict):
+    config: Config
+    variable: Matrix[Optional[IntVar]]
+    obj: Matrix[Optional[AbstractValue]]
+    type: Matrix[Optional[str]]
+    dye: Matrix[Optional[bool]]
+    type_special: dict[str, Any]
+    variable_special: dict[str, Any]
+
+
 
 class Board(AbstractBoard):
     """
@@ -257,10 +306,10 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, *, rules, size: tuple = None, code: bytes = None, default_special: str = 'raw'):
+    def __init__(self, *, rules, size: Optional[Size] = None, code: Optional[bytes] = None, default_special: str = 'raw'):
         # traceback.print_stack()
         self._model = None
-        self.board_data = dict()
+        self.board_data: dict[str, BoardData] = dict()
         self.default_special = default_special
         self.rules = rules
 
@@ -284,9 +333,9 @@ class Board(AbstractBoard):
             self.generate_board(board_key, code=chunks)
 
     def __call__(
-            self, target: Union[str, None] = "always",
+            self, target: str = "always",
             mode: str = "object",
-            key: str = None,
+            key: Optional[str] = None,
             *args, **kwargs
     ) -> Generator[
         Tuple[
@@ -323,10 +372,10 @@ class Board(AbstractBoard):
                     yield i
         else:
             size = self.board_data[key]["config"]["size"]
-            for posx in range(size[0]):
-                for posy in range(size[1]):
-                    pos = Position(posx, posy, key)
-                    if pos in self.get_config(pos.board_key, "mask"):
+            for row_idx in range(size.rows):
+                for col_idx in range(size.cols):
+                    pos = Position(col_idx, row_idx, key)
+                    if (_config := self.get_config(pos.board_key, "mask")) and pos in _config:
                         continue
                     pos_type = self.get_type(pos, special='raw')
 
@@ -347,8 +396,8 @@ class Board(AbstractBoard):
                         elif mode == "none":
                             yield pos, None
 
-    def has(self, target: str, key: str = None) -> bool:
-        if key not in self.get_board_keys() + [None]:
+    def has(self, target: str, key: str = '') -> bool:
+        if key not in self.get_board_keys() + ['']:
             return False
         for pos, type_obj in self(mode="type", key=key):
             if type_obj == target:
@@ -360,28 +409,24 @@ class Board(AbstractBoard):
             self._model = cp_model.CpModel()
             random = get_random()
             for _key in self.board_data:
-                _size = self.board_data[_key]["config"]["size"]
-                if "variable" in self.board_data[_key]:
-                    del self.board_data[_key]["variable"]
-
-                self.board_data[_key]["variable"] = \
-                    [[None for y in range(_size[1])] for x in range(_size[0])]
-                positions = [(x, y) for y in range(_size[1]) for x in range(_size[0])]
+                _size: Size = self.board_data[_key]["config"]["size"]
+                variables: Matrix[Optional[IntVar]] = Matrix(_size)
+                positions = [Position(col, row, _key) for row in range(_size.rows) for col in range(_size.cols)]
                 random.shuffle(positions)
-                for pos_tuple in positions:
-                    x, y = pos_tuple
-                    self.board_data[_key]["variable"][x][y] = \
-                        self._model.NewBoolVar(f"var({self.get_pos(x, y, _key)})")
-                get_logger().trace(f"构建新变量:{self.board_data[_key]['variable']}")
+                for pos in positions:
+                    variables[pos] = \
+                        self._model.NewBoolVar(f"var({self.get_pos(pos.col, pos.row, pos.board_key)})")
+
+                get_logger().trace(f"构建新变量:{variables}")
+                self.board_data[_key]["variable"] = variables
         return self._model
 
-        return self._model
 
     def generate_board(
             self, board_key: str,
-            size: tuple = (),
+            size: Optional[Size] = None,
             labels: list[str] = [],
-            code: bytes = None,
+            code: Optional[bytes] = None,
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
     ) -> None:
@@ -402,7 +447,7 @@ class Board(AbstractBoard):
                 = code.split(b"\xff", 5)
             code = b''.join(code)
             *size, flag_byte = config
-            size = (size[0], size[1])
+            size = Size(cols=size[0], rows=size[1])
             mask = decode_bytes_7bit(mask)
             if len(labels_code) == 1 and labels_code[0] == 0:
                 labels = []
@@ -417,23 +462,31 @@ class Board(AbstractBoard):
                     labels[pos] = label[label.index(253) + 1:].decode("ascii")
             true_tag = get_value(pos=POSITION_TAG, code=ture_code)
             false_tag = get_value(pos=POSITION_TAG, code=false_code)
-        data = dict()
-        self.board_data[board_key] = data
-        self.labels = labels
-        # 配置初始化
-        data["config"] = {
+        if size is None:
+            raise ValueError("size Undefined")
+
+        config: Config = {
             "size": size,
             "VALUE": true_tag,
             "MINES": false_tag,
             "mask": [],
             "labels": labels,
+            "row_col": False,
+            "interactive": False,
+            "by_mini": False,
+            "pos_label": False
         }
-        for key in self.CONFIG_FLAGS:
-            data["config"].update({key: False})
-
-        data["obj"] = [[None for _ in range(size[0])] for _ in range(size[1])]
-        data["type"] = [["N" for _ in range(size[0])] for _ in range(size[1])]
-        data["dye"] = [[False for _ in range(size[0])] for _ in range(size[1])]
+        data: BoardData = {
+            "config": config,
+            "variable": Matrix(size, None),
+            "obj": Matrix(size, None),
+            "type": Matrix(size, "N"),
+            "dye": Matrix(size, False),
+            "type_special": {},
+            "variable_special": {}
+        }
+        self.board_data[board_key] = data
+        self.labels = labels
 
         if code is None:
             return
@@ -443,8 +496,10 @@ class Board(AbstractBoard):
                 self.set_mask(pos)
             mask >>= 1
 
-        for i, key in enumerate(self.CONFIG_FLAGS[::-1]):
-            data["config"].update({key: bool(flag_byte & (1 << i))})
+        data["config"]["by_mini"] = bool(flag_byte & (1 << 3))
+        data["config"]["pos_label"] = bool(flag_byte & (1 << 2))
+        data["config"]["interactive"] = bool(flag_byte & (1 << 1))
+        data["config"]["row_col"] = bool(flag_byte & 1)
 
         codes = code.split(b"\xff")
 
@@ -493,14 +548,14 @@ class Board(AbstractBoard):
             mask = 0
             for name in self.CONFIG_FLAGS:
                 flags = (flags << 1) | int(self.board_data[board_key]["config"].get(name, False))
-            for posx in range(size[0]):
-                for posy in range(size[1]):
-                    pos = self.get_pos(posx, posy, board_key)
+            for col_idx in range(size.cols):
+                for row_idx in range(size.rows):
+                    pos = self.get_pos(col_idx, row_idx, board_key)
                     mask <<= 1
                     if pos is None:
                         mask |= 1
             board_bytes.extend(board_key.encode("ascii") + b"\xff")
-            board_bytes.extend(bytes([size[0], size[1], flags, 255]))
+            board_bytes.extend(bytes([size.cols, size.rows, flags, 255]))
             board_bytes.extend(encode_int_7bit(mask) + bytes([255]))
             board_bytes.extend(value.type() + b"|" + value.code())
             board_bytes.extend(bytes([255]))
@@ -513,7 +568,7 @@ class Board(AbstractBoard):
                     board_bytes.extend([2])
                     if labels:
                         for pos, str_value in labels.items():
-                            board_bytes.extend([pos.x, pos.y])
+                            board_bytes.extend([pos.col, pos.row])
                             board_bytes.extend(pos.board_key.encode("ascii"))
                             board_bytes.extend([253])
                             board_bytes.extend(str_value.encode("ascii"))
@@ -566,7 +621,7 @@ class Board(AbstractBoard):
         if key not in self.get_board_keys():
             return Position(-1, -1, key)
         size = self.board_data[key]["config"]["size"]
-        return Position(size[0] - 1, size[1] - 1, key)
+        return Position(size.cols - 1, size.rows - 1, key)
 
     def is_valid(self, pos: 'AbstractPosition') -> bool:
         if pos in self.get_config(pos.board_key, "mask"):
@@ -599,7 +654,7 @@ class Board(AbstractBoard):
 
         if self.is_valid(pos):
             if special == 'raw':
-                return self.board_data[key]["type"][pos.y][pos.x]
+                return self.board_data[key]["type"][pos]
 
             if "type_special" not in self.board_data[key] or \
                     special not in self.board_data[key]["type_special"]:
@@ -612,24 +667,24 @@ class Board(AbstractBoard):
     def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
         if self.is_valid(pos):
-            return self.board_data[key]["obj"][pos.y][pos.x]
+            return self.board_data[key]["obj"][pos]
         return None
 
     def set_value(self, pos: 'Position', value):
         key = pos.board_key
         if self.is_valid(pos):
-            self.board_data[key]["obj"][pos.y][pos.x] = value
-            self.board_data[key]["type"][pos.y][pos.x] = self.type_value(value)
+            self.board_data[key]["obj"][pos] = value
+            self.board_data[key]["type"][pos] = self.type_value(value)
 
     def get_dyed(self, pos: 'Position', *args, **kwargs) -> bool | None:
         key = pos.board_key
         if self.is_valid(pos):
-            return self.board_data[key]["dye"][pos.y][pos.x]
+            return self.board_data[key]["dye"][pos]
 
     def set_dyed(self, pos: 'Position', dyed: bool):
         key = pos.board_key
         if self.is_valid(pos):
-            self.board_data[key]["dye"][pos.y][pos.x] = dyed
+            self.board_data[key]["dye"][pos] = dyed
 
     def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
         special = special or self.default_special
@@ -650,7 +705,7 @@ class Board(AbstractBoard):
         self.get_model()
         if self.is_valid(pos):
             if special == 'raw':
-                return self.board_data[key]["variable"][pos.x][pos.y]
+                return self.board_data[key]["variable"][pos]
 
             if "variable_special" not in self.board_data[key]:
                 self.board_data[key]["variable_special"] = dict()
@@ -658,10 +713,10 @@ class Board(AbstractBoard):
             if special not in self.board_data[key]["variable_special"]:
                 self.board_data[key]["variable_special"][special] = dict()
 
-            if (pos.x, pos.y) not in self.board_data[key]["variable_special"][special]:
-                self.board_data[key]["variable_special"][special][(pos.x, pos.y)] = \
-                    self._model.NewIntVar(-999, 999, f"var_{special}({self.get_pos(pos.x, pos.y, key)})")
-            return self.board_data[key]["variable_special"][special][(pos.x, pos.y)]
+            if (pos.col, pos.row) not in self.board_data[key]["variable_special"][special]:
+                self.board_data[key]["variable_special"][special][(pos.col, pos.row)] = \
+                    self._model.NewIntVar(-999, 999, f"var_{special}({self.get_pos(pos.col, pos.row, key)})")
+            return self.board_data[key]["variable_special"][special][(pos.col, pos.row)]
 
     def clear_variable(self):
         for key in self.board_data.keys():
@@ -723,12 +778,13 @@ class Board(AbstractBoard):
             pos_list.append(_pos)
         return pos_list
 
-    def get_pos(self, x: int, y: int, key=MASTER_BOARD) -> Union['Position', None]:
+
+    def get_pos(self, col: int, row: int, key=MASTER_BOARD) -> Union['Position', None]:
         size = self.board_data[key]["config"]["size"]
-        if -size[0] < x < size[0] and -size[1] < y < size[1]:
-            x = x if x >= 0 else size[0] + x
-            y = y if y >= 0 else size[1] + y
-            pos = Position(x, y, key)
+        if -size.cols < col < size.cols and -size.rows < row < size.rows:
+            col = col if col >= 0 else size.cols + col
+            row = row if row >= 0 else size.rows + row
+            pos = Position(col, row, key)
             if self.is_valid(pos):
                 return pos
         return None
@@ -738,13 +794,13 @@ class Board(AbstractBoard):
             return []
         if not (self.in_bounds(pos1) and self.in_bounds(pos2)):
             return []
-        x_min, x_max = sorted([pos1.x, pos2.x])
-        y_min, y_max = sorted([pos1.y, pos2.y])
+        c_min, c_max = sorted([pos1.col, pos2.col])
+        r_min, r_max = sorted([pos1.row, pos2.row])
 
         result = []
-        for y in range(y_min, y_max + 1):
-            for x in range(x_min, x_max + 1):
-                result.append(self.get_pos(x, y, key=pos1.board_key))
+        for row in range(r_min, r_max + 1):
+            for col in range(c_min, c_max + 1):
+                result.append(self.get_pos(col, row, key=pos1.board_key))
         return result
 
     def batch(self, positions: List['Position'],
@@ -773,8 +829,8 @@ class Board(AbstractBoard):
         for key in self.board_data:
             data = self.board_data[key]
             size = data["config"]["size"]
-            data["obj"] = [[None for _ in range(size[0])] for _ in range(size[1])]
-            data["type"] = [["N" for _ in range(size[0])] for _ in range(size[1])]
+            data["obj"] = Matrix(size, None)
+            data["type"] = Matrix(size, "N")
             self.clear_variable()
 
     def get_board_keys(self) -> list[str]:
@@ -786,9 +842,9 @@ class Board(AbstractBoard):
             size = self.board_data[key]["config"]["size"]
             if len(self.board_data.keys()) > 1:
                 r += key + "\n"
-            for i in range(size[0]):
-                for j in range(size[1]):
-                    pos = self.get_pos(i, j, key)
+            for row_idx in range(size.rows):
+                for col_idx in range(size.cols):
+                    pos = self.get_pos(col_idx, row_idx, key)
                     if pos is None:
                         r += "\t\t" if show_tag else "\t"
                         continue
@@ -854,9 +910,9 @@ class Board(AbstractBoard):
             size = self.board_data[key]["config"]["size"]
             if len(self.board_data.keys()) > 1:
                 r += key + "\n"
-            for i in range(size[0]):
-                for j in range(size[1]):
-                    pos = self.get_pos(i, j, key)
+            for row in range(size.rows):
+                for col in range(size.cols):
+                    pos = self.get_pos(col, row, key)
                     if pos is None:
                         continue
 
@@ -898,8 +954,8 @@ class Board(AbstractBoard):
                 return labels[pos]
             else:
                 return ""
-        txt = chr(64 + pos.y // 26) if pos.y > 25 else ''
-        txt += chr(pos.y % 26 + 65)
+        txt = chr(64 + pos.row // 26) if pos.row > 25 else ''
+        txt += chr(pos.row % 26 + 65)
         txt += '='
-        txt += labels[pos.x] if pos.x < len(labels) else str(pos.x)
+        txt += labels[pos.col] if pos.col < len(labels) else str(pos.col)
         return txt

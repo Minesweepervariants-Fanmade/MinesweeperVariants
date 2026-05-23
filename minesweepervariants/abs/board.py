@@ -6,11 +6,15 @@
 # @FileName: board.py
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Union, TYPE_CHECKING, Generator, Any
+from collections import namedtuple
+from typing import List, Optional, Self, Tuple, Union, TYPE_CHECKING, Generator, Any
 from dataclasses import dataclass
+from warnings import warn
 
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
+
+from minesweepervariants.abs.rule import AbstractRule
 
 from ..impl.board.dye import get_dye
 
@@ -20,38 +24,60 @@ if TYPE_CHECKING:
 
 MASTER_BOARD = "1"
 
+Size = namedtuple("Size", ["cols", "rows"])
 
 @dataclass(order=True)
 class AbstractPosition(ABC):
-    x: int
-    y: int
+    row: int
+    col: int
+
     board_key: str
 
-    def __init__(self, x: int, y: int, board_key: str):
-        self.x = x
-        self.y = y
+    def __init__(self, col: int, row: int, board_key: str):
+        self.col = col
+        self.row = row
         self.board_key = board_key
+
+    @property
+    def x(self):
+        warn(DeprecationWarning("x is deprecated, use col instead"))
+        return self.col
+
+    @property
+    def y(self):
+        warn(DeprecationWarning("y is deprecated, use row instead"))
+        return self.row
+
+    @x.setter
+    def x(self, value):
+        warn(DeprecationWarning("x is deprecated, use col instead"))
+        self.col = value
+
+    @y.setter
+    def y(self, value):
+        warn(DeprecationWarning("y is deprecated, use row instead"))
+        self.row = value
 
     def __eq__(self, other):
         return (
             isinstance(other, self.__class__) and
-            self.x == other.x and
-            self.y == other.y and
+            self.col == other.col and
+            self.row == other.row and
             self.board_key == other.board_key
         )
 
     def __hash__(self):
-        return hash((self.x, self.y, self.board_key))
+        return hash((self.col, self.row, self.board_key))
 
     def __repr__(self):
-        return f"([{self.board_key}]{self.x}, {self.y})"
+        return f"([{self.board_key}]{self.col}, {self.row})"
 
     def clone(self):
         """
         复制并返回一个相同的位置
         :return: 另一个相同的位置对象
         """
-        return self.__class__(self.x, self.y, self.board_key)
+        return self.__class__(self.col, self.row, self.board_key)
 
     @abstractmethod
     def _up(self, n: int = 1):
@@ -89,33 +115,33 @@ class AbstractPosition(ABC):
         :return:
         """
 
-    @abstractmethod
-    def _north(self, n: int = 1):
-        """
-        将自己向北(六边形方向)移动n格
-        :param n: 向北n格
-        """
+    # @abstractmethod
+    # def _north(self, n: int = 1):
+    #     """
+    #     将自己向北(六边形方向)移动n格
+    #     :param n: 向北n格
+    #     """
 
-    @abstractmethod
-    def _east(self, n: int = 1):
-        """
-        将自己向东(六边形方向)移动n格
-        :param n: 向东n格
-        """
+    # @abstractmethod
+    # def _east(self, n: int = 1):
+    #     """
+    #     将自己向东(六边形方向)移动n格
+    #     :param n: 向东n格
+    #     """
 
-    @abstractmethod
-    def _west(self, n: int = 1):
-        """
-        将自己向西(六边形方向)移动n格
-        :param n: 向西n格
-        """
+    # @abstractmethod
+    # def _west(self, n: int = 1):
+    #     """
+    #     将自己向西(六边形方向)移动n格
+    #     :param n: 向西n格
+    #     """
 
-    @abstractmethod
-    def _south(self, n: int = 1):
-        """
-        将自己向南(六边形方向)移动n格
-        :param n: 向南n格
-        """
+    # @abstractmethod
+    # def _south(self, n: int = 1):
+    #     """
+    #     将自己向南(六边形方向)移动n格
+    #     :param n: 向南n格
+    #     """
 
     @abstractmethod
     def neighbors(self, *args: int) -> list['AbstractPosition']:
@@ -194,67 +220,67 @@ class AbstractPosition(ABC):
         _pos._right(n)
         return _pos
 
-    def shift(self, x: int = 0, y: int = 0):
-        return self.up(x).right(y)
+    def shift(self, col: int = 0, row: int = 0):
+        return self.up(col).right(row)
 
-    def north(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向北(六边形方向)移动n格的位置对象
-        :param n: 向北n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._north(n)
-        return _pos
+    # def north(self, n: int = 1) -> 'AbstractPosition':
+    #     """
+    #     返回一个向北(六边形方向)移动n格的位置对象
+    #     :param n: 向北n格
+    #     :return: 结果位置
+    #     """
+    #     _pos = self.clone()
+    #     _pos._north(n)
+    #     return _pos
 
-    def east(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向东(六边形方向)移动n格的位置对象
-        :param n: 向东n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._east(n)
-        return _pos
+    # def east(self, n: int = 1) -> 'AbstractPosition':
+    #     """
+    #     返回一个向东(六边形方向)移动n格的位置对象
+    #     :param n: 向东n格
+    #     :return: 结果位置
+    #     """
+    #     _pos = self.clone()
+    #     _pos._east(n)
+    #     return _pos
 
-    def west(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向西(六边形方向)移动n格的位置对象
-        :param n: 向西n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._west(n)
-        return _pos
+    # def west(self, n: int = 1) -> 'AbstractPosition':
+    #     """
+    #     返回一个向西(六边形方向)移动n格的位置对象
+    #     :param n: 向西n格
+    #     :return: 结果位置
+    #     """
+    #     _pos = self.clone()
+    #     _pos._west(n)
+    #     return _pos
 
-    def south(self, n: int = 1) -> 'AbstractPosition':
-        """
-        返回一个向南(六边形方向)移动n格的位置对象
-        :param n: 向南n格
-        :return: 结果位置
-        """
-        _pos = self.clone()
-        _pos._south(n)
-        return _pos
+    # def south(self, n: int = 1) -> 'AbstractPosition':
+    #     """
+    #     返回一个向南(六边形方向)移动n格的位置对象
+    #     :param n: 向南n格
+    #     :return: 结果位置
+    #     """
+    #     _pos = self.clone()
+    #     _pos._south(n)
+    #     return _pos
 
-    @abstractmethod
-    def hex_neighbors(self, *args: int) -> list['AbstractPosition']:
-        """
-        按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
+    # @abstractmethod
+    # def hex_neighbors(self, *args: int) -> list['AbstractPosition']:
+    #     """
+    #     按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
 
-        调用方式（类似 range）：
-            hex_neighbors(end_layer)
-                返回距离 ≤ end_layer 的位置（从第 1 层开始）。
-            hex_neighbors(start_layer, end_layer)
-                返回距离 ∈ [start_layer, end_layer] 的位置。
+    #     调用方式（类似 range）：
+    #         hex_neighbors(end_layer)
+    #             返回距离 ≤ end_layer 的位置（从第 1 层开始）。
+    #         hex_neighbors(start_layer, end_layer)
+    #             返回距离 ∈ [start_layer, end_layer] 的位置。
 
-        :param args: 一个或两个整数
-            - 若提供一个参数 end_layer，视为从 1 到 end_layer。
-            - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
-            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
+    #     :param args: 一个或两个整数
+    #         - 若提供一个参数 end_layer，视为从 1 到 end_layer。
+    #         - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
+    #         - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
 
-        :return: 位置列表，按距离从近到远排序。
-        """
+    #     :return: 位置列表，按距离从近到远排序。
+    #     """
 
 
 class AbstractBoard(ABC):
@@ -263,7 +289,7 @@ class AbstractBoard(ABC):
 
     default_special = 'raw'
 
-    rules: dict = None
+    rules: dict = {}
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -306,9 +332,9 @@ class AbstractBoard(ABC):
         return self.set_value(pos, value)
 
     def __contains__(self, item):
-        return self.has(target=item, key=None)
+        return self.has(target=item, key='')
 
-    def __eq__(self, other: 'AbstractBoard'):
+    def __eq__(self, other: object):
         if not isinstance(other, AbstractBoard):
             return False
         if self.get_board_keys() != other.get_board_keys():
@@ -329,14 +355,18 @@ class AbstractBoard(ABC):
         return True
 
     def dyed(self, name: str):
-        get_dye(name).dye(self)
+        dye = get_dye(name)
+        if not dye:
+            raise ValueError(f"Dye {name} not found")
+        dye.dye(self)
 
-    def has(self, target: str, key: str = None):
+    def has(self, target: str, key: str = '') -> bool:
         """
         判断指定题板中是否包含目标字符串对应的元素
         target: 指定目标类型字符串
         key: 题板标识 指定在哪个题板内搜索
         """
+        ...
 
     def clone(self) -> 'AbstractBoard':
         """
@@ -344,7 +374,7 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        new_board = self.__class__(code=self.encode(), default_special=self.default_special, rules=self.rules)
+        new_board = self.__class__(code=self.encode(), default_special=self.default_special, rules=self.rules, size=None)
         if hasattr(self, "_get_rule_instance"):
             new_board._bound_get_rule_instance(self._get_rule_instance)
 
@@ -352,9 +382,11 @@ class AbstractBoard(ABC):
 
     def get_model(self) -> cp_model.CpModel:
         """获取cp_model"""
+        ...
 
     def get_board_keys(self) -> list[str]:
         """返回当前所有题板的名称"""
+        ...
 
     def get_interactive_keys(self) -> list[str]:
         """返回所有与主板同等级的题板索引"""
@@ -379,10 +411,11 @@ class AbstractBoard(ABC):
         raise RuntimeError("Method get_rule_instance is not bound")
 
     @abstractmethod
-    def generate_board(self, board_key: str, size: tuple = (), labels: list[str] = [], code: bytes = None) -> None:
+    def generate_board(self, board_key: str, size: Optional[Size] = None, labels: list[str] = [], code: Optional[bytes] = None) -> None:
         """
         创建一块副板 board_key为名称 size为尺寸 labels 为 X=N 的 N 可能取值
         """
+        ...
 
     @abstractmethod
     def encode(self) -> bytes:
@@ -391,6 +424,7 @@ class AbstractBoard(ABC):
         可在初始化时导入
         :return: 编码后的字节数据
         """
+        ...
 
     @abstractmethod
     def boundary(self, key=MASTER_BOARD) -> 'AbstractPosition':
@@ -398,6 +432,7 @@ class AbstractBoard(ABC):
         返回选择题板的边界极限位置
         :return: 极限位置对象
         """
+        ...
 
     def is_valid(self, pos: 'AbstractPosition') -> bool:
         """
@@ -419,6 +454,7 @@ class AbstractBoard(ABC):
         """
         挖去题板的指定位置
         """
+        ...
 
     @staticmethod
     @abstractmethod
@@ -429,6 +465,7 @@ class AbstractBoard(ABC):
         :param value: 对象值
         :return: 类型字符串
         """
+        ...
 
     @abstractmethod
     def register_type_special(self, name: str, func):
@@ -437,6 +474,7 @@ class AbstractBoard(ABC):
         :param name: 特殊名称
         :param func: 函数
         """
+        ...
 
     @abstractmethod
     def get_type(self, pos: 'AbstractPosition', special: str='') -> str:
@@ -447,12 +485,14 @@ class AbstractBoard(ABC):
         :param pos: 位置
         :return: 位置类型字符串
         """
+        ...
 
     def used_type(self) -> bool:
         """
         返回在此之前的过程中是否使用过get_type()接口
         调用该接口后状态将会重置
         """
+        ...
 
     @abstractmethod
     def get_value(self, pos: 'AbstractPosition')\
@@ -501,10 +541,11 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def set_config(self, board_key: str, config_name: str, value: any):
+    def set_config(self, board_key: str, config_name: str, value: Any):
         """
         设置某个题板的设置
         """
+        ...
 
     def set_default_special(self, special: str = 'raw'):
         """ 设置默认变量类型(只能设置一次)"""
@@ -544,7 +585,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_pos(self, x, y, key=MASTER_BOARD) -> 'AbstractPosition':
+    def get_pos(self, col, row, key=MASTER_BOARD) -> 'AbstractPosition':
         """
         返回位置实体
         创建时需要遵守board实现的位置规则
@@ -579,7 +620,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def show_board(self, show_tag: bool = False):
+    def show_board(self, show_tag: bool = False) -> str:
         """
         展示可视化调整的界面，如可选展示线索类型
         :param show_tag: 是否展示标签

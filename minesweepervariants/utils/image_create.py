@@ -9,9 +9,11 @@ import os
 import pathlib
 from typing import Callable
 
+from minesweepervariants.abs.board import AbstractPosition
+
 from .tool import get_logger
 from .. import __path__ as basepath
-from ..abs.board import AbstractBoard
+from ..abs.board import AbstractBoard, Size
 from ..config.config import IMAGE_CONFIG, DEFAULT_CONFIG
 import minesweepervariants
 
@@ -244,7 +246,7 @@ def draw_board(
         return hex_size, hex_width, hex_height, x_spacing, y_spacing
 
     def get_cell_box(pos, grid_type: str, x_offset: float, margin_top: float, _cell_size: float, metrics):
-        r, c = pos.x, pos.y
+        r, c = pos.row, pos.col
         if grid_type == "hex":
             hex_size, hex_width, hex_height, x_spacing, y_spacing = metrics
             x_center = x_offset + c * x_spacing + hex_width / 2
@@ -267,16 +269,16 @@ def draw_board(
         ]
 
     def get_hex_neighbor_positions(pos, _board: AbstractBoard):
-        x, y = pos.x, pos.y
+        col, row = pos.col, pos.row
         board_key = pos.board_key
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        if y % 2 == 1:
+        if row % 2 == 1:
             directions += [(-1, -1), (-1, 1)]
         else:
             directions += [(1, -1), (1, 1)]
         neighbors = []
         for dx, dy in directions:
-            npos = type(pos)(x + dx, y + dy, board_key)
+            npos = type(pos)(col + dx, row + dy, board_key)
             if _board.in_bounds(npos):
                 neighbors.append(npos)
         return neighbors
@@ -362,10 +364,10 @@ def draw_board(
     sizes = {}
     pixel_sizes = {}
     for key in board_keys:
-        br = board.boundary(key=key)
+        br: AbstractPosition = board.boundary(key=key)
         cols = len(board.get_row_pos(br))
         rows = len(board.get_col_pos(br))
-        sizes[key] = (rows, cols)
+        sizes[key] = Size(cols=cols, rows=rows)
         grid_type = configs[key]["grid_type"]
         if grid_type == "hex":
             _, hex_width, _, x_spacing, y_spacing = get_hex_metrics(cell_size)
@@ -385,7 +387,7 @@ def draw_board(
 
     x_offset = margin
     for key in board_keys:
-        rows, cols = sizes[key]
+        cols, rows = sizes[key]
         by_mini = configs[key]["by_mini"]
         pos_label = configs[key]["pos_label"]
         row_col = configs[key]["row_col"]
@@ -556,7 +558,7 @@ def draw_board(
                             best_dot = dot
                             best_neighbor = npos
                     if best_dot >= 0.85:
-                        if (pos.x, pos.y, pos.board_key) < (best_neighbor.x, best_neighbor.y, best_neighbor.board_key):
+                        if (pos.col, pos.row, pos.board_key) < (best_neighbor.col, best_neighbor.row, best_neighbor.board_key):
                             draw.line([p1, p2], fill=grid_color, width=stroke_px)
                     else:
                         draw.line([p1, p2], fill=grid_color, width=stroke_px)
