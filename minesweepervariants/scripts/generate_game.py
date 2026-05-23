@@ -72,9 +72,9 @@ def main(
     if rule_text == "":
         rule_text = "[V]"
     if dye:
-        rule_text += f"[{dye}]"
+        rule_text += f"[@{dye}]"
     if mask_dye:
-        rule_text += f"[{mask_dye}]"
+        rule_text += f"[&{mask_dye}]"
 
     size_a = 0
     size_b = 0
