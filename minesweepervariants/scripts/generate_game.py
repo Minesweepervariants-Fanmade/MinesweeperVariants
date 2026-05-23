@@ -145,7 +145,7 @@ def main(
         answer = game.answer_board.show_board()
         board_code = _board.encode()
         answer_code = game.answer_board.encode()
-        rule_text = _build_rule_text(rule_code, _board)
+        rule_text = _build_rule_text(_board)
         if dye:
             rule_text += f"[@{dye}]"
         if mask_dye:
