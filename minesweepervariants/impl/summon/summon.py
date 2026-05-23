@@ -216,9 +216,9 @@ class Summon:
                      board.rules["mines_rules"] +
                      board.rules["mines_clue_rules"])
 
-        for existing_rule in all_rules:
-            if existing_rule.id == rule_id and existing_rule.__data == data:
-                return existing_rule
+        # for existing_rule in all_rules:
+        #     if existing_rule.id == rule_id and existing_rule.__data == data:
+        #         return existing_rule
 
         # # 不需要添加直接返回
         # if not add:
