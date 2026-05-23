@@ -21,8 +21,8 @@ from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.config.config import DEFAULT_CONFIG
 
 
-def _build_rule_text(base_rules: list[str], board) -> str:
-    rule_names = list(base_rules)
+def _build_rule_text(board) -> str:
+    rule_names = []
     seen = set(rule_names)
     hidden_defaults = {"R", "V", "F", "F#", "#"}
 
@@ -130,7 +130,7 @@ def main(
         bound = _board.boundary(key)
         size_a = max(size_a, bound.col + 1)
         size_b = max(size_b, bound.row + 1)
-    rule_text = _build_rule_text(rule_code_bk, _board)
+    rule_text = _build_rule_text(_board)
     if dye:
         rule_text += f"[@{dye}]"
     if mask_dye:

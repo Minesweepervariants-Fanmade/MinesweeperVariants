@@ -24,8 +24,8 @@ from minesweepervariants.utils.tool import get_logger, get_random
 from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
 
 
-def _build_rule_text(base_rules: list[str], board) -> str:
-    rule_names = list(base_rules)
+def _build_rule_text(board) -> str:
+    rule_names = []
     seen = set(rule_names)
     hidden_defaults = {"R", "V", "F", "F#", "#"}
 
