@@ -6,7 +6,7 @@
 
 import re
 import traceback
-from typing import List, Optional, TypedDict, Union, Tuple, Any, Generator, TYPE_CHECKING
+from typing import List, Mapping, Optional, TypedDict, Union, Tuple, Any, Generator, TYPE_CHECKING
 import heapq
 
 import gc
@@ -507,6 +507,65 @@ class Board(AbstractBoard):
             })
 
         return ImmutableDict({"boards": boards})
+
+    def from_json(self, data: JSONObject) -> None:
+        """Load board state from json produced by json()"""
+        if not isinstance(data, Mapping):
+            raise TypeError("Invalid JSON format: expected a mapping at the top level")
+        boards = data.get("boards", {})
+        # clear existing
+        self.board_data = {}
+        for board_key, cfg in boards.items():
+            size_obj = cfg.get("size", {})
+            size = Size(size_obj.get("cols", 0), size_obj.get("rows", 0))
+            labels = cfg.get("labels", [])
+            self.generate_board(board_key, size=size, labels=labels)
+
+            # flags
+            flags = cfg.get("flags", {})
+            for name, val in flags.items():
+                self.set_config(board_key, name, bool(val))
+
+            # mask
+            mask_list = cfg.get("mask", [])
+            for col_idx in range(size.cols):
+                for row_idx in range(size.rows):
+                    idx = col_idx * size.rows + row_idx
+                    if idx < len(mask_list) and mask_list[idx]:
+                        pos = self.get_pos(row_idx, col_idx, board_key)
+                        if pos is not None:
+                            self.set_mask(pos)
+
+            # value and mines templates
+            try:
+                v = cfg.get("value")
+                m = cfg.get("mines")
+                if v:
+                    self.board_data[board_key]["config"]["VALUE"] = get_value(None, int(v.get("code", 0)))
+                if m:
+                    self.board_data[board_key]["config"]["MINES"] = get_value(None, int(m.get("code", 0)))
+            except Exception:
+                pass
+
+            # cells
+            for cell in cfg.get("cells", []):
+                col = cell.get("col")
+                row = cell.get("row")
+                pos = self.get_pos(row, col, board_key)
+                if pos is None:
+                    continue
+                if cell.get("dyed"):
+                    self.set_dyed(pos, True)
+                obj = cell.get("obj")
+                if obj is None:
+                    self.set_value(pos, None)
+                else:
+                    try:
+                        code = int(obj.get("code"))
+                        value_obj = get_value(pos, code)
+                        self.set_value(pos, value_obj)
+                    except Exception:
+                        self.set_value(pos, None)
 
     def boundary(self, key=MASTER_BOARD) -> "Position":
         if key not in self.get_board_keys():
