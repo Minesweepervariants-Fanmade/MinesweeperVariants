@@ -306,8 +306,10 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, *, rules, size: Optional[Size] = None, default_special: str = 'raw'):
+    def __init__(self, *, rules=None, size: Optional[Size] = None, default_special: str = 'raw', data: JSONObject = None):
         # traceback.print_stack()
+        if rules is None:
+            rules = {}
         self._model = None
         self.board_data: dict[str, BoardData] = dict()
         self.default_special = default_special
@@ -317,14 +319,16 @@ class Board(AbstractBoard):
             for _rules in rules.values():
                 for rule in _rules:
                     rule.onboard_init(self)
-
-        if size is None:
-            raise ValueError("board size Undefined")
-        self.generate_board(MASTER_BOARD, size=size)
-        self.board_data[MASTER_BOARD]["config"]["row_col"] = True
-        self.board_data[MASTER_BOARD]["config"]["interactive"] = True
-        self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
-        self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
+        if data:
+            self.from_json(data)
+        else:
+            if size is None:
+                raise ValueError("board size Undefined")
+            self.generate_board(MASTER_BOARD, size=size)
+            self.board_data[MASTER_BOARD]["config"]["row_col"] = True
+            self.board_data[MASTER_BOARD]["config"]["interactive"] = True
+            self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
+            self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
 
     def __call__(
             self, target: str = "always",
@@ -504,8 +508,8 @@ class Board(AbstractBoard):
                 "size": {"cols": size.cols, "rows": size.rows},
                 "flags": flags,
                 "mask": mask,
-                "value": {"type": int(value.type()), "code": int(value.code())},
-                "mines": {"type": int(mines.type()), "code": int(mines.code())},
+                "value": value.json(),
+                "mines": mines.json(),
                 "labels": labels,
                 "cells": cells
             })

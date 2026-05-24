@@ -352,7 +352,7 @@ class Summon:
             return None
             # raise ValueError("生成失败 左线/雷数出现矛盾")
         self.logger.info("题板初始化完毕")
-        board_bytes = self.board.encode()
+        board_bytes = self.board.json()
         for rule in self.mines_rules.rules + [self.clue_rule, self.mines_clue_rule]:
             rule.init_clear(self.board)
         self.dynamic_dig_rounds = self._resolve_dynamic_dig_rounds()
@@ -386,10 +386,10 @@ class Summon:
             for rule in rules:
                 rule.init_board(_board)
         self.answer_board_str = "\n" + _board.show_board()
-        self.answer_board_code = _board.encode()
+        self.answer_board_code = _board.json()
         self.answer_board = _board.clone()
         self.logger.debug("题板生成完毕:\n" + _board.show_board())
-        self.logger.debug(_board.encode())
+        self.logger.debug(_board.json())
         self.answer_board = _board
         self.board = _board.clone()
         return _board
@@ -799,7 +799,7 @@ class Summon:
             pos = positions[index]
             _model = model.clone()
             _model.Add(board.get_variable(pos, special='raw') == 0)
-            code = board.encode()
+            code = board.json()
             board[pos] = board.get_config(pos.board_key, "MINES")
             model.Add(board.get_variable(pos, special='raw') == 1)
             if len(self._generation_mines_rules()) == 1:

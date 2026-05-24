@@ -219,7 +219,7 @@ class ValueCross(AbstractClueValue):
     副板的叉号
     """
 
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
         super().__init__(pos)
 
     def __repr__(self) -> str:

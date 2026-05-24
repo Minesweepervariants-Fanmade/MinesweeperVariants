@@ -300,6 +300,9 @@ class ImmutableDict[K,V](Mapping[K, V]):
     def __len__(self) -> int:
         return len(self._data)
 
+    def __repr__(self) -> str:
+        return str(self._data)
+
 
 
 type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject] | str | int | float | bool | None
@@ -349,9 +352,10 @@ class AbstractBoard(ABC):
     def __init__(
         self,
         *,
-        rules: dict[str, 'AbstractRule'] | None,
-        size: Size | None,
-        default_special: str,
+        rules: dict[str, 'AbstractRule'] | None = None,
+        size: Size | None = None,
+        data: JSONObject = None,
+        default_special: str = "",
     ) -> None:
         """
         :param size: 题板尺寸
@@ -442,8 +446,8 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        new_board = self.from_json(self.json())
-        if hasattr(self, "_get_rule_instance"):
+        new_board = self.__class__(rules={}, data=self.json())
+        if hasattr(new_board, "_get_rule_instance"):
             new_board._bound_get_rule_instance(self._get_rule_instance)
 
         return new_board

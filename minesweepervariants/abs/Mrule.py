@@ -118,9 +118,8 @@ class AbstractMinesClueRule(AbstractRule, ABC):
 class AbstractMinesValue(AbstractValue, ABC):
     pos: 'AbstractPosition'
 
-
     @abstractmethod
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
         self.pos = pos
 
     def __repr__(self) -> str:

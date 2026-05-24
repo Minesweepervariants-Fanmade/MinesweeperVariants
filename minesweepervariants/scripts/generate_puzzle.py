@@ -109,7 +109,7 @@ def main(
             b_time - a_time,
             n_num,
             "\n" + _board.show_board(),
-            _board.encode(),
+            _board.json(),
             "\n" + s.answer_board_str,
             s.answer_board_code,
             _board,
