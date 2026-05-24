@@ -18,13 +18,15 @@ import heapq
 import gc
 from ortools.sat.python.cp_model import CpModel, IntVar
 
+from minesweepervariants.abs.Lrule import AbstractMinesRule
+
 from ....abs.rule import AbstractValue, AbstractRule
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
 from ....utils.tool import get_logger, get_random
-from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, Size
-from ....abs.Rrule import AbstractClueValue
-from ....abs.Mrule import AbstractMinesValue
+from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, RulesDict, Size
+from ....abs.Rrule import AbstractClueRule, AbstractClueValue
+from ....abs.Mrule import AbstractMinesClueRule, AbstractMinesValue
 
 def get_value(pos: object | None = None, code: bytes | None = None):
     from minesweepervariants.impl.impl_obj import get_value
@@ -307,6 +309,7 @@ class BoardData(TypedDict):
     variable_special: dict[str, dict[Tuple[int, int], IntVar]]
 
 
+
 class Board(AbstractBoard):
     """
     通过实现
@@ -320,12 +323,11 @@ class Board(AbstractBoard):
     _model: CpModel | None
     board_data: dict[str, BoardData]
     default_special: str
-    rules: dict[str, AbstractRule]
 
     def __init__(
         self,
         *,
-        rules: dict[str, AbstractRule] | None,
+        rules: RulesDict | None,
         size: Optional[Size] = None,
         code: Optional[bytes] = None,
         default_special: str = "raw",
@@ -333,11 +335,19 @@ class Board(AbstractBoard):
         self._model = None
         self.board_data= dict()
         self.default_special = default_special
-        self.rules= {} if rules is None else rules
+        self.rules = {"clue_rules": [], "mines_rules": [], "mines_clue_rules": []}
 
-        if rules:
-            for rule in rules.values():
-                rule.onboard_init(self)
+        if rules is not None:
+            self.rules.update(rules)
+
+        for l_rules in self.rules["mines_rules"]:
+            l_rules.onboard_init(self)
+
+        for m_rules in self.rules["mines_clue_rules"]:
+            m_rules.onboard_init(self)
+
+        for r_rules in self.rules["clue_rules"]:
+            r_rules.onboard_init(self)
 
         if code is None:
             if size is None:

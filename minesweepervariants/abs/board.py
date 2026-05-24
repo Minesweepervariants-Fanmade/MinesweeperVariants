@@ -6,15 +6,19 @@
 # @FileName: board.py
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generator, List, Optional, Protocol, Tuple, Union, TYPE_CHECKING, runtime_checkable
+from typing import Callable, Generator, List, Optional, Protocol, Tuple, TypedDict, Union, TYPE_CHECKING, runtime_checkable
 from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
 
 from ortools.sat.python.cp_model import CpModel, IntVar
 
-from minesweepervariants.abs.dye import AbstractDye
-from minesweepervariants.abs.rule import AbstractRule
+if TYPE_CHECKING:
+    from minesweepervariants.abs.Lrule import AbstractMinesRule
+    from minesweepervariants.abs.Mrule import AbstractMinesClueRule
+    from minesweepervariants.abs.Rrule import AbstractClueRule
+    from minesweepervariants.abs.dye import AbstractDye
+    from minesweepervariants.abs.rule import AbstractRule
 
 from ..impl.board.dye import get_dye
 
@@ -281,6 +285,11 @@ class AbstractPosition(ABC):
     #     :return: 位置列表，按距离从近到远排序。
     #     """
 
+class RulesDict(TypedDict):
+    clue_rules: list[AbstractClueRule]
+    mines_rules: list[AbstractMinesRule]
+    mines_clue_rules: list[AbstractMinesClueRule]
+
 
 class AbstractBoard(ABC):
     version = -1
@@ -288,7 +297,7 @@ class AbstractBoard(ABC):
 
     default_special = 'raw'
 
-    rules: dict[str, 'AbstractRule'] = {}
+    rules: RulesDict
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -302,7 +311,7 @@ class AbstractBoard(ABC):
     def __init__(
         self,
         *,
-        rules: dict[str, 'AbstractRule'] | None,
+        rules: RulesDict | None,
         size: Size | None,
         code: bytes | None,
         default_special: str,
