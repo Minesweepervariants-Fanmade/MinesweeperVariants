@@ -147,7 +147,8 @@ class TerminalEmulator:
 
             # 解析参数
             args = data.decode('utf-8').strip().split()
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 接收到参数: {args}")
+            args_print = f"{[arg if len(arg) > 10 else f'{arg[:3]}...{arg[-3:]}' for arg in args]}"
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 接收到参数: {args_print}")
 
             if os.name == 'nt':
                 os.system('')  # 关键！激活 ANSI 和实时输出
@@ -249,7 +250,8 @@ class TerminalEmulator:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 管道关闭: {str(e)}")
         except Exception as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 捕获输出时出错: {str(e)}")
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {args}: 退出")
+        args_print = f"{[arg if len(arg) > 10 else f'{arg[:3]}...{arg[-3:]}' for arg in args]}"
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {args_print}: 退出")
 
     @staticmethod
     def _send_output(client_socket, output_queue):
