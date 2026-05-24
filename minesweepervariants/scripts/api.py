@@ -147,7 +147,7 @@ class TerminalEmulator:
 
             # 解析参数
             args = data.decode('utf-8').strip().split()
-            args_print = f"{[arg if len(arg) > 10 else f'{arg[:3]}...{arg[-3:]}' for arg in args]}"
+            args_print = f"{[arg if len(arg) < 10 else f'{arg[:3]}...{arg[-3:]}' for arg in args]}"
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 接收到参数: {args_print}")
 
             if os.name == 'nt':
@@ -250,7 +250,7 @@ class TerminalEmulator:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 管道关闭: {str(e)}")
         except Exception as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 捕获输出时出错: {str(e)}")
-        args_print = f"{[arg if len(arg) > 10 else f'{arg[:3]}...{arg[-3:]}' for arg in args]}"
+        args_print = f"{[arg if len(arg) < 10 else f'{arg[:3]}...{arg[-3:]}' for arg in args]}"
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {args_print}: 退出")
 
     @staticmethod
