@@ -31,6 +31,9 @@ DEFAULT_CONFIG = {
     # 动态删线索模式(默认关闭)
     "dynamic_dig_rounds": 0,     # >0 时启用动态删线索迭代轮数
     "dynamic_dig_max_batch": 8,  # 每轮最大改动格数，随后会逐渐衰减
+
+    "game_mode": "PUZZLE",      # hint的时候 game的游戏模式
+    "hint_file": "hint",        # hint的保存的图片文件名
 }
 
 IMAGE_CONFIG = config = {
@@ -62,6 +65,18 @@ IMAGE_CONFIG = config = {
     "dye": {
         "white_bg": "#B3B3B3",
         "black_bg": "#4C4C4C"
+    },
+
+    # 提示区域-因为
+    "hint_because": {
+        "white_bg": "#ffff00",
+        "black_bg": "#ffff00"
+    },
+
+    # 提示区域-推出
+    "hint_deduced": {
+        "white_bg": "#00ff00",
+        "black_bg": "#00ff00"
     },
 
     # 描边颜色

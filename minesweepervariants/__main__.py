@@ -19,6 +19,7 @@ from typing import Callable
 from minesweepervariants import puzzle_query
 from minesweepervariants import puzzle
 from minesweepervariants import test
+from minesweepervariants import hint
 
 from minesweepervariants.abs.board import Size
 from minesweepervariants.config.config import DEFAULT_CONFIG
@@ -41,6 +42,8 @@ parser = argparse.ArgumentParser(description="")
 subparsers = parser.add_subparsers(dest='command', required=False)
 
 parser_list = subparsers.add_parser('list', help=_('CLI_LIST_RULE_DOCS'))
+
+parser_hint = subparsers.add_parser("hint", help="根据输入的内容进行逐步提示操作")
 
 parser.add_argument("-s", "--size", nargs="+",
                     help=_("CLI_BOARD_SIZE"))
@@ -89,9 +92,34 @@ parser.add_argument("--log-path", default=None,
                     help=_("CLI_LOG_PATH"))
 parser.add_argument("--lang", default=defaults.get("lang"),
                     help=_("CLI_LANG"))
-parser_list.add_argument("--json", action="store_true", default=False)
-args = parser.parse_args()
 
+parser_hint.add_argument("-b", "--board-code", type=str,
+                         help="题板字节码")  # 字符串类型
+parser_hint.add_argument("-a", "--answer-code", type=str,
+                         help="答案题板字节码")  # 字符串类型
+parser_hint.add_argument("-c", "--rules", nargs="+", default=[],
+                         help="规则字符串，有空格/单引号/双引号等特殊字符需要带引号")  # 字符串类型
+parser_hint.add_argument("-r", "--used-r", action="store_true", default=defaults.get("used_r"),
+                         help=_("CLI_USED_R"))
+parser_hint.add_argument("-m", "--game-mode", type=str, default=defaults.get("game_mode"),
+                         help="枚举值, game的游戏模式[专家:EXPERT/终极:ULTIMATE/纸笔:PUZZLE]")
+
+parser_hint.add_argument("-B", "--board-class", default=defaults.get("board_class"),
+                         help="题板的类名/题板的名称 通常使用默认值即可")
+parser_hint.add_argument("-I", "--no-image", action="store_true", default=defaults.get("no_image"),
+                         help="是否不生成图片")
+parser_hint.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
+                         help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
+parser_hint.add_argument("-F", "--file-name", default=defaults.get("hint_file"),
+                         help="文件名的前缀")
+parser_hint.add_argument("--output-path", default=defaults["output_file"],
+                         help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
+parser_hint.add_argument("--log-path", default=None,
+                         help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
+
+parser_list.add_argument("--json", action="store_true", default=False)
+
+args = parser.parse_args()
 
 # ==== 调用生成 ====
 
@@ -178,7 +206,6 @@ def main():
         tool.LOGGER = None
         get_logger()
 
-
     if args.output_path:
         output_path = Path(args.output_path).expanduser().absolute()
         output_path.mkdir(parents=True, exist_ok=True)
@@ -193,6 +220,22 @@ def main():
         else:
             handle_list_text_output(rule_list)
 
+        return
+
+    if args.command == "hint":
+        hint(
+            board_code=args.board_code,
+            answer=args.answer_code,
+            rules=args.rules,
+            drop_r=not args.used_r,
+            board_class=args.board_class,
+            log_path=args.log_path,
+            output_path=args.output_path,
+            file_name=args.file_name,
+            log_lv=args.log_lv,
+            no_image=args.no_image,
+            game_mode=args.game_mode,
+        )
         return
 
     if args.size is None:

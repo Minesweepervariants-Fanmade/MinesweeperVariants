@@ -9,6 +9,7 @@ import os
 import time
 from typing import Optional
 
+from minesweepervariants.abs.board import Size
 from minesweepervariants.impl.impl_obj import get_board, ModelGenerateError, encode_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.summon import GenerateError
@@ -48,7 +49,7 @@ def main(
         log_lv: str,  # 日志等级
         seed: int,  # 随机种子
         attempts: int,  # 尝试次数
-        size: tuple[int, int],  # 题板尺寸
+        size: Size,  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 规则id集合
         early_rules: list[str],  # 仅初始生成阶段生效的左线规则
@@ -210,4 +211,6 @@ def main(
     logger.info("[Discord Spoiler Format - Full Answer]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=False) + "\n")
     logger.info("[Discord Spoiler Format - Hide Clues]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=True) + "\n")
     logger.info(answer + "\n")
-    logger.info(f"{board_code}")
+
+    logger.info(f"board: {board_code.hex()}")
+    logger.info(f"answer: {answer_code.hex()}")

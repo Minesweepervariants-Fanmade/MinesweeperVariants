@@ -45,7 +45,7 @@ class GenerateError(Exception):
 
 class Summon:
     def __init__(
-        self, size: tuple[int, int],
+        self, size: Union[tuple[int, int], Size],
         total: int,
         rules: list[str],
         early_rules: Optional[list[str]] = None,

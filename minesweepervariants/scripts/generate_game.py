@@ -12,6 +12,7 @@ import os
 import time
 from typing import Optional
 
+from minesweepervariants.abs.board import Size
 from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board, encode_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, PUZZLE
@@ -50,7 +51,7 @@ def _build_rule_text(board) -> str:
 def main(
         log_lv: str,  # 日志等级
         seed: int,  # 随机种子
-        size: tuple[int, int],  # 题板尺寸
+        size: Size,  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 所有的规则集合
         early_rules: list[str],  # 仅初始生成阶段生效的左线规则
@@ -222,5 +223,8 @@ def main(
                     bottom_text=(rule_text + "-" + str(max(clue_freq.keys())) +
                                     f"-R{s.total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
+
+        logger.info(f"board: {board_code.hex()}")
+        logger.info(f"answer: {answer_code.hex()}")
 
         return

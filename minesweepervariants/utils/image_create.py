@@ -50,13 +50,13 @@ def _hex_to_rgb(hex_color: str):
 
 
 def get_text(
-    text: str,
-    width: float = "auto",
-    height: float = "auto",
-    cover_pos_label: bool = True,
-    color: tuple[str, str] = ("#FFFFFF", "#000000"),
-    dominant_by_height: bool = True,
-    style: str = "",
+        text: str,
+        width: float = "auto",
+        height: float = "auto",
+        cover_pos_label: bool = True,
+        color: tuple[str, str] = ("#FFFFFF", "#000000"),
+        dominant_by_height: bool = True,
+        style: str = "",
 ):
     """
     :param text:文本内容
@@ -87,12 +87,12 @@ def get_text(
 
 
 def get_image(
-    image_path: str,
-    image_width: float = "auto",
-    image_height: float = "auto",
-    cover_pos_label: bool = True,
-    dominant_by_height: bool = True,
-    style: str = "",
+        image_path: str,
+        image_width: float = "auto",
+        image_height: float = "auto",
+        cover_pos_label: bool = True,
+        dominant_by_height: bool = True,
+        style: str = "",
 ):
     """
     :param image_path:图片在data下的路径位置
@@ -110,7 +110,7 @@ def get_image(
         'type': 'image',
         'image': image_path,  # 图片对象
         'height': image_height,  # 高度（单元格单位或auto）
-        'width': image_width,   # 宽度（单元格单位或auto）
+        'width': image_width,  # 宽度（单元格单位或auto）
         "cover": cover_pos_label,
         "dominant": dominant,
         "style": style,
@@ -118,9 +118,9 @@ def get_image(
 
 
 def get_row(
-    *args,
-    spacing=0,
-    dominant_by_height=True
+        *args,
+        spacing=0,
+        dominant_by_height=True
 ):
     """
     水平排列元素
@@ -152,9 +152,9 @@ def get_row(
 
 
 def get_col(
-    *args,
-    spacing=0,
-    dominant_by_height=False
+        *args,
+        spacing=0,
+        dominant_by_height=False
 ):
     """
     水平排列元素
@@ -209,7 +209,9 @@ def draw_board(
         background_white: bool = None,
         bottom_text: str = "",
         cell_size: int = 100,
-        output="output"
+        output="output",
+        hint_because: list[AbstractPosition] = None,
+        hint_deduced: list[AbstractPosition] = None,
 ) -> bytes:
     """
     绘制多个题板图像，支持横向拼接。
@@ -218,6 +220,8 @@ def draw_board(
     :param bottom_text: 底部文字。
     :param cell_size: 单元格大小。
     :param output: 输出文件名（不含扩展名）。
+    :param hint_because: 提示的由于格子列表
+    :param hint_deduced: 提示的导致格子列表
     """
     from PIL import Image, ImageDraw, ImageFont
     from .element_renderer import Renderer
@@ -230,6 +234,11 @@ def draw_board(
 
     if background_white is None:
         background_white = CONFIG["white_base"]
+
+    if hint_because is None:
+        hint_because = []
+    if hint_deduced is None:
+        hint_deduced = []
 
     def safe_get_config(board_key: str, config_name: str, default=None):
         try:
@@ -324,6 +333,7 @@ def draw_board(
         return "".join(_roman)
 
     board_keys = board.get_board_keys()
+
     def infer_grid_type(board_key: str):
         grid_type = safe_get_config(board_key, "grid_type", None)
         if grid_type:
@@ -461,7 +471,7 @@ def draw_board(
                 raise ValueError("image not found")
 
             if img_name:
-                if not img_name.startswith(("http://","https://")):
+                if not img_name.startswith(("http://", "https://")):
                     img_path = pathlib.Path(minesweepervariants.__path__[0]) / CONFIG["assets"] / img_name
                     if img_path.exists():
                         bg_img = Image.open(img_path)
@@ -519,6 +529,56 @@ def draw_board(
                 else:
                     draw.rectangle([x0, y0, x0 + cell_size, y0 + cell_size], fill=dye_color)
 
+        # ========== 新增：提示叠加层 ==========
+        # 半透明度（0~255，建议 100 左右）
+        HINT_ALPHA = 95
+
+        # 处理 hint_because
+        if hint_because:
+            bc_color_hex = CONFIG["hint_because"]["white_bg" if background_white else "black_bg"]
+            bc_color_rgb = _hex_to_rgb(bc_color_hex)
+            bc_color_rgba = bc_color_rgb + (HINT_ALPHA,)
+            for pos in hint_because:
+                # 只绘制当前 board_key 下的位置
+                if getattr(pos, 'board_key', None) != key:
+                    continue
+                # 获取该格子的绘制区域
+                x0, y0, x_center, y_center = get_cell_box(
+                    pos, grid_type, x_offset, margin, cell_size, hex_metrics
+                )
+                if grid_type == "hex":
+                    # 六边形需要计算六个顶点
+                    base_hex_size = hex_metrics[0]  # hex_size
+                    points = get_hex_points(x_center, y_center, base_hex_size)
+                    draw.polygon(points, fill=bc_color_rgba)
+                else:
+                    # 方形格子
+                    draw.rectangle(
+                        [x0, y0, x0 + cell_size, y0 + cell_size],
+                        fill=bc_color_rgba
+                    )
+
+        # 处理 hint_deduced
+        if hint_deduced:
+            dc_color_hex = CONFIG["hint_deduced"]["white_bg" if background_white else "black_bg"]
+            dc_color_rgb = _hex_to_rgb(dc_color_hex)
+            dc_color_rgba = dc_color_rgb + (HINT_ALPHA,)
+            for pos in hint_deduced:
+                if getattr(pos, 'board_key', None) != key:
+                    continue
+                x0, y0, x_center, y_center = get_cell_box(
+                    pos, grid_type, x_offset, margin, cell_size, hex_metrics
+                )
+                if grid_type == "hex":
+                    base_hex_size = hex_metrics[0]
+                    points = get_hex_points(x_center, y_center, base_hex_size)
+                    draw.polygon(points, fill=dc_color_rgba)
+                else:
+                    draw.rectangle(
+                        [x0, y0, x0 + cell_size, y0 + cell_size],
+                        fill=dc_color_rgba
+                    )
+
         # 网格线
         if grid_type == "hex":
             for pos, _ in board(key=key):
@@ -541,7 +601,8 @@ def draw_board(
                 neighbors = get_hex_neighbor_positions(pos, board)
                 neighbor_dirs = []
                 for npos in neighbors:
-                    _, _, n_center_x, n_center_y = get_cell_box(npos, grid_type, x_offset, margin, cell_size, hex_metrics)
+                    _, _, n_center_x, n_center_y = get_cell_box(npos, grid_type, x_offset, margin, cell_size,
+                                                                hex_metrics)
                     ndx = n_center_x - x_center
                     ndy = n_center_y - y_center
                     nlen = math.hypot(ndx, ndy)
@@ -558,7 +619,8 @@ def draw_board(
                             best_dot = dot
                             best_neighbor = npos
                     if best_dot >= 0.85:
-                        if (pos.col, pos.row, pos.board_key) < (best_neighbor.col, best_neighbor.row, best_neighbor.board_key):
+                        if (pos.col, pos.row, pos.board_key) < (
+                        best_neighbor.col, best_neighbor.row, best_neighbor.board_key):
                             draw.line([p1, p2], fill=grid_color, width=stroke_px)
                     else:
                         draw.line([p1, p2], fill=grid_color, width=stroke_px)
@@ -590,7 +652,7 @@ def draw_board(
         for pos, obj in board(mode="object", key=key):
             x0_cell, y0_cell, _, _ = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
             value = board.get_value(pos)
-            if value is None:
+            if value is None and pos not in hint_deduced:
                 continue
 
             # 创建元素渲染器
@@ -602,7 +664,14 @@ def draw_board(
                 assets=CONFIG["assets"]
             )
 
-            renderer.render(image, value.compose(board))
+            if value is not None:
+                renderer.render(image, value.compose(board))
+            else:
+                renderer.render(image, get_col(
+                    get_dummy(height=0.3),
+                    get_text("!"),
+                    get_dummy(height=0.3)
+                ))
 
         # 渲染角标
         if by_mini:
@@ -660,7 +729,7 @@ def draw_board(
         os.makedirs(CONFIG["output_path"])
     filepath = os.path.join(CONFIG["output_path"], f"{output}.png")
     image.save(filepath)
-    get_logger().info(f"Image saved to: {filepath}")
+    get_logger().info(f"Image saved to: {filepath}\n", end="")
 
     with open(filepath, "rb") as f:  # 'rb' 表示二进制读取
         image_bytes = f.read()  # 直接获取字节数据
