@@ -8,9 +8,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, List, Mapping
 
-from json.decoder import JSONObject
-
-from minesweepervariants.abs.board import AbstractBoard
+from minesweepervariants.abs.board import AbstractBoard, ImmutableDict, JSONObject
 
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
@@ -147,10 +145,11 @@ class AbstractClueValue(AbstractValue, ABC):
     """
 
     def from_json(self, data: JSONObject) -> None:
-        if data['type'] =="old_style":
-            self.__init__(self.pos, code=data.get('code', b''))
+        if isinstance(data, Mapping) and 'type' in data and data['type'] == "old_style" and 'code' in data and isinstance((code := data['code']), str):
+            from base64 import b64decode
+            self.__init__(self.pos, code=b64decode(code))
         else:
-            raise ValueError(f"Unsupported clue value type: {data['type']}")
+            raise ValueError(f"Unsupported clue value type")
 
 
     def __repr__(self) -> str:
@@ -191,7 +190,7 @@ class AbstractClueValue(AbstractValue, ABC):
 
     def json(self) -> JSONObject:
         from base64 import b64encode
-        return {"type": "old_style", "code": b64encode(self.code()).decode()}
+        return ImmutableDict({"type": "old_style", "code": b64encode(self.code()).decode()})
 
 
 # --------实例类-------- #
