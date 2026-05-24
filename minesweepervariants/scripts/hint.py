@@ -8,7 +8,7 @@
 import argparse
 import threading
 
-from minesweepervariants.abs.board import Size
+from minesweepervariants.abs.board import Size, AbstractPosition
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import get_board, decode_board
 from minesweepervariants.impl.summon import Summon
@@ -179,26 +179,22 @@ def main(
         clue_freq[key] = clue_freq.setdefault(key, 0) + len(hint)
         for hint_because in hint:
             logger.info(f"{hint_because}->{hint[hint_because]}")
-        logger.info(f"当前线索图: {clue_freq}")
-
-        botten_text = ""
+        logger.info(f"clue freq now: {clue_freq}")
 
         if not no_image:
             for hint_because in hint:
-                # draw_board(
-                #     board=game.board,
-                #     bottom_text=botten_text,
-                #     output=file_name + "_" + str(hint_times),
-                #     hint_because=hint_because,
-                #     hint_deduced=hint[hint_because]
-                # )
+                botten_text = ""
+                for b in hint_because:
+                    if isinstance(b, AbstractPosition):
+                        continue
+                    botten_text += b[0] + f":{b[1]}" if b[1] else ""
                 threading.Thread(
                     target=draw_board,
                     kwargs={
                         "board": game.board.clone(),
                         "bottom_text": botten_text,
                         "output": file_name + "_" + str(hint_times),
-                        "hint_because": hint_because,
+                        "hint_because": [pos for pos in hint_because if isinstance(pos, AbstractPosition)],
                         "hint_deduced": hint[hint_because]
                     }
                 ).start()
