@@ -8,7 +8,7 @@
 from abc import ABC, abstractmethod
 from collections import UserDict
 from types import MappingProxyType
-from typing import Callable, Final, Generator, Iterator, List, Mapping, Optional, Protocol, Tuple, Union, TYPE_CHECKING, cast, runtime_checkable
+from typing import Callable, Final, Generator, Iterator, List, Literal, Mapping, Optional, Protocol, Sequence, Tuple, TypeIs, Union, TYPE_CHECKING, cast, get_origin, runtime_checkable
 from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
@@ -303,34 +303,84 @@ class ImmutableDict[K,V](Mapping[K, V]):
     def __repr__(self) -> str:
         return str(self._data)
 
+    def get_data(self) -> dict[K, V]:
+        return self._data
+
 
 
 type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject, ...] | str | int | float | bool | None
 type JSONString = str
+
+type JSONDirectlySerializable = dict[str, JSONDirectlySerializable] | list[JSONDirectlySerializable] | str | int | float | bool | None
 @runtime_checkable
-class JSONifyAble(Protocol):
+class SerializeAble(Protocol):
     def from_json(self, data: JSONObject) -> None: ...
     def json(self) -> JSONObject: ...
 
+type JSONLikeType = SerializeAble | JSONObject | Sequence[JSONLikeType] | Mapping[str, JSONLikeType]
+
+def _deep_unwrap(obj: JSONObject) -> JSONDirectlySerializable:
+    if isinstance(obj, ImmutableDict):
+        return {k: _deep_unwrap(v) for k, v in obj.get_data().items()}
+
+    if isinstance(obj, tuple):
+        return [_deep_unwrap(item) for item in obj]
+
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+
+def _deep_wrap(obj: JSONDirectlySerializable) -> JSONObject:
+    if isinstance(obj, dict):
+        return ImmutableDict({k: _deep_wrap(v) for k, v in obj.items()})
+
+    if isinstance(obj, list):
+        return tuple(_deep_wrap(item) for item in obj)
+
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+
+
 def json_dumps(obj: JSONObject) -> JSONString:
     try:
-        from orjson import dumps as dumps
-    except:
-        from json import dumps
+        from orjson import dumps as orjson_dumps
+        pure_data = _deep_unwrap(obj)
+        return orjson_dumps(pure_data).decode('utf-8')
+    except ImportError:
+        from json import dumps as json_dumps_std
+        pure_data = _deep_unwrap(obj)
+        return json_dumps_std(pure_data, ensure_ascii=False)
 
-    str_or_bytes = dumps(obj)
-    if isinstance(str_or_bytes, bytes):
-        return str_or_bytes.decode('utf-8')
-    return str_or_bytes
 
-def json_load(str: JSONString):
+def json_load(json_str: JSONString) -> JSONObject:
     try:
-        from orjson import loads as loads
-    except:
-        from json import loads
+        from orjson import loads as orjson_loads
+        return _deep_wrap(orjson_loads(json_str))
+    except ImportError:
+        from json import loads as json_loads_std
+        return _deep_wrap(json_loads_std(json_str))
 
-    return loads(str)
+def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
+    if not isinstance(data, get_origin(type_) or type_):
+        raise TypeError("Invalid JSON format: expected a mapping at the top level, got " + str(type(data)))
+    return True
 
+def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
+    assert valid(d, ImmutableDict[str, JSONObject])
+    if key not in d:
+        raise KeyError(f"字典缺少键: '{key}'")
+
+    assert valid((v := d[key]), type_)
+    return v
+
+def jsonify(obj: JSONLikeType) -> JSONObject:
+    if isinstance(obj, SerializeAble):
+        return obj.json()
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    if isinstance(obj, Sequence) and not isinstance(obj, str):
+        return tuple(jsonify(i) for i in obj)
+    if isinstance(obj, Mapping):
+        return ImmutableDict({k: jsonify(v) for k, v in obj.items()})
 
 class AbstractBoard(ABC):
     version = -1
@@ -375,11 +425,20 @@ class AbstractBoard(ABC):
 
     @abstractmethod
     def __call__(
-            self, target: Union[str, None] = "always",
-            mode: str = "object",
-            key: str | None = MASTER_BOARD,
+            self, target: str = "always",
+            mode: Literal['object', 'obj', 'type', 'variable', 'var', 'dye', 'none'] = "object",
+            key: Optional[str] = None,
             *args: object, **kwargs: object
-        ) -> Generator[Tuple['AbstractPosition', object], None, None]:
+    ) -> Generator[
+        Tuple[
+            'AbstractPosition',
+            Union[
+            'AbstractClueValue',
+            'AbstractMinesValue',
+            str, IntVar, bool, None
+            ]],
+        None, None
+    ]:
         """
         被调用时循环返回目标值
         :param target: 遍历目标类型 可选参数: C:线索, F:雷, N:未定义|未翻开

@@ -4,30 +4,31 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 
-import re
-import traceback
-from typing import List, Mapping, Optional, TypeGuard, TypeIs, TypedDict, Union, Tuple, Any, Generator, TYPE_CHECKING
+from base64 import b64decode
+from minesweepervariants.abs.board import ImmutableDict, JSONObject
+from typing import List, Literal, Optional, TypedDict, Union, Tuple, Any, Generator, overload, override
 import heapq
 
 import gc
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
 
+
+
+
 from ....abs.rule import AbstractValue
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
 from ....utils.tool import get_logger, get_random
-from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, JSONObject, Size, ImmutableDict
+from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, JSONObject, Size, ImmutableDict, get_with_valid, jsonify, valid
 from ....abs.Rrule import AbstractClueValue
 from ....abs.Mrule import AbstractMinesValue
 
-if TYPE_CHECKING:
-    ...
 
 
-def get_value(pos=None, code=None):
-    from minesweepervariants.impl.impl_obj import get_value
-    return get_value(pos, code)
+# def get_value(pos=None, clue_type=None, code=None):
+#     from minesweepervariants.impl.impl_obj import get_value
+#     return get_value(pos, clue_type, code)
 
 
 def alpha(col: int) -> str:
@@ -79,7 +80,7 @@ class Position(AbstractPosition):
     def _right(self, n: int = 1):
         self.col += n
 
-    def _deviation(self, pos):
+    def _deviation(self, pos: 'AbstractPosition'):
         self.row += pos.row
         self.col += pos.col
 
@@ -111,7 +112,7 @@ class Position(AbstractPosition):
     #         self.col += n
     #         self.row += n
 
-    def in_bounds(self, bound_pos) -> bool:
+    def in_bounds(self, bound_pos: 'AbstractPosition') -> bool:
         if bound_pos.board_key != self.board_key:
             return False
         return (0 <= self.col <= bound_pos.col and
@@ -330,11 +331,64 @@ class Board(AbstractBoard):
             self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
             self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
 
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['object', 'obj'],
+        key: Optional[str] = None,
+
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple[
+            'Position',
+             'AbstractClueValue | AbstractMinesValue | None'
+            ],
+        None, None
+    ]: ...
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['variable', 'var'],
+        key: Optional[str] = None,
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple[
+            'Position', Union[
+            'AbstractClueValue',
+            'AbstractMinesValue',
+            None
+            ]],
+        None, None
+    ]: ...
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['dye'],
+        key: Optional[str] = None,
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple['Position', bool],
+        None, None
+    ]: ...
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['none'],
+        key: Optional[str] = None,
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple['Position', None],
+        None, None
+    ]: ...
+
     def __call__(
             self, target: str = "always",
-            mode: str = "object",
+            mode: Literal['object', 'obj', 'type', 'variable', 'var', 'dye', 'none'] = "object",
             key: Optional[str] = None,
-            *args, **kwargs
+            *args: object, **kwargs: object
     ) -> Generator[
         Tuple[
             'Position',
@@ -343,7 +397,7 @@ class Board(AbstractBoard):
             'AbstractMinesValue',
             str, IntVar, bool, None
             ]],
-        Any, None
+        None, None
     ]:
         """
         被调用时循环返回目标值
@@ -488,59 +542,47 @@ class Board(AbstractBoard):
 
             # cells list with position and object info
             cells: list[JSONObject] = []
-            for pos, obj in self(key=board_key):
+            for pos, obj in self(key=board_key, mode="object"):
                 cell: dict[str, int | str | bool | None | ImmutableDict[str, int | str | bool | None]] = {
                     "col": pos.col,
                     "row": pos.row,
                     "board_key": pos.board_key,
                     "dyed": bool(self.get_dyed(pos))
                 }
+
+                obj: Optional[AbstractClueValue | AbstractMinesValue]
                 if obj is None:
-                    cell["obj"] = None
+                    cell["type"] = None
+                    cell["data"] = None
                 else:
-                    match obj:
-                        case str() | bool():
-                            cell["obj"] = obj
-                            break
-                        case IntVar():
-                            raise ValueError("Cannot serialize IntVar objects directly")
-                        case AbstractValue():
-                            cell["obj"] = ImmutableDict(obj.json())
+                    cell["type"] = obj.type().decode("ascii")
+                    cell["data"] = ImmutableDict(obj.json())
                 cells.append(ImmutableDict(cell))
 
             boards[board_key] = ImmutableDict({
                 "size": ImmutableDict({"cols": size.cols, "rows": size.rows}),
                 "flags": ImmutableDict(flags),
                 "mask": tuple(mask),
-                "value": value.json(),
-                "mines": mines.json(),
+                "value": {"type": value.type().decode("ascii"),"data": value.json()},
+                "mines": {"type": mines.type().decode("ascii"),"data": mines.json()},
                 "labels": labels,
                 "cells": tuple(cells)
             })
 
-        return ImmutableDict({"boards": ImmutableDict(boards)})
+        return jsonify({"boards": boards})
 
 
     def from_json(self, data: JSONObject) -> None:
         """Load board state from json produced by json()"""
-        def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
-            if not isinstance(data, type_):
-                raise TypeError("Invalid JSON format: expected a mapping at the top level, got " + str(type(data)))
-            return True
 
-        def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
-            assert valid(d, ImmutableDict)
-            if key not in d:
-                raise KeyError(f"字典缺少键: '{key}'")
+        from minesweepervariants.impl.impl_obj import get_value
+        from minesweepervariants.impl.impl_obj import get_value_type
 
-            assert valid((v := d[key]), type_)
-            return v
-
-        boards = get_with_valid(data, "boards", ImmutableDict)
+        boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
         # clear existing
         self.board_data = {}
         for board_key, cfg in boards.items():
-            size_obj = get_with_valid(cfg, "size", ImmutableDict)
+            size_obj = get_with_valid(cfg, "size", ImmutableDict[str, JSONObject])
             cols = get_with_valid(size_obj, "cols", int)
             rows = get_with_valid(size_obj, "rows", int)
             size = Size(cols, rows)
@@ -552,7 +594,7 @@ class Board(AbstractBoard):
             self.generate_board(board_key, size=size, labels=labels_list)
 
             # flags
-            flags = get_with_valid(cfg, "flags", ImmutableDict)
+            flags = get_with_valid(cfg, "flags", ImmutableDict[str, JSONObject])
             for name, val in flags.items():
                 self.set_config(board_key, name, bool(val))
 
@@ -567,36 +609,39 @@ class Board(AbstractBoard):
                             self.set_mask(pos)
 
             # value and mines templates
-            try:
-                v = get_with_valid(cfg, "value", ImmutableDict)
-                m = get_with_valid(cfg, "mines", ImmutableDict)
-                if v:
-                    code = get_with_valid(v, "code", int)
-                    self.board_data[board_key]["config"]["VALUE"] = get_value(None, int(v.get("code", 0)))
-                if m:
-                    self.board_data[board_key]["config"]["MINES"] = get_value(None, int(m.get("code", 0)))
-            except Exception:
-                pass
+
+            v = get_with_valid(cfg, "value", ImmutableDict[str, JSONObject])
+            m = get_with_valid(cfg, "mines", ImmutableDict[str, JSONObject])
+            if v:
+                type_ = get_with_valid(v, "type", str)
+                data_ = get_with_valid(v, "data", ImmutableDict[str, JSONObject])
+                self.board_data[board_key]["config"]["VALUE"] = get_value(POSITION_TAG, type_, data_)
+            if m:
+                type_ = get_with_valid(m, "type", str)
+                data_ = get_with_valid(m, "data", ImmutableDict[str, JSONObject])
+                self.board_data[board_key]["config"]["MINES"] = get_value(POSITION_TAG, type_, data_)
+
 
             # cells
-            for cell in get_with_valid(cfg, "cells", tuple):
-                col = cell.get("col")
-                row = cell.get("row")
+            for cell in get_with_valid(cfg, "cells", tuple[JSONObject, ...]):
+                col = get_with_valid(cell, "col", int)
+                row = get_with_valid(cell, "row", int)
                 pos = self.get_pos(row, col, board_key)
                 if pos is None:
                     continue
-                if cell.get("dyed"):
+                if get_with_valid(cell, "dyed", bool):
                     self.set_dyed(pos, True)
-                obj = cell.get("obj")
-                if obj is None:
+                assert valid(cell, ImmutableDict[str, JSONObject])
+
+                if 'type' not in cell or cell['type'] is None:
                     self.set_value(pos, None)
-                else:
-                    try:
-                        code = int(obj.get("code"))
-                        value_obj = get_value(pos, code)
-                        self.set_value(pos, value_obj)
-                    except Exception:
-                        self.set_value(pos, None)
+                    continue
+                obj_data: ImmutableDict[str, JSONObject] = get_with_valid(cell, "data", ImmutableDict[str, JSONObject])
+                type_ = get_with_valid(cell, "type", str)
+                value_obj = get_value(pos, type_, obj_data)
+                if isinstance(value_obj, (AbstractMinesValue, AbstractClueValue)):
+                    self.set_value(pos, value_obj)
+
 
     def boundary(self, key=MASTER_BOARD) -> "Position":
         if key not in self.get_board_keys():

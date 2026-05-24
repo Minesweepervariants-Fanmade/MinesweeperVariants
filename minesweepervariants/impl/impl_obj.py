@@ -13,7 +13,7 @@ from typing import Optional
 
 from minesweepervariants.utils.tool import get_logger
 
-from ..utils.impl_obj import VALUE_QUESS, MINES_TAG
+from ..utils.impl_obj import POSITION_TAG, VALUE_QUESS, MINES_TAG, decode_singleton, serialize
 
 from ..abs.rule import AbstractValue, AbstractRule
 from ..abs.board import AbstractBoard, AbstractPosition, JSONObject
@@ -173,38 +173,34 @@ def get_rule(name: str) -> type:
     raise ValueError(f"未找到规则[{name}]")
 
 
-def get_value_type(clue_type: Union[bytes, str]) -> Optional[type[AbstractValue]]:
+def get_value_type(clue_type: str) -> Optional[type[AbstractValue]]:
     for i in get_all_subclasses(AbstractValue):
-        if i in [
-            AbstractValue,
-            AbstractClueValue,
-            AbstractMinesValue
-        ]:
-            continue
-        if i.type() == clue_type:
+        if (
+            hasattr(i, 'type')
+            and i.type() is not None
+            and i.type().decode('ascii') == clue_type
+        ):
             return i
     return None
 
 
-def get_value(pos: AbstractPosition, clue_type: Union[bytes, str], data: JSONObject):
+def get_value(pos: Optional[AbstractPosition], clue_type: str, data: JSONObject):
+    singleton = decode_singleton(clue_type)
+    if singleton is not None:
+        return singleton
+
     clue_cls = get_value_type(clue_type)
+    if pos is None:
+        pos = POSITION_TAG
     if clue_cls is not None:
         return clue_cls.from_json(pos, data)
     return None
 
-
-def encode_board(code: bytes) -> str:
-    code = code[:]
-    padding = len(code) % 4
-    if padding:
-        code += b'\xff' * (4 - padding)
-    return base64.urlsafe_b64encode(code).decode("ascii")
-
-
-def decode_board(base64data: str, name: Optional[str] = None):
-    board_bytes = base64.urlsafe_b64decode(base64data.encode("ascii"))
-    board_bytes = board_bytes.rstrip(b"\xff")
-    return get_board(name)(rules={}, code=board_bytes)
+def decode_board(data: str, name: Optional[str] = None):
+    board_cls = get_board(name)
+    if board_cls is None:
+        raise ValueError("未找到棋盘")
+    return board_cls(rules={}, data=data)
 
 
 for pkg in [rule] + hypothesis_board:

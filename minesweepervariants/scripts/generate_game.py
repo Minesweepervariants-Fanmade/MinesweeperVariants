@@ -13,7 +13,7 @@ import time
 from typing import Optional
 
 from minesweepervariants.abs.board import Size
-from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board, encode_board
+from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, PUZZLE
 from minesweepervariants.impl.summon.summon import GenerateError
@@ -22,7 +22,7 @@ from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.utils.tool import get_logger, get_random
 
-from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
+from minesweepervariants.config.config import DEFAULT_CONFIG
 
 
 def _build_rule_text(board) -> str:

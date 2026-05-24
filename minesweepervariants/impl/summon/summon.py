@@ -353,6 +353,7 @@ class Summon:
             # raise ValueError("生成失败 左线/雷数出现矛盾")
         self.logger.info("题板初始化完毕")
         board_bytes = self.board.json()
+
         for rule in self.mines_rules.rules + [self.clue_rule, self.mines_clue_rule]:
             rule.init_clear(self.board)
         self.dynamic_dig_rounds = self._resolve_dynamic_dig_rounds()
@@ -389,6 +390,7 @@ class Summon:
         self.answer_board_code = _board.json()
         self.answer_board = _board.clone()
         self.logger.debug("题板生成完毕:\n" + _board.show_board())
+        self.logger.debug("题板生成完毕:\n" + self.answer_board.show_board())
         self.logger.debug(_board.json())
         self.answer_board = _board
         self.board = _board.clone()
