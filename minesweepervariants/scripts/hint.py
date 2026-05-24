@@ -5,14 +5,14 @@
 # @Author  : Wu_RH
 # @FileName: hint.py
 
-import argparse
 import threading
 
-from minesweepervariants.abs.board import Size, AbstractPosition, MASTER_BOARD
+from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, decompress, json_loads
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import get_board, decode_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, Mode, UMode
+from minesweepervariants.utils import tool
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.tool import get_logger
 
@@ -33,6 +33,8 @@ def main(
     drop_r: bool,
     game_mode: str,
 ):
+    DEFAULT_CONFIG["log_file_name"] = file_name
+    tool.LOGGER = None
     logger = get_logger("hint", log_lv)
     if not board_code:
         raise ValueError("未输入待提示的题板")
@@ -46,11 +48,7 @@ def main(
         case _:
             raise ValueError(f"unknown game mode: {game_mode}")
 
-    try:
-        mask_board = decode_board(board_code)
-    except:
-        code = bytes.fromhex(board_code)
-        mask_board = get_board(board_class)(rules={}, code=code)
+    mask_board = decode_board(data=json_loads(decompress(board_code)))
 
     s = Summon(
         size=mask_board.get_config(MASTER_BOARD, "size"), total=-2, rules=rules[:],
@@ -164,14 +162,18 @@ def main(
     clue_freq = {}
     hint_times = 0
 
+    thread_list = []
+
     if not no_image:
-        threading.Thread(
+        thread = threading.Thread(
             target=draw_board,
             kwargs={
                 "board": game.board.clone(),
                 "output": file_name + "_" + str(hint_times)
             }
-        ).start()
+        )
+        thread.start()
+        thread_list.append(thread)
     hint_times += 1
     while game.deduced():
         hint = game.hint()
@@ -188,8 +190,8 @@ def main(
                 for b in hint_because:
                     if isinstance(b, AbstractPosition):
                         continue
-                    botten_text += b[0] + f":{b[1]}" if b[1] else ""
-                threading.Thread(
+                    botten_text += b[0] + (f":{b[1]}" if b[1] else "")
+                thread = threading.Thread(
                     target=draw_board,
                     kwargs={
                         "board": game.board.clone(),
@@ -198,7 +200,9 @@ def main(
                         "hint_because": [pos for pos in hint_because if isinstance(pos, AbstractPosition)],
                         "hint_deduced": hint[hint_because]
                     }
-                ).start()
+                )
+                thread.start()
+                thread_list.append(thread)
                 hint_times += 1
 
         for pos in set(sum(hint.values(), [])):
@@ -207,15 +211,20 @@ def main(
         logger.info(f"当前题板:\n{game.board}")
 
     if not no_image:
-        threading.Thread(
+        thread = threading.Thread(
             target=draw_board,
             kwargs={
                 "board": game.board.clone(),
                 "output": file_name + "_" + str(hint_times)
             }
-        ).start()
+        )
+        thread.start()
+        thread_list.append(thread)
+    hint_times += 1
+    for thread in thread_list:
+        thread.join()
+
     logger.info(f"最终题板:\n{game.board}")
     logger.info(f"线索图:{clue_freq}")
-    hint_times += 1
 
     return

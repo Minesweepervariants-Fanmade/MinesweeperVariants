@@ -8,7 +8,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, List, Mapping
 
-from minesweepervariants.abs.board import AbstractBoard
+from minesweepervariants.abs.board import AbstractBoard, ImmutableDict, JSONObject
 
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
@@ -144,6 +144,7 @@ class AbstractClueValue(AbstractValue, ABC):
     线索格数字对象类
     """
 
+
     def __repr__(self) -> str:
         """
         当前值在展示时候的显示字符串
@@ -179,6 +180,7 @@ class AbstractClueValue(AbstractValue, ABC):
 
     def weaker_times(self) -> int:
         return 1
+
 
 
 # --------实例类-------- #
@@ -217,7 +219,7 @@ class ValueCross(AbstractClueValue):
     副板的叉号
     """
 
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
         super().__init__(pos)
 
     def __repr__(self) -> str:

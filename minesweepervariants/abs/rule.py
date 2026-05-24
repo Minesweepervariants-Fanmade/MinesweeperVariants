@@ -14,6 +14,7 @@ from minesweepervariants.utils.tool import get_logger
 if TYPE_CHECKING:
     from minesweepervariants.abs.board import AbstractBoard, AbstractPosition
     from minesweepervariants.impl.summon.solver import Switch
+    from minesweepervariants.abs.board import ImmutableDict, JSONObject
 
 
 class RuleInfo(TypedDict):
@@ -357,8 +358,24 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         return []
 
 class AbstractValue(ABC):
+    @classmethod
+    def from_json(cls, pos: 'AbstractPosition', data: 'JSONObject') -> 'AbstractValue':
+        if isinstance(data, Mapping) and 'old_style' in data and data['old_style'] and 'type' in data:
+            if 'code' in data and isinstance((code := data['code']), str):
+                from base64 import b64decode
+                return cls(pos, **{"code": b64decode(code)})
+            else:
+                raise ValueError(f"Unsupported clue value type {data['type']}")
+        else:
+            raise ValueError(f"Unsupported clue value type")
+
+    def json(self) -> 'JSONObject':
+        from base64 import b64encode
+        from minesweepervariants.abs.board import ImmutableDict
+        return ImmutableDict({"old_style": True, "type": b64encode(self.type()).decode(), "code": b64encode(self.code()).decode()})
+
     @abstractmethod
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
         """
         获取code并初始化 输入值为code函数的返回值
         :param code: 实例对象代码

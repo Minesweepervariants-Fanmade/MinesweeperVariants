@@ -9,8 +9,8 @@ import os
 import time
 from typing import Optional
 
-from minesweepervariants.abs.board import Size
-from minesweepervariants.impl.impl_obj import get_board, ModelGenerateError, encode_board
+from minesweepervariants.abs.board import Size, compress, json_dumps
+from minesweepervariants.impl.impl_obj import decode_board, get_board, ModelGenerateError
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.summon import GenerateError
 from minesweepervariants.utils import timer
@@ -109,7 +109,7 @@ def main(
             b_time - a_time,
             n_num,
             "\n" + _board.show_board(),
-            _board.encode(),
+            _board.json(),
             "\n" + s.answer_board_str,
             s.answer_board_code,
             _board,
@@ -166,7 +166,7 @@ def main(
         f.write(board_str)
         f.write(answer)
 
-        f.write(f"\n答案: img -c {encode_board(answer_code)} ")
+        f.write(f"\n答案: img -c {json_dumps(answer_code)} ")
         f.write(f"-r \"{rule_text}-R{s.total}/")
         f.write(f"{n_num}")
         if unseed:
@@ -175,7 +175,7 @@ def main(
             f.write(" ")
         f.write("-o answer\n")
 
-        f.write(f"\n题板: img -c {encode_board(board_code)} ")
+        f.write(f"\n题板: img -c {json_dumps(board_code)} ")
         f.write(f"-r \"{rule_text}-R{'*' if drop_r else s.total}/")
         f.write(f"{n_num}")
         if unseed:
@@ -184,7 +184,7 @@ def main(
             f.write(" ")
         f.write("-o demo\n")
 
-        f.write(f"\n题板代码: \n{encode_board(answer_code)}:{mask.hex()}:{':'.join(rule_code)}\n")
+        f.write(f"\n题板代码: \n{json_dumps(answer_code)}:{mask.hex()}:{':'.join(rule_code)}\n")
 
         f.write(f"\n总求解用时: \n{sum(d['time'] for d in timer.HISTORY)}s\n")
 
@@ -193,12 +193,12 @@ def main(
             f.write(f"求解状态: {d['result']}, 用时: {d['time']}s\n")
 
     if image:
-        draw_board(board=get_board(board_class)(code=board_code, rules={}), cell_size=100, output=file_name + "demo",
+        draw_board(board=decode_board(board_code), cell_size=100, output=file_name + "demo",
                 bottom_text=(rule_text +
                                 f"-R{'*' if drop_r else s.total}/{n_num}" +
                                 ("\n" if unseed else f"-{get_seed()}\n")))
 
-        draw_board(board=get_board(board_class)(code=answer_code, rules={}), output=file_name + "answer", cell_size=100,
+        draw_board(board=decode_board(answer_code), output=file_name + "answer", cell_size=100,
                 bottom_text=(rule_text +
                                 f"-R{s.total}/{n_num}" +
                                 ("\n" if unseed else f"-{get_seed()}\n")))
@@ -212,5 +212,5 @@ def main(
     logger.info("[Discord Spoiler Format - Hide Clues]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=True) + "\n")
     logger.info(answer + "\n")
 
-    logger.info(f"|[BOARD]: {board_code.hex()}|")
-    logger.info(f"|[ANSWER_BOARD]: {answer_code.hex()}|")
+    logger.info(f"|[BOARD]: {compress(json_dumps(board_code))}|")
+    logger.info(f"|[ANSWER_BOARD]: {compress(json_dumps(answer_code))}|")

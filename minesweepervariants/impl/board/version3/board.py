@@ -4,38 +4,35 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 
-from typing import (
-    Generator,
-    List,
-    Optional,
-    Tuple,
-    TypedDict,
-    Union,
-    Callable,
-)
+from base64 import b64decode
+from minesweepervariants.abs.board import ImmutableDict, JSONObject
+from typing import List, Literal, Optional, TypedDict, Union, Tuple, Any, Generator, overload, override
 import heapq
 
 import gc
-from ortools.sat.python.cp_model import CpModel, IntVar
+from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import IntVar
 
-from minesweepervariants.abs.Lrule import AbstractMinesRule
 
-from ....abs.rule import AbstractValue, AbstractRule
+
+
+from ....abs.rule import AbstractValue
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
 from ....utils.tool import get_logger, get_random
-from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, RulesDict, Size
-from ....abs.Rrule import AbstractClueRule, AbstractClueValue
-from ....abs.Mrule import AbstractMinesClueRule, AbstractMinesValue
+from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, JSONObject, Size, ImmutableDict, get_with_valid, jsonify, valid
+from ....abs.Rrule import AbstractClueValue
+from ....abs.Mrule import AbstractMinesValue
 
-def get_value(pos: object | None = None, code: bytes | None = None):
-    from minesweepervariants.impl.impl_obj import get_value
 
-    return get_value(pos, code)
+
+# def get_value(pos=None, clue_type=None, code=None):
+#     from minesweepervariants.impl.impl_obj import get_value
+#     return get_value(pos, clue_type, code)
 
 
 def alpha(col: int) -> str:
-    alpha_map = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    alpha_map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     if col < 26:
         return alpha_map[col]
     return alpha_map[col // 26 - 1] + alpha_map[col % 26]
@@ -44,11 +41,11 @@ def alpha(col: int) -> str:
 def encode_int_7bit(n: int) -> bytes:
     # 编码主体：每7位 -> 1字节（bit6~bit0，bit7=0）
     if n == 0:
-        return b"\x00"
+        return b'\x00'
     payload = []
 
     while n > 0:
-        payload.append(n & 0x7F)
+        payload.append(n & 0x7f)
         n >>= 7
 
     return bytes(payload)
@@ -68,10 +65,8 @@ def decode_bytes_7bit(data: bytes) -> int:
 
 class Position(AbstractPosition):
     def __repr__(self):
-        return (
-            f"{self.board_key + ':' if self.board_key != MASTER_BOARD else ''}"
-            f"{alpha(self.col)}{self.row + 1}"
-        )
+        return (f"{self.board_key+':' if self.board_key != MASTER_BOARD else ''}"
+                f"{alpha(self.col)}{self.row+1}")
 
     def _up(self, n: int = 1):
         self.row -= n
@@ -85,7 +80,7 @@ class Position(AbstractPosition):
     def _right(self, n: int = 1):
         self.col += n
 
-    def _deviation(self, pos: AbstractPosition) -> None:
+    def _deviation(self, pos: 'AbstractPosition'):
         self.row += pos.row
         self.col += pos.col
 
@@ -117,10 +112,11 @@ class Position(AbstractPosition):
     #         self.col += n
     #         self.row += n
 
-    def in_bounds(self, bound_pos: AbstractPosition) -> bool:
+    def in_bounds(self, bound_pos: 'AbstractPosition') -> bool:
         if bound_pos.board_key != self.board_key:
             return False
-        return 0 <= self.col <= bound_pos.col and 0 <= self.row <= bound_pos.row
+        return (0 <= self.col <= bound_pos.col and
+                0 <= self.row <= bound_pos.row)
 
     def neighbors(self, *args: int):
         """
@@ -153,9 +149,8 @@ class Position(AbstractPosition):
             return []
 
         x0, y0 = self.col, self.row
-        directions = [
-            (dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)
-        ]
+        directions = [(dx, dy) for dx in (-1, 0, 1)
+                      for dy in (-1, 0, 1) if (dx, dy) != (0, 0)]
 
         heap = []  # 最小堆存储 (距离平方, x, y)
         visited = {(x0, y0)}
@@ -256,13 +251,10 @@ class Position(AbstractPosition):
 
     #     return result
 
-
 class Matrix[T]:
     def __init__(self, size: Size, default: T = None):
         self.size = size
-        self._data: list[list[T]] = [
-            [default for _ in range(self.size.cols)] for _ in range(self.size.rows)
-        ]
+        self._data: list[list[T]] = [[default for _ in range(self.size.cols)] for _ in range(self.size.rows)]
 
     def _check(self, pos: AbstractPosition):
         if pos.row < 0 or pos.col < 0:
@@ -286,18 +278,16 @@ class Matrix[T]:
     def __setitem__(self, pos: AbstractPosition, value: T) -> None:
         self.set(pos, value)
 
-
 class Config(TypedDict):
     size: Size
     VALUE: AbstractValue
     MINES: AbstractValue
     mask: List[Position]
-    labels: object
+    labels: Union[List[str], dict[Position, str]]
     row_col: bool
     interactive: bool
     by_mini: bool
     pos_label: bool
-
 
 class BoardData(TypedDict):
     config: Config
@@ -305,8 +295,8 @@ class BoardData(TypedDict):
     obj: Matrix[Optional[AbstractValue]]
     type: Matrix[Optional[str]]
     dye: Matrix[Optional[bool]]
-    type_special: dict[str, Callable[..., str]]
-    variable_special: dict[str, dict[Tuple[int, int], IntVar]]
+    type_special: dict[str, Any]
+    variable_special: dict[str, Any]
 
 
 
@@ -314,42 +304,25 @@ class Board(AbstractBoard):
     """
     通过实现
     """
-
-    CONFIG_FLAGS: List[str] = ["row_col", "interactive", "by_mini", "pos_label"]
-
     name = "Board2"
     version = 0
 
-    _model: CpModel | None
-    board_data: dict[str, BoardData]
-    default_special: str
-
-    def __init__(
-        self,
-        *,
-        rules: RulesDict | None,
-        size: Optional[Size] = None,
-        code: Optional[bytes] = None,
-        default_special: str = "raw",
-    ):
+    def __init__(self, *, rules=None, size: Optional[Size] = None, default_special: str = 'raw', data: JSONObject = None):
+        # traceback.print_stack()
+        if rules is None:
+            rules = {}
         self._model = None
-        self.board_data= dict()
+        self.board_data: dict[str, BoardData] = dict()
         self.default_special = default_special
-        self.rules = {"clue_rules": [], "mines_rules": [], "mines_clue_rules": []}
+        self.rules = rules
 
-        if rules is not None:
-            self.rules.update(rules)
-
-        for l_rules in self.rules["mines_rules"]:
-            l_rules.onboard_init(self)
-
-        for m_rules in self.rules["mines_clue_rules"]:
-            m_rules.onboard_init(self)
-
-        for r_rules in self.rules["clue_rules"]:
-            r_rules.onboard_init(self)
-
-        if code is None:
+        if rules:
+            for _rules in rules.values():
+                for rule in _rules:
+                    rule.onboard_init(self)
+        if data:
+            self.from_json(data)
+        else:
             if size is None:
                 raise ValueError("board size Undefined")
             self.generate_board(MASTER_BOARD, size=size)
@@ -357,20 +330,75 @@ class Board(AbstractBoard):
             self.board_data[MASTER_BOARD]["config"]["interactive"] = True
             self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
             self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
-            return
-        for chunks in code.split(b"\xff\xff"):
-            board_key, chunks = chunks.split(b"\xff", 1)
-            board_key = board_key.decode("ascii")
-            self.generate_board(board_key, code=chunks)
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['object', 'obj'],
+        key: Optional[str] = None,
+
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple[
+            'Position',
+             'AbstractClueValue | AbstractMinesValue | None'
+            ],
+        None, None
+    ]: ...
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['variable', 'var'],
+        key: Optional[str] = None,
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple[
+            'Position', Union[
+            'AbstractClueValue',
+            'AbstractMinesValue',
+            None
+            ]],
+        None, None
+    ]: ...
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['dye'],
+        key: Optional[str] = None,
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple['Position', bool],
+        None, None
+    ]: ...
+
+    @overload
+    def __call__(
+        self, target: str,
+        mode: Literal['none'],
+        key: Optional[str] = None,
+        *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple['Position', None],
+        None, None
+    ]: ...
 
     def __call__(
-        self,
-        target: str | None = "always",
-        mode: str = "object",
-        key: Optional[str] = None,
-        *args: object,
-        **kwargs: object,
-    ) -> Generator[Tuple["Position", object], None, None]:
+            self, target: str = "always",
+            mode: Literal['object', 'obj', 'type', 'variable', 'var', 'dye', 'none'] = "object",
+            key: Optional[str] = None,
+            *args: object, **kwargs: object
+    ) -> Generator[
+        Tuple[
+            'Position',
+            Union[
+            'AbstractClueValue',
+            'AbstractMinesValue',
+            str, IntVar, bool, None
+            ]],
+        None, None
+    ]:
         """
         被调用时循环返回目标值
 
@@ -392,74 +420,66 @@ class Board(AbstractBoard):
         """
         if key is None:
             for key in self.get_interactive_keys():
-                for i in self(target=target, mode=mode, key=key):
+                for i in self(target=target, mode=mode, key=key, *args, **kwargs):
                     yield i
         else:
             size = self.board_data[key]["config"]["size"]
             for row_idx in range(size.rows):
                 for col_idx in range(size.cols):
                     pos = Position(col_idx, row_idx, key)
-                    _config = self.get_config(pos.board_key, "mask")
-                    if isinstance(_config, list) and pos in _config:
+                    if (_config := self.get_config(pos.board_key, "mask")) and pos in _config:
                         continue
-                    pos_type = self.get_type(pos, special="raw")
+                    pos_type = self.get_type(pos, special='raw')
 
                     # 检查是否符合目标类型
-                    if target is None or target == "always" or pos_type in target:
+                    if target == "always" or pos_type in target:
                         if mode == "object":
-                            yield pos, self.get_value(pos)
+                            yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "obj":
-                            yield pos, self.get_value(pos)
+                            yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "type":
-                            yield pos, self.get_type(pos)
+                            yield pos, self.get_type(pos, *args, **kwargs)
                         elif mode == "var":
-                            yield pos, self.get_variable(pos)
+                            yield pos, self.get_variable(pos, *args, **kwargs)
                         elif mode == "variable":
-                            yield pos, self.get_variable(pos)
+                            yield pos, self.get_variable(pos, *args, **kwargs)
                         elif mode == "dye":
-                            yield pos, self.get_dyed(pos)
+                            yield pos, self.get_dyed(pos, *args, **kwargs)
                         elif mode == "none":
                             yield pos, None
 
     def has(self, target: str, key: Optional[str] = None) -> bool:
         if key not in self.get_board_keys() + [None]:
             return False
-        for _pos, type_obj in self(mode="type", key=key):
+        for pos, type_obj in self(mode="type", key=key):
             if type_obj == target:
                 return True
         return False
 
-    def get_model(self) -> CpModel:
+    def get_model(self):
         if self._model is None:
-            self._model = CpModel()
-        model = self._model
-        random = get_random()
-        for _key in self.board_data:
-            _size: Size = self.board_data[_key]["config"]["size"]
-            variables: Matrix[Optional[IntVar]] = Matrix(_size)
-            positions = [
-                Position(col, row, _key)
-                for row in range(_size.rows)
-                for col in range(_size.cols)
-            ]
-            random.shuffle(positions)
-            for pos in positions:
-                variables[pos] = model.new_bool_var(
-                    f"var({self.get_pos(pos.row, pos.col, pos.board_key)})"
-                )
+            self._model = cp_model.CpModel()
+            random = get_random()
+            for _key in self.board_data:
+                _size: Size = self.board_data[_key]["config"]["size"]
+                variables: Matrix[Optional[IntVar]] = Matrix(_size)
+                positions = [Position(col, row, _key) for row in range(_size.rows) for col in range(_size.cols)]
+                random.shuffle(positions)
+                for pos in positions:
+                    variables[pos] = \
+                        self._model.NewBoolVar(f"var({self.get_pos(pos.row, pos.col, pos.board_key)})")
 
-            get_logger().trace(f"构建新变量:{variables}")
-            self.board_data[_key]["variable"] = variables
-        return model
+                get_logger().trace(f"构建新变量:{variables}")
+                self.board_data[_key]["variable"] = variables
+        return self._model
+
 
     def generate_board(
-        self,
-        board_key: str,
-        size: Optional[Size] = None,
-        labels: object | None = None,
-        code: Optional[bytes] = None,
-        true_tag: "AbstractValue" = VALUE_CROSS,
-        false_tag: "AbstractValue" = VALUE_CIRCLE,
+            self, board_key: str,
+            size: Optional[Size] = None,
+            labels: list[str] = [],
+            true_tag: "AbstractValue" = VALUE_CROSS,
+            false_tag: "AbstractValue" = VALUE_CIRCLE,
     ) -> None:
         """
         创建一个新的题板
@@ -471,221 +491,171 @@ class Board(AbstractBoard):
         """
         if board_key in self.board_data:
             return
-        flag_byte = 0
-        mask = 0
-        labels_obj: object = [] if labels is None else labels
-        if code is not None:
-            encoded_parts = code.split(b"\xff", 5)
-            config_bytes = encoded_parts[0]
-            mask = encoded_parts[1]
-            ture_code = encoded_parts[2]
-            false_code = encoded_parts[3]
-            labels_code = encoded_parts[4]
-            payload_parts = encoded_parts[5:]
-            code = b"".join(payload_parts)
-            size_cols, size_rows, flag_byte = config_bytes
-            size = Size(cols=size_cols, rows=size_rows)
-            mask = decode_bytes_7bit(mask)
-            if len(labels_code) == 1 and labels_code[0] == 0:
-                labels_obj = []
-            elif labels_code[0] == 1:
-                labels_obj = labels_code[1:].decode("ascii").split(";")
-            elif labels_code[0] == 2:
-                labels_dict: dict[Position, str] = {}
-                for label in labels_code[1:].split(b"\xfe"):
-                    if not label:
-                        continue
-                    pos = Position(
-                        label[0], label[1], label[2 : label.index(253)].decode("ascii")
-                    )
-                    labels_dict[pos] = label[label.index(253) + 1 :].decode("ascii")
-                labels_obj = labels_dict
-            true_tag_obj = get_value(pos=POSITION_TAG, code=ture_code)
-            false_tag_obj = get_value(pos=POSITION_TAG, code=false_code)
-            if true_tag_obj is None or false_tag_obj is None:
-                raise ValueError("invalid board tags in encoded data")
-            true_tag = true_tag_obj
-            false_tag = false_tag_obj
+
+
         if size is None:
             raise ValueError("size Undefined")
 
-        board_config: Config = {
+        config: Config = {
             "size": size,
             "VALUE": true_tag,
             "MINES": false_tag,
             "mask": [],
-            "labels": labels_obj,
+            "labels": labels,
             "row_col": False,
             "interactive": False,
             "by_mini": False,
-            "pos_label": False,
+            "pos_label": False
         }
         data: BoardData = {
-            "config": board_config,
+            "config": config,
             "variable": Matrix(size, None),
             "obj": Matrix(size, None),
             "type": Matrix(size, "N"),
             "dye": Matrix(size, False),
             "type_special": {},
-            "variable_special": {},
+            "variable_special": {}
         }
         self.board_data[board_key] = data
-        self.labels = labels_obj
+        self.labels = labels
 
-        if code is None:
-            return
-        positions = [pos for pos, _ in self(key=board_key, mode="none")]
-        for pos in positions[::-1]:
-            if mask & 1:
-                self.set_mask(pos)
-            mask >>= 1
-
-        data["config"]["by_mini"] = bool(flag_byte & (1 << 3))
-        data["config"]["pos_label"] = bool(flag_byte & (1 << 2))
-        data["config"]["interactive"] = bool(flag_byte & (1 << 1))
-        data["config"]["row_col"] = bool(flag_byte & 1)
-
-        codes = code.split(b"\xff")
-
-        code_queue: List[bytes] = []
-
-        for part in codes:
-            if not part:
-                continue
-            if part[0] == 0:
-                count = int(part[1])
-                code_queue.extend([b"_"] * count)
-            else:
-                code_queue.append(part)
-
-        for _pos, _ in self(key=board_key):
-            code = code_queue.pop(0)
-            if code[0] == 35:
-                self.set_dyed(_pos, True)
-                code = code[1:]
-            if code == b"_":
-                continue
-            value = get_value(_pos, code)
-            if value is not None:
-                self.set_value(_pos, value)
-                continue
-            raise ValueError(f"unknown type{code}")
-
-        for rule in self.rules["mines_rules"]:
-            rule.onboard_init(self)
-
-        for rule in self.rules["mines_clue_rules"]:
-            rule.onboard_init(self)
-
-        for rule in self.rules["clue_rules"]:
-            rule.onboard_init(self)
-
-    def encode(self) -> bytes:
-        """
-        字节头: 尺寸
-        无需换行符 初始化自动排序
-        '_'表示None
-        :return: 字节码
-        """
-        board_bytes = bytearray()
+    def json(self) -> JSONObject:
+        boards: dict[str, JSONObject] = {}
         for board_key in self.board_data:
-            size = self.board_data[board_key]["config"]["size"]
-            value = self.board_data[board_key]["config"]["VALUE"]
-            mines = self.board_data[board_key]["config"]["MINES"]
-            labels = self.board_data[board_key]["config"]["labels"]
-            flags = 0
-            mask = 0
-            for name in self.CONFIG_FLAGS:
-                flags = (flags << 1) | int(
-                    self.board_data[board_key]["config"].get(name, False)
-                )
+            cfg = self.board_data[board_key]["config"]
+            size = cfg["size"]
+            value = cfg["VALUE"]
+            mines = cfg["MINES"]
+            labels = cfg.get("labels")
+            if isinstance(labels, dict):
+                labels = ImmutableDict(labels)
+            if isinstance(labels, list):
+                labels = tuple(labels)
+            flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
+
+            # mask as list of booleans (row-major: cols x rows)
+            mask = []
             for col_idx in range(size.cols):
                 for row_idx in range(size.rows):
                     pos = self.get_pos(row_idx, col_idx, board_key)
-                    mask <<= 1
-                    if pos is None:
-                        mask |= 1
-            board_bytes.extend(board_key.encode("ascii") + b"\xff")
-            board_bytes.extend(bytes([size.cols, size.rows, flags, 255]))
-            board_bytes.extend(encode_int_7bit(mask) + bytes([255]))
-            board_bytes.extend(value.type() + b"|" + value.code())
-            board_bytes.extend(bytes([255]))
-            board_bytes.extend(mines.type() + b"|" + mines.code())
-            board_bytes.extend(bytes([255]))
-            if isinstance(labels, dict):
-                if any(isinstance(i, AbstractPosition) for i in labels.keys()):
-                    raise ValueError("invalid label key")
-                board_bytes.extend([2])
-                for pos, str_value in labels.items():
-                    board_bytes.extend([pos.col, pos.row])
-                    board_bytes.extend(pos.board_key.encode("ascii"))
-                    board_bytes.extend([253])
-                    board_bytes.extend(str_value.encode("ascii"))
-                    board_bytes.extend([254])
-                if labels:
-                    board_bytes.pop(-1)
-            elif isinstance(labels, list):
-                board_bytes.extend(
-                    b"\x01" + (";".join(label for label in labels)).encode("ascii")
-                )
-            else:
-                board_bytes.extend(b"\x00")
-            # key | sizex | sizey | config
-            for pos, obj in self(key=board_key):
-                board_bytes.extend(b"\xff")
-                if self.get_dyed(pos):
-                    board_bytes.extend(b"#")
+                    mask.append(pos is None)
+
+            # cells list with position and object info
+            cells: list[JSONObject] = []
+            for pos, obj in self(key=board_key, mode="object"):
+                cell: dict[str, int | str | bool | None | ImmutableDict[str, int | str | bool | None]] = {
+                    "col": pos.col,
+                    "row": pos.row,
+                    "board_key": pos.board_key,
+                    "dyed": bool(self.get_dyed(pos))
+                }
+
+                obj: Optional[AbstractClueValue | AbstractMinesValue]
                 if obj is None:
-                    board_bytes.extend(b"_")
+                    cell["type"] = None
+                    cell["data"] = None
                 else:
-                    if isinstance(obj, AbstractValue):
-                        code = obj.code()
-                        if b"\xff" in code:
-                            get_logger().error(f"{obj.type().decode()}中编码出现\\xff")
-                            raise ValueError(r"code contains forbidden byte: \xff")
-                        board_bytes.extend(obj.type() + b"|" + code)
-                    else:
-                        board_bytes.extend(b"_")
-            board_bytes.extend(b"\xff\xff")
-        # 只用split(b"\xff_")切分
-        parts: list[bytearray] = board_bytes.split(b"\xff_")
+                    cell["type"] = obj.type().decode("ascii")
+                    cell["data"] = ImmutableDict(obj.json())
+                cells.append(ImmutableDict(cell))
 
-        # 处理连续 \xff_ 的次数
-        encoded_bytes = bytearray()
-        i = 0
-        while i < len(parts):
-            if i > 0:
-                # 统计连续 \xff_ 的次数
-                count = 1
-                # 看后续parts里是否以空字节开头来判断是否连续（split后的空串）
-                # 但这里由于只分割 \xff_，连续情况只能靠检查下一个part是否空
-                while i + count < len(parts) and len(parts[i + count - 1]) == 0:
-                    count += 1
-                # 输出 \xff + 数字（表示连续多少个 \xff_）
-                while count > 254:
-                    encoded_bytes.extend(b"\xff\x00" + bytes([254]))
-                    count -= 254
-                if count > 0:
-                    encoded_bytes.extend(b"\xff\x00" + bytes([count]))
-                i += count - 1
-            encoded_bytes.extend(parts[i])
-            i += 1
-        return bytes(encoded_bytes[:-2])
+            boards[board_key] = ImmutableDict({
+                "size": ImmutableDict({"cols": size.cols, "rows": size.rows}),
+                "flags": ImmutableDict(flags),
+                "mask": tuple(mask),
+                "value": {"type": value.type().decode("ascii"),"data": value.json()},
+                "mines": {"type": mines.type().decode("ascii"),"data": mines.json()},
+                "labels": labels,
+                "cells": tuple(cells)
+            })
 
-    def boundary(self, key: str = MASTER_BOARD) -> "Position":
+        return jsonify({"boards": boards})
+
+
+    def from_json(self, data: JSONObject) -> None:
+        """Load board state from json produced by json()"""
+
+        from minesweepervariants.impl.impl_obj import get_value
+        from minesweepervariants.impl.impl_obj import get_value_type
+
+        boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
+        # clear existing
+        self.board_data = {}
+        for board_key, cfg in boards.items():
+            size_obj = get_with_valid(cfg, "size", ImmutableDict[str, JSONObject])
+            cols = get_with_valid(size_obj, "cols", int)
+            rows = get_with_valid(size_obj, "rows", int)
+            size = Size(cols, rows)
+            labels = get_with_valid(cfg, "labels", tuple)
+            labels_list: list[str] = []
+            for label in labels:
+                assert valid(label, str)
+                labels_list.append(label)
+            self.generate_board(board_key, size=size, labels=labels_list)
+
+            # flags
+            flags = get_with_valid(cfg, "flags", ImmutableDict[str, JSONObject])
+            for name, val in flags.items():
+                self.set_config(board_key, name, bool(val))
+
+            # mask
+            mask_list = get_with_valid(cfg, "mask", tuple)
+            for col_idx in range(size.cols):
+                for row_idx in range(size.rows):
+                    idx = col_idx * size.rows + row_idx
+                    if idx < len(mask_list) and mask_list[idx]:
+                        pos = self.get_pos(row_idx, col_idx, board_key)
+                        if pos is not None:
+                            self.set_mask(pos)
+
+            # value and mines templates
+
+            v = get_with_valid(cfg, "value", ImmutableDict[str, JSONObject])
+            m = get_with_valid(cfg, "mines", ImmutableDict[str, JSONObject])
+            if v:
+                type_ = get_with_valid(v, "type", str)
+                data_ = get_with_valid(v, "data", ImmutableDict[str, JSONObject])
+                self.board_data[board_key]["config"]["VALUE"] = get_value(POSITION_TAG, type_, data_)
+            if m:
+                type_ = get_with_valid(m, "type", str)
+                data_ = get_with_valid(m, "data", ImmutableDict[str, JSONObject])
+                self.board_data[board_key]["config"]["MINES"] = get_value(POSITION_TAG, type_, data_)
+
+
+            # cells
+            for cell in get_with_valid(cfg, "cells", tuple[JSONObject, ...]):
+                col = get_with_valid(cell, "col", int)
+                row = get_with_valid(cell, "row", int)
+                pos = self.get_pos(row, col, board_key)
+                if pos is None:
+                    continue
+                if get_with_valid(cell, "dyed", bool):
+                    self.set_dyed(pos, True)
+                assert valid(cell, ImmutableDict[str, JSONObject])
+
+                if 'type' not in cell or cell['type'] is None:
+                    self.set_value(pos, None)
+                    continue
+                obj_data: ImmutableDict[str, JSONObject] = get_with_valid(cell, "data", ImmutableDict[str, JSONObject])
+                type_ = get_with_valid(cell, "type", str)
+                value_obj = get_value(pos, type_, obj_data)
+                if isinstance(value_obj, (AbstractMinesValue, AbstractClueValue)):
+                    self.set_value(pos, value_obj)
+
+
+    def boundary(self, key=MASTER_BOARD) -> "Position":
         if key not in self.get_board_keys():
             return Position(-1, -1, key)
         size = self.board_data[key]["config"]["size"]
         return Position(size.cols - 1, size.rows - 1, key)
 
-    def is_valid(self, pos: "AbstractPosition") -> bool:
-        mask = self.get_config(pos.board_key, "mask")
-        if isinstance(mask, list) and pos in mask:
+    def is_valid(self, pos: 'AbstractPosition') -> bool:
+        if pos in self.get_config(pos.board_key, "mask"):
             return False
         return super().is_valid(pos)
 
     @staticmethod
-    def type_value(value: object) -> str:
+    def type_value(value) -> str:
         # 查看value的类型
         if value is None:
             return "N"
@@ -696,89 +666,71 @@ class Board(AbstractBoard):
         get_logger().error(f"unknown type: value{value}, type{type(value)}")
         raise ValueError(f"unknown type: {value}, type{type(value)}")
 
-    def register_type_special(self, name: str, func: Callable[..., str]) -> None:
+    def register_type_special(self, name: str, func):
         for key in self.board_data:
             if "type_special" not in self.board_data[key]:
                 self.board_data[key]["type_special"] = dict()
 
             self.board_data[key]["type_special"][name] = func
 
-    def get_type(
-        self,
-        pos: "AbstractPosition",
-        special: str = "",
-        *args: object,
-        **kwargs: object,
-    ) -> str:
+    def get_type(self, pos: 'Position', special: str = '', *args, **kwargs) -> str:
         special = special or self.default_special
 
         key = pos.board_key
 
         if self.is_valid(pos):
-            if special == "raw":
-                val = self.board_data[key]["type"][pos]
-                return val if val is not None else ""
+            if special == 'raw':
+                return self.board_data[key]["type"][pos]
 
-            if (
-                "type_special" not in self.board_data[key]
-                or special not in self.board_data[key]["type_special"]
-            ):
+            if "type_special" not in self.board_data[key] or \
+                    special not in self.board_data[key]["type_special"]:
                 raise ValueError(f"unknown special type: {special}")
 
-            callback = self.board_data[key]["type_special"][special]
-            if callable(callback):
-                return callback(self, pos, *args, **kwargs)
-            raise TypeError(f"unknown special type handler: {special}")
+            return self.board_data[key]["type_special"][special](self, pos, *args, **kwargs)
 
         return ""
 
-    def get_value(
-        self, pos: "AbstractPosition", *args: object, **kwargs: object
-    ) -> Union["AbstractClueValue", "AbstractMinesValue", None]:
+    def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
         if self.is_valid(pos):
-            value = self.board_data[key]["obj"][pos]
-            if isinstance(value, (AbstractClueValue, AbstractMinesValue)):
-                return value
-            return None
+            return self.board_data[key]["obj"][pos]
         return None
 
-    def set_value(
-        self,
-        pos: "AbstractPosition",
-        value: Union["AbstractClueValue", "AbstractMinesValue", None],
-    ) -> None:
+    def set_value(self, pos: 'Position', value):
         key = pos.board_key
         if self.is_valid(pos):
             self.board_data[key]["obj"][pos] = value
             self.board_data[key]["type"][pos] = self.type_value(value)
 
-    def get_dyed(
-        self, pos: "AbstractPosition", *args: object, **kwargs: object
-    ) -> bool | None:
+    def get_dyed(self, pos: 'Position', *args, **kwargs) -> bool | None:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["dye"][pos]
-        return False
 
-    def set_dyed(self, pos: "AbstractPosition", dyed: bool) -> None:
+    def set_dyed(self, pos: 'Position', dyed: bool):
         key = pos.board_key
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos] = dyed
 
-    def get_variable(
-        self,
-        pos: "AbstractPosition",
-        special: str = "",
-        *args: object,
-        **kwargs: object,
-    ) -> IntVar | None:
+    def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
         special = special or self.default_special
+        # if special != 'raw':
+        #     s = "".join(traceback.format_stack())
+        #     if "V.py" not in s and "3I" not in s:
+        #         print(s)
+        #         print(f'-{special}------------------------------------------------------------------------------')
+        #         ...
+        # if special == 'raw':
+        #     s = "".join(traceback.format_stack())
+        #     if "V.py" in s or "3I" in s:
+        #         print(s)
+        #         print(f'-raw------------------------------------------------------------------------------')
+        #         pass
 
         key = pos.board_key
-        model = self.get_model()
+        self.get_model()
         if self.is_valid(pos):
-            if special == "raw":
+            if special == 'raw':
                 return self.board_data[key]["variable"][pos]
 
             if "variable_special" not in self.board_data[key]:
@@ -787,43 +739,36 @@ class Board(AbstractBoard):
             if special not in self.board_data[key]["variable_special"]:
                 self.board_data[key]["variable_special"][special] = dict()
 
-            if (pos.col, pos.row) not in self.board_data[key]["variable_special"][
-                special
-            ]:
-                self.board_data[key]["variable_special"][special][
-                    (pos.col, pos.row)
-                ] = model.new_int_var(
-                    -999, 999, f"var_{special}({self.get_pos(pos.row, pos.col, key)})"
-                )
+            if (pos.col, pos.row) not in self.board_data[key]["variable_special"][special]:
+                self.board_data[key]["variable_special"][special][(pos.col, pos.row)] = \
+                    self._model.NewIntVar(-999, 999, f"var_{special}({self.get_pos(pos.row, pos.col, key)})")
             return self.board_data[key]["variable_special"][special][(pos.col, pos.row)]
-        raise IndexError("position out of bounds")
 
-    def clear_variable(self) -> None:
+    def clear_variable(self):
         for key in self.board_data.keys():
-            size = self.board_data[key]["config"]["size"]
-            self.board_data[key]["variable"] = Matrix(size, None)
-            self.board_data[key]["variable_special"] = {}
+            if "variable" in self.board_data[key]:
+                del self.board_data[key]["variable"]
+            if "variable_special" in self.board_data[key]:
+                del self.board_data[key]["variable_special"]
         self._model = None
         gc.collect()
 
-    def get_config(self, board_key: str, config_name: str) -> object:
+    def get_config(self, board_key, config_name):
         if board_key not in self.board_data:
             return None
         return self.board_data[board_key]["config"][config_name]
 
-    def set_config(self, board_key: str, config_name: str, value: object) -> None:
+    def set_config(self, board_key, config_name, value: bool):
         if board_key not in self.board_data:
             return None
         self.board_data[board_key]["config"][config_name] = value
 
-    def set_mask(self, pos: "AbstractPosition") -> None:
+    def set_mask(self, pos):
         if not self.is_valid(pos):
             return
-        mask = self.get_config(pos.board_key, "mask")
-        if isinstance(mask, list):
-            mask.append(pos)
+        self.get_config(pos.board_key, "mask").append(pos)
 
-    def get_row_pos(self, pos: "AbstractPosition") -> List["AbstractPosition"]:
+    def get_row_pos(self, pos: 'Position') -> List["Position"]:
         bound = self.boundary(pos.board_key)
         _pos = pos.clone()
         pos_list = [_pos]
@@ -841,7 +786,7 @@ class Board(AbstractBoard):
             pos_list.append(_pos)
         return pos_list
 
-    def get_col_pos(self, pos: "AbstractPosition") -> List["AbstractPosition"]:
+    def get_col_pos(self, pos: 'Position') -> List["Position"]:
         bound = self.boundary(pos.board_key)
         _pos = pos.clone()
         pos_list = [_pos]
@@ -859,9 +804,8 @@ class Board(AbstractBoard):
             pos_list.append(_pos)
         return pos_list
 
-    def get_pos(
-        self, row: int, col: int, key: str = MASTER_BOARD
-    ) -> Union["Position", None]:
+
+    def get_pos(self, row: int, col: int, key=MASTER_BOARD) -> Union['Position', None]:
         size = self.board_data[key]["config"]["size"]
         if -size.cols < col < size.cols and -size.rows < row < size.rows:
             col = col if col >= 0 else size.cols + col
@@ -871,9 +815,7 @@ class Board(AbstractBoard):
                 return pos
         return None
 
-    def get_pos_box(
-        self, pos1: "AbstractPosition", pos2: "AbstractPosition"
-    ) -> List["AbstractPosition"]:
+    def get_pos_box(self, pos1: "AbstractPosition", pos2: "AbstractPosition") -> List["AbstractPosition"]:
         if pos1.board_key != pos2.board_key:
             return []
         if not (self.in_bounds(pos1) and self.in_bounds(pos2)):
@@ -884,40 +826,32 @@ class Board(AbstractBoard):
         result = []
         for row in range(r_min, r_max + 1):
             for col in range(c_min, c_max + 1):
-                pos = self.get_pos(row, col, key=pos1.board_key)
-                if pos is not None:
-                    result.append(pos)
+                result.append(self.get_pos(row, col, key=pos1.board_key))
         return result
 
-    def batch(
-        self,
-        positions: List["AbstractPosition"],
-        mode: str,
-        drop_none: bool = False,
-        *args: object,
-        **kwargs: object,
-    ) -> List[object]:
+    def batch(self, positions: List['Position'],
+              mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
         result = []
         for pos in positions:
             if drop_none and not self.in_bounds(pos):
                 continue
             if mode == "object":
-                result.append(self.get_value(pos))
+                result.append(self.get_value(pos, *args, **kwargs))
             elif mode == "obj":
-                result.append(self.get_value(pos))
+                result.append(self.get_value(pos, *args, **kwargs))
             elif mode == "variable":
-                result.append(self.get_variable(pos))
+                result.append(self.get_variable(pos, *args, **kwargs))
             elif mode == "var":
-                result.append(self.get_variable(pos))
+                result.append(self.get_variable(pos, *args, **kwargs))
             elif mode == "type":
-                result.append(self.get_type(pos))
+                result.append(self.get_type(pos, *args, **kwargs))
             elif mode == "dye":
-                result.append(self.get_dyed(pos))
+                result.append(self.get_dyed(pos, *args, **kwargs))
             else:
                 raise ValueError(f"Unsupported mode: {mode}")
         return result
 
-    def clear_board(self) -> None:
+    def clear_board(self):
         for key in self.board_data:
             data = self.board_data[key]
             size = data["config"]["size"]
@@ -928,7 +862,7 @@ class Board(AbstractBoard):
     def get_board_keys(self) -> list[str]:
         return list(self.board_data.keys())
 
-    def show_board(self, show_tag: bool = False) -> str:
+    def show_board(self, show_tag: bool = False):
         r = ""
         for key in self.board_data:
             size = self.board_data[key]["config"]["size"]
@@ -944,17 +878,13 @@ class Board(AbstractBoard):
                     if value is None:
                         r += "______" if show_tag else "___"
                     else:
-                        r += str(value) + (
-                            "_" + value.type().decode() if show_tag else ""
-                        )
+                        r += str(value) + ("_" + value.type().decode() if show_tag else "")
                     r += "\t"
                 r += "\n"
             r += "\n\n"
         return r[:-2]
 
-    def show_board_discord(
-        self, answer_board: AbstractBoard | None = None, hide_clues: bool = False
-    ) -> str:
+    def show_board_discord(self, answer_board=None, hide_clues=False):
         """
         展示题板，使用Discord剧透格式（||spoiler||）包裹未挖出的格子，
         并使用Discord emoji和格式化字符显示特殊值。
@@ -972,19 +902,11 @@ class Board(AbstractBoard):
         - 问号(?)：❓
         """
         digit_emojis = {
-            "0": "0️⃣",
-            "1": "1️⃣",
-            "2": "2️⃣",
-            "3": "3️⃣",
-            "4": "4️⃣",
-            "5": "5️⃣",
-            "6": "6️⃣",
-            "7": "7️⃣",
-            "8": "8️⃣",
-            "9": "9️⃣",
+            '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣',
+            '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣'
         }
 
-        def format_value(value: object | None, is_spoiler: bool = False) -> str:
+        def format_value(value, is_spoiler=False):
             """格式化单个值以供Discord显示"""
             if value is None:
                 content = "__"
@@ -1036,10 +958,7 @@ class Board(AbstractBoard):
 
                         if hide_as_unknown:
                             # 雷线索隐藏为flag，数字线索隐藏为问号
-                            if answer_value is MINES_TAG or str(answer_value) in (
-                                "雷",
-                                "F",
-                            ):
+                            if answer_value is MINES_TAG or str(answer_value) in ("雷", "F"):
                                 formatted = "||:flag:||"
                             else:
                                 formatted = "||❓||"
@@ -1054,17 +973,15 @@ class Board(AbstractBoard):
             r += "\n"
         return r.rstrip()
 
-    def pos_label(self, pos: "AbstractPosition") -> str:
+    def pos_label(self, pos: 'AbstractPosition') -> str:
         labels = self.get_config(pos.board_key, "labels")
-        if isinstance(labels, dict):
+        if type(labels) is dict:
             if pos in labels:
                 return labels[pos]
             else:
                 return ""
-        if not isinstance(labels, list):
-            return ""
-        txt = chr(64 + pos.col // 26) if pos.col > 25 else ""
+        txt = chr(64 + pos.col // 26) if pos.col > 25 else ''
         txt += chr(pos.col % 26 + 65)
-        txt += "="
+        txt += '='
         txt += labels[pos.row] if pos.row < len(labels) else str(pos.row)
         return txt
