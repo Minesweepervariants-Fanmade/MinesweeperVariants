@@ -58,11 +58,7 @@ def main(
     s.board = mask_board
 
     if answer:
-        try:
-            answer_board = decode_board(answer)
-        except:
-            code = bytes.fromhex(answer)
-            answer_board = get_board(board_class)(rules=s.board.rules, code=code)
+        answer_board = decode_board(data=json_loads(decompress(answer)))
     else:
         from ortools.sat.python import cp_model
 

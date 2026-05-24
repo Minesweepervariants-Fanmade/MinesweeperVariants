@@ -138,7 +138,7 @@ class TerminalEmulator:
         process = None
         try:
             # 等待接收客户端参数
-            data = client_socket.recv(1024)
+            data = client_socket.recv(4096)
             if not data:
                 # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端未发送参数，断开连接")
                 return
