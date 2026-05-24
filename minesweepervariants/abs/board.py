@@ -6,16 +6,19 @@
 # @FileName: board.py
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generator, List, Optional, Protocol, Tuple, Union, TYPE_CHECKING, runtime_checkable
+from typing import Callable, Generator, List, Optional, Protocol, Tuple, TypedDict, Union, TYPE_CHECKING, runtime_checkable
 from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
 
-from ortools.sat.python import cp_model
-from ortools.sat.python.cp_model import IntVar
+from ortools.sat.python.cp_model import CpModel, IntVar
 
-from minesweepervariants.abs.dye import AbstractDye
-from minesweepervariants.abs.rule import AbstractRule
+if TYPE_CHECKING:
+    from minesweepervariants.abs.Lrule import AbstractMinesRule
+    from minesweepervariants.abs.Mrule import AbstractMinesClueRule
+    from minesweepervariants.abs.Rrule import AbstractClueRule
+    from minesweepervariants.abs.dye import AbstractDye
+    from minesweepervariants.abs.rule import AbstractRule
 
 from ..impl.board.dye import get_dye
 
@@ -282,6 +285,11 @@ class AbstractPosition(ABC):
     #     :return: 位置列表，按距离从近到远排序。
     #     """
 
+class RulesDict(TypedDict):
+    clue_rules: list[AbstractClueRule]
+    mines_rules: list[AbstractMinesRule]
+    mines_clue_rules: list[AbstractMinesClueRule]
+
 
 class AbstractBoard(ABC):
     version = -1
@@ -289,7 +297,7 @@ class AbstractBoard(ABC):
 
     default_special = 'raw'
 
-    rules: dict[str, 'AbstractRule'] = {}
+    rules: RulesDict
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -303,7 +311,7 @@ class AbstractBoard(ABC):
     def __init__(
         self,
         *,
-        rules: dict[str, 'AbstractRule'] | None,
+        rules: RulesDict | None,
         size: Size | None,
         code: bytes | None,
         default_special: str,
@@ -396,7 +404,7 @@ class AbstractBoard(ABC):
 
         return new_board
 
-    def get_model(self) -> cp_model.CpModel:
+    def get_model(self) -> CpModel:
         """获取cp_model"""
         ...
 
@@ -543,7 +551,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_dyed(self, pos: 'AbstractPosition') -> bool:
+    def get_dyed(self, pos: 'AbstractPosition') -> bool | None:
         """
         返回某个格子是否被染色
         :param pos: 位置
@@ -571,7 +579,7 @@ class AbstractBoard(ABC):
             raise ValueError("default_special was already set")
 
     @abstractmethod
-    def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar:
+    def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar | None:
         """
         返回指定坐标的布尔变量
         :param pos: 位置
@@ -601,7 +609,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_pos(self, row: int, col: int, key: str = MASTER_BOARD) -> 'AbstractPosition':
+    def get_pos(self, row: int, col: int, key: str = MASTER_BOARD) -> 'AbstractPosition | None':
         """
         返回位置实体
         创建时需要遵守board实现的位置规则
@@ -620,7 +628,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args: object, **kwargs: object) -> List[Union['AbstractClueValue', 'AbstractMinesValue', None]]:
+    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args: object, **kwargs: object) -> List[object]:
         """
         批量获取指定位置上的信息。
         :param positions: 位置列表
