@@ -473,6 +473,10 @@ class Board(AbstractBoard):
             value = cfg["VALUE"]
             mines = cfg["MINES"]
             labels = cfg.get("labels")
+            if isinstance(labels, dict):
+                labels = ImmutableDict(labels)
+            if isinstance(labels, list):
+                labels = tuple(labels)
             flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
 
             # mask as list of booleans (row-major: cols x rows)
@@ -505,42 +509,42 @@ class Board(AbstractBoard):
                 cells.append(ImmutableDict(cell))
 
             boards[board_key] = ImmutableDict({
-                "size": {"cols": size.cols, "rows": size.rows},
-                "flags": flags,
-                "mask": mask,
+                "size": ImmutableDict({"cols": size.cols, "rows": size.rows}),
+                "flags": ImmutableDict(flags),
+                "mask": tuple(mask),
                 "value": value.json(),
                 "mines": mines.json(),
                 "labels": labels,
-                "cells": cells
+                "cells": tuple(cells)
             })
 
-        return ImmutableDict({"boards": boards})
+        return ImmutableDict({"boards": ImmutableDict(boards)})
 
 
     def from_json(self, data: JSONObject) -> None:
         """Load board state from json produced by json()"""
         def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
             if not isinstance(data, type_):
-                raise TypeError("Invalid JSON format: expected a mapping at the top level")
+                raise TypeError("Invalid JSON format: expected a mapping at the top level, got " + str(type(data)))
             return True
 
         def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
-            assert valid(d, ImmutableDict[str, JSONObject])
+            assert valid(d, ImmutableDict)
             if key not in d:
                 raise KeyError(f"字典缺少键: '{key}'")
 
             assert valid((v := d[key]), type_)
             return v
 
-        boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
+        boards = get_with_valid(data, "boards", ImmutableDict)
         # clear existing
         self.board_data = {}
         for board_key, cfg in boards.items():
-            size_obj = get_with_valid(cfg, "size", ImmutableDict[str, JSONObject])
+            size_obj = get_with_valid(cfg, "size", ImmutableDict)
             cols = get_with_valid(size_obj, "cols", int)
             rows = get_with_valid(size_obj, "rows", int)
             size = Size(cols, rows)
-            labels = get_with_valid(cfg, "labels", tuple[JSONObject, ...])
+            labels = get_with_valid(cfg, "labels", tuple)
             labels_list: list[str] = []
             for label in labels:
                 assert valid(label, str)
@@ -548,12 +552,12 @@ class Board(AbstractBoard):
             self.generate_board(board_key, size=size, labels=labels_list)
 
             # flags
-            flags = get_with_valid(cfg, "flags", ImmutableDict[str, JSONObject])
+            flags = get_with_valid(cfg, "flags", ImmutableDict)
             for name, val in flags.items():
                 self.set_config(board_key, name, bool(val))
 
             # mask
-            mask_list = get_with_valid(cfg, "mask", tuple[JSONObject, ...])
+            mask_list = get_with_valid(cfg, "mask", tuple)
             for col_idx in range(size.cols):
                 for row_idx in range(size.rows):
                     idx = col_idx * size.rows + row_idx
@@ -564,8 +568,8 @@ class Board(AbstractBoard):
 
             # value and mines templates
             try:
-                v = get_with_valid(cfg, "value", ImmutableDict[str, JSONObject])
-                m = get_with_valid(cfg, "mines", ImmutableDict[str, JSONObject])
+                v = get_with_valid(cfg, "value", ImmutableDict)
+                m = get_with_valid(cfg, "mines", ImmutableDict)
                 if v:
                     code = get_with_valid(v, "code", int)
                     self.board_data[board_key]["config"]["VALUE"] = get_value(None, int(v.get("code", 0)))
@@ -575,7 +579,7 @@ class Board(AbstractBoard):
                 pass
 
             # cells
-            for cell in get_with_valid(cfg, "cells", tuple[JSONObject, ...]):
+            for cell in get_with_valid(cfg, "cells", tuple):
                 col = cell.get("col")
                 row = cell.get("row")
                 pos = self.get_pos(row, col, board_key)

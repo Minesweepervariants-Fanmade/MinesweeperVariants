@@ -4,6 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: impl_obj.py
 import base64
+from ctypes import Union
 import os
 import sys
 import importlib.util
@@ -15,7 +16,7 @@ from minesweepervariants.utils.tool import get_logger
 from ..utils.impl_obj import VALUE_QUESS, MINES_TAG
 
 from ..abs.rule import AbstractValue, AbstractRule
-from ..abs.board import AbstractBoard
+from ..abs.board import AbstractBoard, AbstractPosition, JSONObject
 from ..abs.Lrule import AbstractMinesRule
 from ..abs.Mrule import AbstractMinesClueRule, AbstractMinesValue
 from ..abs.Rrule import AbstractClueRule, AbstractClueValue
@@ -172,12 +173,7 @@ def get_rule(name: str) -> type:
     raise ValueError(f"未找到规则[{name}]")
 
 
-def get_value(pos, code):
-    code = code.split(b"|", 1)
-    if code[0] == b"?":
-        return VALUE_QUESS
-    if code[0] == b"F":
-        return MINES_TAG
+def get_value_type(clue_type: Union[bytes, str]) -> Optional[type[AbstractValue]]:
     for i in get_all_subclasses(AbstractValue):
         if i in [
             AbstractValue,
@@ -185,8 +181,15 @@ def get_value(pos, code):
             AbstractMinesValue
         ]:
             continue
-        if i.type() == code[0]:
-            return i(pos=pos, code=code[1])
+        if i.type() == clue_type:
+            return i
+    return None
+
+
+def get_value(pos: AbstractPosition, clue_type: Union[bytes, str], data: JSONObject):
+    clue_cls = get_value_type(clue_type)
+    if clue_cls is not None:
+        return clue_cls.from_json(pos, data)
     return None
 
 

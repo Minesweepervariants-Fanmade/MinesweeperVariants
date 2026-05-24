@@ -446,7 +446,8 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        new_board = self.__class__(rules={}, data=self.json())
+        json = self.json()
+        new_board = self.__class__(rules={}, data=json)
         if hasattr(new_board, "_get_rule_instance"):
             new_board._bound_get_rule_instance(self._get_rule_instance)
 
