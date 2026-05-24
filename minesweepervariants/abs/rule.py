@@ -9,6 +9,7 @@ from abc import ABC, ABCMeta, abstractmethod
 import locale
 from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Tuple, TYPE_CHECKING, TypedDict, TypeGuard, Union, get_args, ItemsView
 from collections.abc import MutableMapping
+from minesweepervariants.abs.board import ImmutableDict, JSONObject
 from minesweepervariants.utils.tool import get_logger
 
 if TYPE_CHECKING:
@@ -357,6 +358,21 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         return []
 
 class AbstractValue(ABC):
+    def from_json(self, data: JSONObject) -> None:
+        if isinstance(data, Mapping) and 'old_style' in data and data['old_style'] and 'type' in data:
+            if 'code' in data and isinstance((code := data['code']), str):
+                from base64 import b64decode
+                self.__init__(self.pos, code=b64decode(code))
+            else:
+                raise ValueError(f"Unsupported clue value type {data['type']}")
+        else:
+            raise ValueError(f"Unsupported clue value type")
+
+    def json(self) -> JSONObject:
+        from base64 import b64encode
+        return ImmutableDict({"old_style": True, "type": b64encode(self.type()).decode(), "code": b64encode(self.code()).decode()})
+
+
     @abstractmethod
     def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
         """

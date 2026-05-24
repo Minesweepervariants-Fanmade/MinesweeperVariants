@@ -490,10 +490,14 @@ class Board(AbstractBoard):
                 if obj is None:
                     cell["obj"] = None
                 else:
-                    cell["obj"] = ImmutableDict({
-                        "type": int(obj.type()),
-                        "code": int(obj.code())
-                    })
+                    match obj:
+                        case str() | bool():
+                            cell["obj"] = obj
+                            break
+                        case IntVar():
+                            raise ValueError("Cannot serialize IntVar objects directly")
+                        case AbstractValue():
+                            cell["obj"] = ImmutableDict(obj.json())
                 cells.append(ImmutableDict(cell))
 
             boards[board_key] = ImmutableDict({

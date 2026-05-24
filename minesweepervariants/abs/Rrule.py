@@ -144,13 +144,6 @@ class AbstractClueValue(AbstractValue, ABC):
     线索格数字对象类
     """
 
-    def from_json(self, data: JSONObject) -> None:
-        if isinstance(data, Mapping) and 'type' in data and data['type'] == "old_style" and 'code' in data and isinstance((code := data['code']), str):
-            from base64 import b64decode
-            self.__init__(self.pos, code=b64decode(code))
-        else:
-            raise ValueError(f"Unsupported clue value type")
-
 
     def __repr__(self) -> str:
         """
@@ -188,9 +181,6 @@ class AbstractClueValue(AbstractValue, ABC):
     def weaker_times(self) -> int:
         return 1
 
-    def json(self) -> JSONObject:
-        from base64 import b64encode
-        return ImmutableDict({"type": "old_style", "code": b64encode(self.code()).decode()})
 
 
 # --------实例类-------- #

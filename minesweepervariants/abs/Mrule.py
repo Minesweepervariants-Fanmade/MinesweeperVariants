@@ -10,7 +10,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Mapping
 
-from minesweepervariants.abs.board import AbstractBoard
+from minesweepervariants.abs.board import AbstractBoard, ImmutableDict, JSONObject
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
 
@@ -117,6 +117,7 @@ class AbstractMinesClueRule(AbstractRule, ABC):
 
 class AbstractMinesValue(AbstractValue, ABC):
     pos: 'AbstractPosition'
+
 
     @abstractmethod
     def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
