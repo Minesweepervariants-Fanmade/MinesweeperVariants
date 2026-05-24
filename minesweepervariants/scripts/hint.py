@@ -182,16 +182,12 @@ def main(
 
         if not no_image:
             for hint_because in hint:
-                botten_text = ""
-                for b in hint_because:
-                    if isinstance(b, AbstractPosition):
-                        continue
-                    botten_text += b[0] + (f":{b[1]}" if b[1] else "")
+                bottom_text = '; '.join([b[0] + (f":{b[1]}" if b[1] else "") for b in hint_because if isinstance(b, tuple)])
                 thread = threading.Thread(
                     target=draw_board,
                     kwargs={
                         "board": game.board.clone(),
-                        "bottom_text": botten_text,
+                        "bottom_text": bottom_text,
                         "output": file_name + "_" + str(hint_times),
                         "hint_because": [pos for pos in hint_because if isinstance(pos, AbstractPosition)],
                         "hint_deduced": hint[hint_because]
