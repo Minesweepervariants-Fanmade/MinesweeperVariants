@@ -11,8 +11,7 @@ from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
 
-from ortools.sat.python import cp_model
-from ortools.sat.python.cp_model import IntVar
+from ortools.sat.python.cp_model import CpModel, IntVar
 
 from minesweepervariants.abs.dye import AbstractDye
 from minesweepervariants.abs.rule import AbstractRule
@@ -396,7 +395,7 @@ class AbstractBoard(ABC):
 
         return new_board
 
-    def get_model(self) -> cp_model.CpModel:
+    def get_model(self) -> CpModel:
         """获取cp_model"""
         ...
 
@@ -543,7 +542,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_dyed(self, pos: 'AbstractPosition') -> bool:
+    def get_dyed(self, pos: 'AbstractPosition') -> bool | None:
         """
         返回某个格子是否被染色
         :param pos: 位置
@@ -571,7 +570,7 @@ class AbstractBoard(ABC):
             raise ValueError("default_special was already set")
 
     @abstractmethod
-    def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar:
+    def get_variable(self, pos: 'AbstractPosition', special: str = '') -> IntVar | None:
         """
         返回指定坐标的布尔变量
         :param pos: 位置
@@ -601,7 +600,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_pos(self, row: int, col: int, key: str = MASTER_BOARD) -> 'AbstractPosition':
+    def get_pos(self, row: int, col: int, key: str = MASTER_BOARD) -> 'AbstractPosition | None':
         """
         返回位置实体
         创建时需要遵守board实现的位置规则
@@ -620,7 +619,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args: object, **kwargs: object) -> List[Union['AbstractClueValue', 'AbstractMinesValue', None]]:
+    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args: object, **kwargs: object) -> List[object]:
         """
         批量获取指定位置上的信息。
         :param positions: 位置列表
