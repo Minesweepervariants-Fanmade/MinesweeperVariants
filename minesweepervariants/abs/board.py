@@ -302,7 +302,7 @@ class ImmutableDict[K,V](Mapping[K, V]):
 
 
 
-type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject] | str | int | float | bool | None
+type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject, ...] | str | int | float | bool | None
 type JSONString = str
 @runtime_checkable
 class JSONifyAble(Protocol):

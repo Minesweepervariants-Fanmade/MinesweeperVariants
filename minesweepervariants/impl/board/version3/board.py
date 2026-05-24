@@ -6,7 +6,7 @@
 
 import re
 import traceback
-from typing import List, Mapping, Optional, TypedDict, Union, Tuple, Any, Generator, TYPE_CHECKING
+from typing import List, Mapping, Optional, TypeGuard, TypeIs, TypedDict, Union, Tuple, Any, Generator, TYPE_CHECKING
 import heapq
 
 import gc
@@ -504,34 +504,52 @@ class Board(AbstractBoard):
                 "size": {"cols": size.cols, "rows": size.rows},
                 "flags": flags,
                 "mask": mask,
-                "value": {"type": int(value.type()), "code": int(value.code())},
-                "mines": {"type": int(mines.type()), "code": int(mines.code())},
+                "value": value.json(),
+                "mines": mines.json(),
                 "labels": labels,
                 "cells": cells
             })
 
         return ImmutableDict({"boards": boards})
 
+
     def from_json(self, data: JSONObject) -> None:
         """Load board state from json produced by json()"""
-        if not isinstance(data, Mapping):
-            raise TypeError("Invalid JSON format: expected a mapping at the top level")
-        boards = data.get("boards", {})
+        def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
+            if not isinstance(data, type_):
+                raise TypeError("Invalid JSON format: expected a mapping at the top level")
+            return True
+
+        def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
+            assert valid(d, ImmutableDict[str, JSONObject])
+            if key not in d:
+                raise KeyError(f"字典缺少键: '{key}'")
+
+            assert valid((v := d[key]), type_)
+            return v
+
+        boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
         # clear existing
         self.board_data = {}
         for board_key, cfg in boards.items():
-            size_obj = cfg.get("size", {})
-            size = Size(size_obj.get("cols", 0), size_obj.get("rows", 0))
-            labels = cfg.get("labels", [])
-            self.generate_board(board_key, size=size, labels=labels)
+            size_obj = get_with_valid(cfg, "size", ImmutableDict[str, JSONObject])
+            cols = get_with_valid(size_obj, "cols", int)
+            rows = get_with_valid(size_obj, "rows", int)
+            size = Size(cols, rows)
+            labels = get_with_valid(cfg, "labels", tuple[JSONObject, ...])
+            labels_list: list[str] = []
+            for label in labels:
+                assert valid(label, str)
+                labels_list.append(label)
+            self.generate_board(board_key, size=size, labels=labels_list)
 
             # flags
-            flags = cfg.get("flags", {})
+            flags = get_with_valid(cfg, "flags", ImmutableDict[str, JSONObject])
             for name, val in flags.items():
                 self.set_config(board_key, name, bool(val))
 
             # mask
-            mask_list = cfg.get("mask", [])
+            mask_list = get_with_valid(cfg, "mask", tuple[JSONObject, ...])
             for col_idx in range(size.cols):
                 for row_idx in range(size.rows):
                     idx = col_idx * size.rows + row_idx
@@ -542,9 +560,10 @@ class Board(AbstractBoard):
 
             # value and mines templates
             try:
-                v = cfg.get("value")
-                m = cfg.get("mines")
+                v = get_with_valid(cfg, "value", ImmutableDict[str, JSONObject])
+                m = get_with_valid(cfg, "mines", ImmutableDict[str, JSONObject])
                 if v:
+                    code = get_with_valid(v, "code", int)
                     self.board_data[board_key]["config"]["VALUE"] = get_value(None, int(v.get("code", 0)))
                 if m:
                     self.board_data[board_key]["config"]["MINES"] = get_value(None, int(m.get("code", 0)))
@@ -552,7 +571,7 @@ class Board(AbstractBoard):
                 pass
 
             # cells
-            for cell in cfg.get("cells", []):
+            for cell in get_with_valid(cfg, "cells", tuple[JSONObject, ...]):
                 col = cell.get("col")
                 row = cell.get("row")
                 pos = self.get_pos(row, col, board_key)
