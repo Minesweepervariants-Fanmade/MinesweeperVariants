@@ -17,7 +17,7 @@ from ....abs.rule import AbstractValue
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
 from ....utils.tool import get_logger, get_random
-from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, Size
+from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, JSONObject, Size, ImmutableDict
 from ....abs.Rrule import AbstractClueValue
 from ....abs.Mrule import AbstractMinesValue
 
@@ -306,7 +306,7 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, *, rules, size: Optional[Size] = None, code: Optional[bytes] = None, default_special: str = 'raw'):
+    def __init__(self, *, rules, size: Optional[Size] = None, default_special: str = 'raw'):
         # traceback.print_stack()
         self._model = None
         self.board_data: dict[str, BoardData] = dict()
@@ -318,19 +318,13 @@ class Board(AbstractBoard):
                 for rule in _rules:
                     rule.onboard_init(self)
 
-        if code is None:
-            if size is None:
-                raise ValueError("board size Undefined")
-            self.generate_board(MASTER_BOARD, size=size)
-            self.board_data[MASTER_BOARD]["config"]["row_col"] = True
-            self.board_data[MASTER_BOARD]["config"]["interactive"] = True
-            self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
-            self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
-            return
-        for chunks in code.split(b"\xff\xff"):
-            board_key, chunks = chunks.split(b"\xff", 1)
-            board_key = board_key.decode("ascii")
-            self.generate_board(board_key, code=chunks)
+        if size is None:
+            raise ValueError("board size Undefined")
+        self.generate_board(MASTER_BOARD, size=size)
+        self.board_data[MASTER_BOARD]["config"]["row_col"] = True
+        self.board_data[MASTER_BOARD]["config"]["interactive"] = True
+        self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
+        self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
 
     def __call__(
             self, target: str = "always",
@@ -426,7 +420,6 @@ class Board(AbstractBoard):
             self, board_key: str,
             size: Optional[Size] = None,
             labels: list[str] = [],
-            code: Optional[bytes] = None,
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
     ) -> None:
@@ -440,29 +433,8 @@ class Board(AbstractBoard):
         """
         if board_key in self.board_data:
             return
-        flag_byte = 0
-        mask = 0
-        if code is not None:
-            config, mask, ture_code, false_code, labels_code, *code\
-                = code.split(b"\xff", 5)
-            code = b''.join(code)
-            *size, flag_byte = config
-            size = Size(cols=size[0], rows=size[1])
-            mask = decode_bytes_7bit(mask)
-            if len(labels_code) == 1 and labels_code[0] == 0:
-                labels = []
-            elif labels_code[0] == 1:
-                exit(1)
-                labels = labels_code[1:].decode("ascii").split(";")
-            elif labels_code[0] == 2:
-                labels = {}
-                for label in labels_code[1:].split(b'\xfe'):
-                    if not label:
-                        continue
-                    pos = Position(label[0], label[1], label[2:label.index(253)].decode("ascii"))
-                    labels[pos] = label[label.index(253) + 1:].decode("ascii")
-            true_tag = get_value(pos=POSITION_TAG, code=ture_code)
-            false_tag = get_value(pos=POSITION_TAG, code=false_code)
+
+
         if size is None:
             raise ValueError("size Undefined")
 
@@ -489,134 +461,52 @@ class Board(AbstractBoard):
         self.board_data[board_key] = data
         self.labels = labels
 
-        if code is None:
-            return
-        positions = [pos for pos, _ in self(key=board_key, mode="none")]
-        for pos in positions[::-1]:
-            if mask & 1:
-                self.set_mask(pos)
-            mask >>= 1
-
-        data["config"]["by_mini"] = bool(flag_byte & (1 << 3))
-        data["config"]["pos_label"] = bool(flag_byte & (1 << 2))
-        data["config"]["interactive"] = bool(flag_byte & (1 << 1))
-        data["config"]["row_col"] = bool(flag_byte & 1)
-
-        codes = code.split(b"\xff")
-
-        code_queue = []
-
-        for part in codes:
-            if not part:
-                continue
-            if part[0] == 0:
-                count = int(part[1])
-                code_queue.extend([b'_'] * count)
-            else:
-                code_queue.append(part)
-
-        for pos, _ in self(key=board_key):
-            code = code_queue.pop(0)
-            if code[0] == 35:
-                self.set_dyed(pos, True)
-                code = code[1:]
-            if code == b'_':
-                continue
-            value = get_value(pos, code)
-            if value is not None:
-                self.set_value(pos, value)
-                continue
-            raise ValueError(f"unknown type{code}")
-
-        for _rules in self.rules.values():
-            for rule in _rules:
-                rule.onboard_init(self)
-
-    def encode(self) -> bytes:
-        """
-        字节头: 尺寸
-        无需换行符 初始化自动排序
-        '_'表示None
-        :return: 字节码
-        """
-        board_bytes = bytearray()
+    def json(self) -> JSONObject:
+        boards: dict[str, JSONObject] = {}
         for board_key in self.board_data:
-            size = self.board_data[board_key]["config"]["size"]
-            value = self.board_data[board_key]["config"]["VALUE"]
-            mines = self.board_data[board_key]["config"]["MINES"]
-            labels = self.board_data[board_key]["config"]["labels"]
-            flags = 0
-            mask = 0
-            for name in self.CONFIG_FLAGS:
-                flags = (flags << 1) | int(self.board_data[board_key]["config"].get(name, False))
+            cfg = self.board_data[board_key]["config"]
+            size = cfg["size"]
+            value = cfg["VALUE"]
+            mines = cfg["MINES"]
+            labels = cfg.get("labels")
+            flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
+
+            # mask as list of booleans (row-major: cols x rows)
+            mask = []
             for col_idx in range(size.cols):
                 for row_idx in range(size.rows):
                     pos = self.get_pos(row_idx, col_idx, board_key)
-                    mask <<= 1
-                    if pos is None:
-                        mask |= 1
-            board_bytes.extend(board_key.encode("ascii") + b"\xff")
-            board_bytes.extend(bytes([size.cols, size.rows, flags, 255]))
-            board_bytes.extend(encode_int_7bit(mask) + bytes([255]))
-            board_bytes.extend(value.type() + b"|" + value.code())
-            board_bytes.extend(bytes([255]))
-            board_bytes.extend(mines.type() + b"|" + mines.code())
-            board_bytes.extend(bytes([255]))
-            if labels:
-                if type(labels) is dict:
-                    if any([isinstance(type(i), AbstractPosition) for i in labels.keys()]):
-                        raise
-                    board_bytes.extend([2])
-                    if labels:
-                        for pos, str_value in labels.items():
-                            board_bytes.extend([pos.col, pos.row])
-                            board_bytes.extend(pos.board_key.encode("ascii"))
-                            board_bytes.extend([253])
-                            board_bytes.extend(str_value.encode("ascii"))
-                            board_bytes.extend([254])
-                        board_bytes.pop(-1)
-                else:
-                    board_bytes.extend(b"\x01" + (";".join(label for label in labels)).encode("ascii"))
-            else:
-                board_bytes.extend(b"\x00")
-            # key | sizex | sizey | config
-            for pos, obj in self(key=board_key):
-                board_bytes.extend(b"\xff")
-                if self.get_dyed(pos):
-                    board_bytes.extend(b"#")
-                if obj is None:
-                    board_bytes.extend(b"_")
-                else:
-                    code = obj.code()
-                    if b"\xff" in code:
-                        get_logger().error(f"{obj.type().decode()}中编码出现\\xff")
-                        raise ValueError(r"code contains forbidden byte: \xff")
-                    board_bytes.extend(obj.type() + b"|" + code)
-            board_bytes.extend(b"\xff\xff")
-        # 只用split(b"\xff_")切分
-        parts = board_bytes.split(b"\xff_")
+                    mask.append(pos is None)
 
-        # 处理连续 \xff_ 的次数
-        encoded_bytes = bytearray()
-        i = 0
-        while i < len(parts):
-            if i > 0:
-                # 统计连续 \xff_ 的次数
-                count = 1
-                # 看后续parts里是否以空字节开头来判断是否连续（split后的空串）
-                # 但这里由于只分割 \xff_，连续情况只能靠检查下一个part是否空
-                while i + count < len(parts) and parts[i + count - 1] == b'':
-                    count += 1
-                # 输出 \xff + 数字（表示连续多少个 \xff_）
-                while count > 254:
-                    encoded_bytes.extend(b"\xff\x00" + bytes([254]))
-                    count -= 254
-                if count > 0:
-                    encoded_bytes.extend(b"\xff\x00" + bytes([count]))
-                i += count - 1
-            encoded_bytes.extend(parts[i])
-            i += 1
-        return encoded_bytes[:-2]
+            # cells list with position and object info
+            cells: list[JSONObject] = []
+            for pos, obj in self(key=board_key):
+                cell: dict[str, int | str | bool | None | ImmutableDict[str, int | str | bool | None]] = {
+                    "col": pos.col,
+                    "row": pos.row,
+                    "board_key": pos.board_key,
+                    "dyed": bool(self.get_dyed(pos))
+                }
+                if obj is None:
+                    cell["obj"] = None
+                else:
+                    cell["obj"] = ImmutableDict({
+                        "type": int(obj.type()),
+                        "code": int(obj.code())
+                    })
+                cells.append(ImmutableDict(cell))
+
+            boards[board_key] = ImmutableDict({
+                "size": {"cols": size.cols, "rows": size.rows},
+                "flags": flags,
+                "mask": mask,
+                "value": {"type": int(value.type()), "code": int(value.code())},
+                "mines": {"type": int(mines.type()), "code": int(mines.code())},
+                "labels": labels,
+                "cells": cells
+            })
+
+        return ImmutableDict({"boards": boards})
 
     def boundary(self, key=MASTER_BOARD) -> "Position":
         if key not in self.get_board_keys():

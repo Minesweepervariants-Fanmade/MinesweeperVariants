@@ -6,11 +6,14 @@
 # @FileName: board.py
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generator, List, Optional, Protocol, Tuple, Union, TYPE_CHECKING, runtime_checkable
+from collections import UserDict
+from types import MappingProxyType
+from typing import Callable, Final, Generator, Iterator, List, Mapping, Optional, Protocol, Tuple, Union, TYPE_CHECKING, cast, runtime_checkable
 from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
 
+from jinja2 import runtime
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
 
@@ -282,6 +285,49 @@ class AbstractPosition(ABC):
     #     :return: 位置列表，按距离从近到远排序。
     #     """
 
+class ImmutableDict[K,V](Mapping[K, V]):
+    _data: dict[K, V]
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self._data = dict[K, V](*args, **kwargs)
+
+    def __getitem__(self, key: K) -> V:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[K]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+
+
+type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject] | str | int | float | bool | None
+type JSONString = str
+@runtime_checkable
+class JSONifyAble(Protocol):
+    def from_json(self, data: JSONObject) -> None: ...
+    def json(self) -> JSONObject: ...
+
+def json_dumps(obj: JSONObject) -> JSONString:
+    try:
+        from orjson import dumps as dumps
+    except:
+        from json import dumps
+
+    str_or_bytes = dumps(obj)
+    if isinstance(str_or_bytes, bytes):
+        return str_or_bytes.decode('utf-8')
+    return str_or_bytes
+
+def json_load(str: JSONString):
+    try:
+        from orjson import loads as loads
+    except:
+        from json import loads
+
+    return loads(str)
+
 
 class AbstractBoard(ABC):
     version = -1
@@ -305,12 +351,18 @@ class AbstractBoard(ABC):
         *,
         rules: dict[str, 'AbstractRule'] | None,
         size: Size | None,
-        code: bytes | None,
         default_special: str,
     ) -> None:
         """
         :param size: 题板尺寸
         :param code: 题板代码
+        """
+        ...
+
+    def from_json(self, data: JSONObject) -> None:
+        """
+        从json格式解码
+        :param data: json对象
         """
         ...
 
@@ -390,7 +442,7 @@ class AbstractBoard(ABC):
         实际为编码后初始化生成
         :return: 克隆后的对象
         """
-        new_board = self.__class__(code=self.encode(), default_special=self.default_special, rules=self.rules, size=None)
+        new_board = self.from_json(self.json())
         if hasattr(self, "_get_rule_instance"):
             new_board._bound_get_rule_instance(self._get_rule_instance)
 
@@ -427,18 +479,16 @@ class AbstractBoard(ABC):
         raise RuntimeError("Method get_rule_instance is not bound")
 
     @abstractmethod
-    def generate_board(self, board_key: str, size: Optional[Size] = None, labels: list[str] | None = None, code: Optional[bytes] = None) -> None:
+    def generate_board(self, board_key: str, size: Optional[Size] = None, labels: list[str] | None = None) -> None:
         """
         创建一块副板 board_key为名称 size为尺寸 labels 为 X=N 的 N 可能取值
         """
         ...
 
     @abstractmethod
-    def encode(self) -> bytes:
+    def json(self) -> JSONObject:
         """
-        编码成字节代码
-        可在初始化时导入
-        :return: 编码后的字节数据
+        编码成json格式的对象
         """
         ...
 
