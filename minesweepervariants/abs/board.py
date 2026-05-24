@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Generator, List, Optional, Protocol, Tuple, Union, TYPE_CHECKING, runtime_checkable
 from typing import NamedTuple
 from dataclasses import dataclass
-from warnings import warn
+from warnings import deprecated
 
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
@@ -42,23 +42,20 @@ class AbstractPosition(ABC):
         self.board_key = board_key
 
     @property
+    @deprecated("x is deprecated, use col instead")
     def x(self) -> int:
-        warn(DeprecationWarning("x is deprecated, use col instead"))
         return self.col
-
-    @property
-    def y(self) -> int:
-        warn(DeprecationWarning("y is deprecated, use row instead"))
-        return self.row
 
     @x.setter
     def x(self, value: int) -> None:
-        warn(DeprecationWarning("x is deprecated, use col instead"))
         self.col = value
 
+    @property
+    @deprecated("y is deprecated, use row instead")
+    def y(self) -> int:
+        return self.row
     @y.setter
     def y(self, value: int) -> None:
-        warn(DeprecationWarning("y is deprecated, use row instead"))
         self.row = value
 
     def __eq__(self, other: object) -> bool:
