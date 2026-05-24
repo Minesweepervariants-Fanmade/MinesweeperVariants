@@ -196,7 +196,7 @@ def get_value(pos: Optional[AbstractPosition], clue_type: str, data: JSONObject)
         return clue_cls.from_json(pos, data)
     return None
 
-def decode_board(data: str, name: Optional[str] = None):
+def decode_board(data: JSONObject, name: Optional[str] = None):
     board_cls = get_board(name)
     if board_cls is None:
         raise ValueError("未找到棋盘")

@@ -12,7 +12,7 @@ import os
 import time
 from typing import Optional
 
-from minesweepervariants.abs.board import Size
+from minesweepervariants.abs.board import Size, json_dumps
 from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, PUZZLE
@@ -123,14 +123,14 @@ def main(
         if _board is None:
             continue
         game.board = _board
-        game.answer_board = get_board(board_class)(rules={}, code=s.answer_board_code)
+        game.answer_board = s.answer_board.clone()
         # game.board = get_board("0B")(code=b'')
         # game.answer_board = get_board("0B")(code=b'')
         _board = game.board.clone()
         game.logger.info("\n" + "=" * 30 + "\nanswer_board:\n" + game.answer_board.show_board())
         game.logger.info("\nboard:\n" + game.board.show_board())
-        game.logger.info("board: " + str(game.board.encode()))
-        game.logger.info("answer: " + str(game.answer_board.encode()))
+        game.logger.info("board: " + str(game.board.json()))
+        game.logger.info("answer: " + str(game.answer_board.json()))
         try:
             game.logger.info("开始计算线索图")
             clue_freq = game.check_difficulty(diff=query if early_stop else None)
@@ -144,8 +144,8 @@ def main(
         n_num = len([None for _ in _board("N")])
         board_str = _board.show_board()
         answer = game.answer_board.show_board()
-        board_code = _board.encode()
-        answer_code = game.answer_board.encode()
+        board_code = _board.json()
+        answer_code = game.answer_board.json()
         rule_text = _build_rule_text(_board)
         if dye:
             rule_text += f"[@{dye}]"
@@ -193,7 +193,7 @@ def main(
             f.write("\n" + board_str)
             f.write("\n" + answer)
 
-            f.write(f"\n答案: img -c {encode_board(answer_code)} ")
+            f.write(f"\n答案: img -c {answer_code} ")
             f.write(f"-r \"{rule_text}-R{s.total}/")
             f.write(f"{n_num}")
             if unseed:
@@ -202,7 +202,7 @@ def main(
                 f.write(" ")
             f.write("-o answer\n")
 
-            f.write(f"\n题板: img -c {encode_board(board_code)} ")
+            f.write(f"\n题板: img -c {board_code} ")
             f.write(f"-r \"{rule_text}-R{'*' if drop_r else s.total}/")
             f.write(f"{n_num}")
             if unseed:
@@ -211,7 +211,7 @@ def main(
                 f.write(" ")
             f.write("-o demo\n")
 
-            f.write(f"\n题板代码: \n{encode_board(answer_code)}:{mask.hex()}:{':'.join(rule_code)}\n")
+            # f.write(f"\n题板代码: \n{encode_board(answer_code)}:{mask.hex()}:{':'.join(rule_code)}\n")
 
         if image:
             draw_board(board=_board, cell_size=100, output=file_name + "demo",
@@ -224,7 +224,7 @@ def main(
                                     f"-R{s.total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
-        logger.info(f"|[BOARD]: {board_code.hex()}|")
-        logger.info(f"|[ANSWER_BOARD]: {answer_code.hex()}|")
+        logger.info(f"|[BOARD]: {json_dumps(board_code)}|")
+        logger.info(f"|[ANSWER_BOARD]: {json_dumps(answer_code)}|")
 
         return
