@@ -74,6 +74,7 @@ def main(
                drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
                dynamic_dig_rounds=dynamic_dig_rounds, unseed=unseed,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
+    rule_text = _build_rule_text(s.board)
     unseed = s.unseed
     # if total == -2:
     #     s.random_fill(s.board, s.total)
@@ -131,7 +132,6 @@ def main(
         bound = _board.boundary(key)
         size_a = max(size_a, bound.col + 1)
         size_b = max(size_b, bound.row + 1)
-    rule_text = _build_rule_text(_board)
     if dye:
         rule_text += f"[@{dye}]"
     if mask_dye:

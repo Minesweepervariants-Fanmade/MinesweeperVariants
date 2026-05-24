@@ -88,6 +88,7 @@ def main(
                dynamic_dig_rounds=dynamic_dig_rounds,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
 
+    rule_text = _build_rule_text(s.board)
     size_a = 0
     size_b = 0
     size_c = len(s.board.get_interactive_keys())
@@ -146,7 +147,6 @@ def main(
         answer = game.answer_board.show_board()
         board_code = _board.json()
         answer_code = game.answer_board.json()
-        rule_text = _build_rule_text(_board)
         if dye:
             rule_text += f"[@{dye}]"
         if mask_dye:
