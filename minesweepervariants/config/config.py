@@ -33,7 +33,7 @@ DEFAULT_CONFIG = {
     "dynamic_dig_max_batch": 8,  # 每轮最大改动格数，随后会逐渐衰减
 
     "game_mode": "PUZZLE",      # hint的时候 game的游戏模式
-    "hint_file": None,        # hint的保存的图片文件名
+    "hint_file": "",        # hint的保存的图片文件名
 }
 
 IMAGE_CONFIG = config = {
