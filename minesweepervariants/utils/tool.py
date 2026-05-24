@@ -24,7 +24,7 @@ SEED = -1
 
 def get_logger(name="logger", log_lv="INFO") -> 'Logger':
     global LOGGER
-    log_lv = log_lv.upper()
+    log_lv = log_lv.upper() if log_lv else log_lv
     if LOGGER is None:
         LOGGER = Logger(name, log_path=DEFAULT_CONFIG.get("log_path", None))
         if log_lv == "TRACE":
