@@ -358,11 +358,12 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         return []
 
 class AbstractValue(ABC):
-    def from_json(self, data: JSONObject) -> None:
+    @classmethod
+    def from_json(cls, pos: 'AbstractPosition', data: JSONObject) -> 'AbstractValue':
         if isinstance(data, Mapping) and 'old_style' in data and data['old_style'] and 'type' in data:
             if 'code' in data and isinstance((code := data['code']), str):
                 from base64 import b64decode
-                self.__init__(self.pos, code=b64decode(code))
+                return cls(pos, code=b64decode(code))
             else:
                 raise ValueError(f"Unsupported clue value type {data['type']}")
         else:
