@@ -285,10 +285,11 @@ class AbstractPosition(ABC):
     #     :return: 位置列表，按距离从近到远排序。
     #     """
 
+
 class RulesDict(TypedDict):
-    clue_rules: list[AbstractClueRule]
-    mines_rules: list[AbstractMinesRule]
-    mines_clue_rules: list[AbstractMinesClueRule]
+    clue_rules: list['AbstractClueRule']
+    mines_rules: list['AbstractMinesRule']
+    mines_clue_rules: list['AbstractMinesClueRule']
 
 
 class AbstractBoard(ABC):
@@ -417,7 +418,7 @@ class AbstractBoard(ABC):
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
-    def _bound_get_rule_instance(self, get_rule_instance: Callable[[str, str | None, bool], AbstractRule | None]) -> None:
+    def _bound_get_rule_instance(self, get_rule_instance: Callable[[str, str | None, bool], Union['AbstractRule', None]]) -> None:
         """
         绑定get_rule_instance方法
         :param get_rule_instance: 方法
