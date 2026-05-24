@@ -7,7 +7,7 @@
 
 import threading
 
-from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, json_load
+from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, decompress, json_loads
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import get_board, decode_board
 from minesweepervariants.impl.summon import Summon
@@ -48,8 +48,7 @@ def main(
         case _:
             raise ValueError(f"unknown game mode: {game_mode}")
 
-    logger.info(f"输入的题板数据: {board_code}")
-    mask_board = decode_board(data=json_load(board_code))
+    mask_board = decode_board(data=json_loads(decompress(board_code)))
 
     s = Summon(
         size=mask_board.get_config(MASTER_BOARD, "size"), total=-2, rules=rules[:],

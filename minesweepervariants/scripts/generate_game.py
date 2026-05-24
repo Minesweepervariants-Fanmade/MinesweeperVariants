@@ -12,7 +12,7 @@ import os
 import time
 from typing import Optional
 
-from minesweepervariants.abs.board import Size, json_dumps
+from minesweepervariants.abs.board import Size, compress, json_dumps
 from minesweepervariants.impl.impl_obj import ModelGenerateError, get_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, PUZZLE
@@ -224,7 +224,7 @@ def main(
                                     f"-R{s.total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
-        logger.info(f"|[BOARD]: {json_dumps(board_code)}|")
-        logger.info(f"|[ANSWER_BOARD]: {json_dumps(answer_code)}|")
+        logger.info(f"|[BOARD]: {compress(json_dumps(board_code))}|")
+        logger.info(f"|[ANSWER_BOARD]: {compress(json_dumps(answer_code))}|")
 
         return

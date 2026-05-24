@@ -351,13 +351,34 @@ def json_dumps(obj: JSONObject) -> JSONString:
         return json_dumps_std(pure_data, ensure_ascii=False)
 
 
-def json_load(json_str: JSONString) -> JSONObject:
+def json_loads(json_str: JSONString) -> JSONObject:
     try:
         from orjson import loads as orjson_loads
         return _deep_wrap(orjson_loads(json_str))
     except ImportError:
         from json import loads as json_loads_std
         return _deep_wrap(json_loads_std(json_str))
+
+
+
+def compress(s: str) -> str:
+    from base64 import urlsafe_b64encode
+    import zstandard as zstd
+    b = s.encode()
+
+    compressor = zstd.ZstdCompressor(level=22)
+
+    return urlsafe_b64encode(compressor.compress(b)).decode()
+
+def decompress(s: str) -> str:
+    from base64 import urlsafe_b64decode
+    import zstandard as zstd
+    b = urlsafe_b64decode(s.encode())
+
+    decompressor = zstd.ZstdDecompressor()
+
+    return decompressor.decompress(b).decode()
+
 
 def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
     if not isinstance(data, get_origin(type_) or type_):

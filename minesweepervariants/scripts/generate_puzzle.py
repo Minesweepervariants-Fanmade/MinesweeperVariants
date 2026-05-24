@@ -9,7 +9,7 @@ import os
 import time
 from typing import Optional
 
-from minesweepervariants.abs.board import Size, json_dumps
+from minesweepervariants.abs.board import Size, compress, json_dumps
 from minesweepervariants.impl.impl_obj import decode_board, get_board, ModelGenerateError
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.summon import GenerateError
@@ -212,5 +212,5 @@ def main(
     logger.info("[Discord Spoiler Format - Hide Clues]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=True) + "\n")
     logger.info(answer + "\n")
 
-    logger.info(f"|[BOARD]: {json_dumps(board_code)}|")
-    logger.info(f"|[ANSWER_BOARD]: {json_dumps(answer_code)}|")
+    logger.info(f"|[BOARD]: {compress(json_dumps(board_code))}|")
+    logger.info(f"|[ANSWER_BOARD]: {compress(json_dumps(answer_code))}|")
