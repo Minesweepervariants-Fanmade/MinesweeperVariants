@@ -1,21 +1,10 @@
 import pkgutil
 import importlib
 import pathlib
-from abc import ABC, abstractmethod
-from typing import NotRequired
+
+from minesweepervariants.abs.dye import AbstractDye
+
 from .alias import aliases
-
-class AbstractDye(ABC):
-    name: str
-    fullname: str
-    doc: str = ""
-
-    def __init__(self, args):
-        self.args = args
-
-    @abstractmethod
-    def dye(self, board):
-        """染色函数"""
 
 
 # 动态递归导入当前目录所有模块和包
@@ -23,7 +12,7 @@ def _auto_import_modules():
     current_pkg = __name__
     current_path = pathlib.Path(__file__).parent
 
-    for finder, name, ispkg in pkgutil.walk_packages([str(current_path)], prefix=current_pkg + "."):
+    for _finder, name, _ispkg in pkgutil.walk_packages([str(current_path)], prefix=current_pkg + "."):
         importlib.import_module(name)
 
 

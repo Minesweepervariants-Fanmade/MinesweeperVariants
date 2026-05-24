@@ -6,14 +6,15 @@
 # @FileName: board.py
 
 from abc import ABC, abstractmethod
-from collections import namedtuple
-from typing import List, Optional, Self, Tuple, Union, TYPE_CHECKING, Generator, Any
+from typing import Callable, Generator, List, Optional, Protocol, Tuple, Union, TYPE_CHECKING, runtime_checkable
+from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import warn
 
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
 
+from minesweepervariants.abs.dye import AbstractDye
 from minesweepervariants.abs.rule import AbstractRule
 
 from ..impl.board.dye import get_dye
@@ -24,7 +25,9 @@ if TYPE_CHECKING:
 
 MASTER_BOARD = "1"
 
-Size = namedtuple("Size", ["cols", "rows"])
+class Size(NamedTuple):
+    cols: int
+    rows: int
 
 @dataclass(order=True)
 class AbstractPosition(ABC):
@@ -33,32 +36,32 @@ class AbstractPosition(ABC):
 
     board_key: str
 
-    def __init__(self, col: int, row: int, board_key: str):
+    def __init__(self, col: int, row: int, board_key: str) -> None:
         self.col = col
         self.row = row
         self.board_key = board_key
 
     @property
-    def x(self):
+    def x(self) -> int:
         warn(DeprecationWarning("x is deprecated, use col instead"))
         return self.col
 
     @property
-    def y(self):
+    def y(self) -> int:
         warn(DeprecationWarning("y is deprecated, use row instead"))
         return self.row
 
     @x.setter
-    def x(self, value):
+    def x(self, value: int) -> None:
         warn(DeprecationWarning("x is deprecated, use col instead"))
         self.col = value
 
     @y.setter
-    def y(self, value):
+    def y(self, value: int) -> None:
         warn(DeprecationWarning("y is deprecated, use row instead"))
         self.row = value
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, self.__class__) and
             self.col == other.col and
@@ -66,13 +69,13 @@ class AbstractPosition(ABC):
             self.board_key == other.board_key
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.col, self.row, self.board_key))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"([{self.board_key}]{self.col}, {self.row})"
 
-    def clone(self):
+    def clone(self) -> 'AbstractPosition':
         """
         复制并返回一个相同的位置
         :return: 另一个相同的位置对象
@@ -80,35 +83,35 @@ class AbstractPosition(ABC):
         return self.__class__(self.col, self.row, self.board_key)
 
     @abstractmethod
-    def _up(self, n: int = 1):
+    def _up(self, n: int = 1) -> None:
         """
         将自己向上移动n格
         :param n: 向上n格
         """
 
     @abstractmethod
-    def _down(self, n: int = 1):
+    def _down(self, n: int = 1) -> None:
         """
         将自己向下移动n格
         :param n: 向下n格
         """
 
     @abstractmethod
-    def _left(self, n: int = 1):
+    def _left(self, n: int = 1) -> None:
         """
         将自己向左移动n格
         :param n: 向左n格
         """
 
     @abstractmethod
-    def _right(self, n: int = 1):
+    def _right(self, n: int = 1) -> None:
         """
         将自己向右移动n格
         :param n: 向右n格
         """
 
     @abstractmethod
-    def _deviation(self, pos: 'AbstractPosition'):
+    def _deviation(self, pos: 'AbstractPosition') -> None:
         """
         对于输入位置进行偏移并赋值给自身
         :param pos: 相对量
@@ -220,7 +223,7 @@ class AbstractPosition(ABC):
         _pos._right(n)
         return _pos
 
-    def shift(self, col: int = 0, row: int = 0):
+    def shift(self, col: int = 0, row: int = 0) -> 'AbstractPosition':
         return self.up(col).right(row)
 
     # def north(self, n: int = 1) -> 'AbstractPosition':
@@ -289,7 +292,7 @@ class AbstractBoard(ABC):
 
     default_special = 'raw'
 
-    rules: dict = {}
+    rules: dict[str, 'AbstractRule'] = {}
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -300,14 +303,21 @@ class AbstractBoard(ABC):
     ]
 
     @abstractmethod
-    def __init__(self, *, rules, size, code, default_special):
+    def __init__(
+        self,
+        *,
+        rules: dict[str, 'AbstractRule'] | None,
+        size: Size | None,
+        code: bytes | None,
+        default_special: str,
+    ) -> None:
         """
         :param size: 题板尺寸
         :param code: 题板代码
         """
         ...
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.show_board()
 
     @abstractmethod
@@ -315,8 +325,8 @@ class AbstractBoard(ABC):
             self, target: Union[str, None] = "always",
             mode: str = "object",
             key: str | None = MASTER_BOARD,
-            *args, **kwargs
-    ) -> Generator[Tuple['AbstractPosition', Any], Any, None]:
+            *args: object, **kwargs: object
+        ) -> Generator[Tuple['AbstractPosition', object], None, None]:
         """
         被调用时循环返回目标值
         :param target: 遍历目标类型 可选参数: C:线索, F:雷, N:未定义|未翻开
@@ -325,16 +335,16 @@ class AbstractBoard(ABC):
         :return: 位置坐标与对应的值
         """
 
-    def __getitem__(self, pos):
+    def __getitem__(self, pos: 'AbstractPosition') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         return self.get_value(pos)
 
-    def __setitem__(self, pos, value):
+    def __setitem__(self, pos: 'AbstractPosition', value: Union['AbstractClueValue', 'AbstractMinesValue', None]) -> None:
         return self.set_value(pos, value)
 
-    def __contains__(self, item):
-        return self.has(target=item, key='')
+    def __contains__(self, item: object) -> bool:
+        return isinstance(item, str) and self.has(target=item, key='')
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, AbstractBoard):
             return False
         if self.get_board_keys() != other.get_board_keys():
@@ -348,15 +358,24 @@ class AbstractBoard(ABC):
                     continue
                 if obj1 is None or obj2 is None:
                     return False
-                if obj1.code() != obj2.code():
-                    return False
-                if obj1.type() != obj2.type():
-                    return False
+
+                @runtime_checkable
+                class _CodeAndType(Protocol):
+                    def code(self) -> bytes: ...
+                    def type(self) -> bytes: ...
+
+                if isinstance(obj1, _CodeAndType):
+                    if obj1.code() != obj2.code():
+                        return False
+                    if obj1.type() != obj2.type():
+                        return False
+
+                return False
         return True
 
-    def dyed(self, name: str):
+    def dyed(self, name: str) -> None:
         dye = get_dye(name)
-        if not dye:
+        if not isinstance(dye, AbstractDye):
             raise ValueError(f"Dye {name} not found")
         dye.dye(self)
 
@@ -393,7 +412,7 @@ class AbstractBoard(ABC):
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
-    def _bound_get_rule_instance(self, get_rule_instance):
+    def _bound_get_rule_instance(self, get_rule_instance: Callable[[str, str | None, bool], AbstractRule | None]) -> None:
         """
         绑定get_rule_instance方法
         :param get_rule_instance: 方法
@@ -401,7 +420,7 @@ class AbstractBoard(ABC):
         self._get_rule_instance = get_rule_instance
         self.get_rule_instance = self._get_rule_instance.__get__(self)
 
-    def get_rule_instance(self, rule_name: str, data: str|None = None, add: bool = True) -> "AbstractRule | None":
+    def get_rule_instance(self, rule_name: str, data: str | None = None, add: bool = True) -> "AbstractRule | None":
         """
         返回指定名称的规则对象
         :param rule_name: 规则名称
@@ -411,7 +430,7 @@ class AbstractBoard(ABC):
         raise RuntimeError("Method get_rule_instance is not bound")
 
     @abstractmethod
-    def generate_board(self, board_key: str, size: Optional[Size] = None, labels: list[str] = [], code: Optional[bytes] = None) -> None:
+    def generate_board(self, board_key: str, size: Optional[Size] = None, labels: list[str] | None = None, code: Optional[bytes] = None) -> None:
         """
         创建一块副板 board_key为名称 size为尺寸 labels 为 X=N 的 N 可能取值
         """
@@ -427,7 +446,7 @@ class AbstractBoard(ABC):
         ...
 
     @abstractmethod
-    def boundary(self, key=MASTER_BOARD) -> 'AbstractPosition':
+    def boundary(self, key: str = MASTER_BOARD) -> 'AbstractPosition':
         """
         返回选择题板的边界极限位置
         :return: 极限位置对象
@@ -450,7 +469,7 @@ class AbstractBoard(ABC):
         """
         return self.is_valid(pos)
 
-    def set_mask(self, pos):
+    def set_mask(self, pos: 'AbstractPosition') -> None:
         """
         挖去题板的指定位置
         """
@@ -458,7 +477,7 @@ class AbstractBoard(ABC):
 
     @staticmethod
     @abstractmethod
-    def type_value(value) -> str:
+    def type_value(value: object) -> str:
         """
         对象的类型
         返回 F:雷, C:线索, N:未赋值
@@ -468,7 +487,7 @@ class AbstractBoard(ABC):
         ...
 
     @abstractmethod
-    def register_type_special(self, name: str, func):
+    def register_type_special(self, name: str, func: Callable[..., str]) -> None:
         """
         注册一个类型特殊处理函数
         :param name: 特殊名称
@@ -505,7 +524,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def set_value(self, pos: 'AbstractPosition', value):
+    def set_value(self, pos: 'AbstractPosition', value: Union['AbstractClueValue', 'AbstractMinesValue', None]) -> None:
         """
         将位置设置为指定对象
         :param pos: 位置
@@ -513,13 +532,13 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def clear_board(self):
+    def clear_board(self) -> None:
         """
         清空所有的数据
         """
 
     @abstractmethod
-    def set_dyed(self, pos: 'AbstractPosition', dyed: bool):
+    def set_dyed(self, pos: 'AbstractPosition', dyed: bool) -> None:
         """
         设置位置为指定染色
         :param pos: 位置
@@ -535,19 +554,19 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_config(self, board_key: str, config_name: str):
+    def get_config(self, board_key: str, config_name: str) -> object:
         """
         返回某个题板的设置
         """
 
     @abstractmethod
-    def set_config(self, board_key: str, config_name: str, value: Any):
+    def set_config(self, board_key: str, config_name: str, value: object) -> None:
         """
         设置某个题板的设置
         """
         ...
 
-    def set_default_special(self, special: str = 'raw'):
+    def set_default_special(self, special: str = 'raw') -> None:
         """ 设置默认变量类型(只能设置一次)"""
         if special == 'raw' or self.default_special == 'raw':
             self.default_special = special
@@ -563,7 +582,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def clear_variable(self):
+    def clear_variable(self) -> None:
         """
         清空当前题板的所有变量 将其设为None
         """
@@ -585,7 +604,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def get_pos(self, row, col, key=MASTER_BOARD) -> 'AbstractPosition':
+    def get_pos(self, row: int, col: int, key: str = MASTER_BOARD) -> 'AbstractPosition':
         """
         返回位置实体
         创建时需要遵守board实现的位置规则
@@ -604,7 +623,7 @@ class AbstractBoard(ABC):
         """
 
     @abstractmethod
-    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
+    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args: object, **kwargs: object) -> List[Union['AbstractClueValue', 'AbstractMinesValue', None]]:
         """
         批量获取指定位置上的信息。
         :param positions: 位置列表
@@ -634,12 +653,12 @@ class AbstractBoard(ABC):
         :return: 标签字符串
         """
 
-    def serialize(self):
+    def serialize(self) -> object:
         from ..impl.impl_obj import encode_board
         return encode_board(self.encode())
 
     @classmethod
-    def from_str(cls, data: str):
+    def from_str(cls, data: str) -> object:
         from ..impl.impl_obj import decode_board
         return decode_board(data)
 
@@ -649,7 +668,7 @@ class AbstractBoard(ABC):
 
 
 class PositionTag(AbstractPosition):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(0, 0, MASTER_BOARD)
 
     def neighbors(self, *args: int) -> list['AbstractPosition']:
@@ -658,32 +677,32 @@ class PositionTag(AbstractPosition):
     def in_bounds(self, bound_pos: 'AbstractPosition') -> bool:
         return False
 
-    def _deviation(self, pos: 'AbstractPosition'):
+    def _deviation(self, pos: 'AbstractPosition') -> None:
         pass
 
-    def _up(self, n: int = 1):
+    def _up(self, n: int = 1) -> None:
         pass
 
-    def _down(self, n: int = 1):
+    def _down(self, n: int = 1) -> None:
         pass
 
-    def _left(self, n: int = 1):
+    def _left(self, n: int = 1) -> None:
         pass
 
-    def _right(self, n: int = 1):
+    def _right(self, n: int = 1) -> None:
         pass
 
-    def _north(self, n: int = 1):
-        pass
+    # def _north(self, n: int = 1) -> None:
+    #     pass
 
-    def _east(self, n: int = 1):
-        pass
+    # def _east(self, n: int = 1) -> None:
+    #     pass
 
-    def _west(self, n: int = 1):
-        pass
+    # def _west(self, n: int = 1) -> None:
+    #     pass
 
-    def _south(self, n: int = 1):
-        pass
+    # def _south(self, n: int = 1) -> None:
+    #     pass
 
     def hex_neighbors(self, *args: int) -> list['AbstractPosition']:
         return []

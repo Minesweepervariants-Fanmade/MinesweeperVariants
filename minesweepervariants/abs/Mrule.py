@@ -7,17 +7,97 @@
 
 # 雷线索由于未实装 等待版本大更新
 
-from typing import TYPE_CHECKING, Dict
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Mapping
 
 from minesweepervariants.abs.board import AbstractBoard
 from .rule import AbstractRule, AbstractValue
-from ..utils.image_create import get_image, get_col, get_dummy, get_text
-from abc import abstractmethod, ABC
-
 from ..utils.web_template import Number
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.board import AbstractPosition, AbstractBoard
+    from minesweepervariants.abs.board import AbstractPosition
+
+
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    hex_color = hex_color.lstrip("#")
+    return (
+        int(hex_color[0:2], 16),
+        int(hex_color[2:4], 16),
+        int(hex_color[4:6], 16),
+    )
+
+
+def _get_dummy(width: float = 0.01, height: float = 0.01) -> dict[str, object]:
+    return {
+        "type": "placeholder",
+        "width": width,
+        "height": height,
+        "cover": True,
+        "dominant": None,
+    }
+
+
+def _get_text(
+    text: str,
+    width: float | str = "auto",
+    height: float | str = "auto",
+    cover_pos_label: bool = True,
+    color: tuple[str, str] = ("#FFFFFF", "#000000"),
+    dominant_by_height: bool = True,
+    style: str = "",
+) -> dict[str, object]:
+    dominant: str | None = "height" if dominant_by_height else "width"
+    return {
+        "type": "text",
+        "text": text,
+        "content": text,
+        "color_black": _hex_to_rgb(color[0]),
+        "color_white": _hex_to_rgb(color[1]),
+        "width": width,
+        "height": height,
+        "font_size": 1,
+        "cover": cover_pos_label,
+        "dominant": dominant,
+        "style": style,
+    }
+
+
+def _get_image(
+    image_path: str,
+    image_width: float | str = "auto",
+    image_height: float | str = "auto",
+    cover_pos_label: bool = True,
+    dominant_by_height: bool = True,
+    style: str = "",
+) -> dict[str, object]:
+    dominant: str | None = "height" if dominant_by_height else "width"
+    return {
+        "type": "image",
+        "image": image_path,
+        "height": image_height,
+        "width": image_width,
+        "cover": cover_pos_label,
+        "dominant": dominant,
+        "style": style,
+    }
+
+
+def _get_col(*args: dict[str, object], spacing: int = 0, dominant_by_height: bool = False) -> dict[str, object]:
+    dominant: str | None = "height" if dominant_by_height else "width"
+    for child in args:
+        if child.get("dominant") is None:
+            child["dominant"] = "width"
+    width_values = [item["width"] for item in args if isinstance(item["width"], int)]
+    width = max(width_values) if width_values else "auto"
+    return {
+        "type": "col",
+        "children": args,
+        "spacing": spacing,
+        "cover": all(item["cover"] for item in args),
+        "height": "auto",
+        "width": width,
+        "dominant": dominant,
+    }
 
 
 class AbstractMinesClueRule(AbstractRule, ABC):
@@ -39,40 +119,41 @@ class AbstractMinesValue(AbstractValue, ABC):
     pos: 'AbstractPosition'
 
     @abstractmethod
-    def __init__(self, pos: 'AbstractPosition', code: bytes = None):
+    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
         self.pos = pos
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         当前值在展示时候的显示字符串
         :return: 显示的字符串
         """
         return "F"
 
-    def compose(self, board: 'AbstractBoard') -> Dict:
+    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
         """
-        return get_col(
-            get_dummy(height=0.175),
-            get_text(self.__repr__(),
-                     color=("#FFFF00", "#FF7F00")),
-            get_dummy(height=0.175),
+        return _get_col(
+            _get_dummy(height=0.175),
+            _get_text(self.__repr__(), color=("#FFFF00", "#FF7F00")),
+            _get_dummy(height=0.175),
         )
 
-    def web_component(self, board: 'AbstractBoard') -> Dict:
+    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
         """
         if "compose" in type(self).__dict__:
             return self.compose(board)
-        data = Number(self.__repr__())
-        return data
+        return Number(self.__repr__())
 
     def weaker(self, board: AbstractBoard) -> AbstractValue:
-        return board.get_config(self.pos.board_key, "MINES")
+        value = board.get_config(self.pos.board_key, "MINES")
+        if isinstance(value, AbstractValue):
+            return value
+        return self
 
     def weaker_times(self) -> int:
         return 1
@@ -87,16 +168,16 @@ class MinesTag(AbstractMinesValue):
     用于暂存表示为类
     """
 
-    def __init__(self, pos: 'AbstractPosition', code: bytes = None):
-        pass
+    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+        super().__init__(pos, code)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "雷"
 
-    def compose(self, board) -> Dict:
-        return get_image(
+    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+        return _get_image(
             "flag",
-            cover_pos_label=False
+            cover_pos_label=False,
         )
 
     @classmethod
@@ -121,11 +202,11 @@ class Rule0F(AbstractMinesClueRule):
     tags = ["Untagged"]
     creation_time = ""
 
-    def __init__(self, board: "AbstractBoard" = None, data=None) -> None:
+    def __init__(self, board: "AbstractBoard | None" = None, data: str | None = None) -> None:
         super().__init__(board, data)
         self.drop = data is None
 
-    def init_clear(self, board: 'AbstractBoard'):
+    def init_clear(self, board: 'AbstractBoard') -> None:
         if not self.drop:
             return
         for key in board.get_board_keys():
@@ -139,17 +220,17 @@ class Rule0F(AbstractMinesClueRule):
 
 
 class ValueCircle(AbstractMinesValue):
-    def __init__(self, pos: 'AbstractPosition', code: bytes = None):
-        pass
+    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+        super().__init__(pos, code)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "O"
 
-    def web_component(self, board: 'AbstractBoard') -> Dict:
-        return get_image("circle", cover_pos_label=False)
+    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
+        return _get_image("circle", cover_pos_label=False)
 
-    def compose(self, board) -> Dict:
-        return get_image("circle", cover_pos_label=False)
+    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+        return _get_image("circle", cover_pos_label=False)
 
     def code(self) -> bytes:
         return b""
