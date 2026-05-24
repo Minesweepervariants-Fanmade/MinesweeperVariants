@@ -8,7 +8,7 @@
 import argparse
 import threading
 
-from minesweepervariants.abs.board import Size, AbstractPosition
+from minesweepervariants.abs.board import Size, AbstractPosition, MASTER_BOARD
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import get_board, decode_board
 from minesweepervariants.impl.summon import Summon
@@ -36,10 +36,6 @@ def main(
     logger = get_logger("hint", log_lv)
     if not board_code:
         raise ValueError("未输入待提示的题板")
-    s = Summon(
-        size=Size(1, 1), total=-2, rules=rules[:],
-        board=board_class, drop_r=drop_r
-    )
     match game_mode:
         case "expert" | "EXPERT" | "专家":
             game_session_mode = Mode.EXPERT
@@ -54,7 +50,12 @@ def main(
         mask_board = decode_board(board_code)
     except:
         code = bytes.fromhex(board_code)
-        mask_board = get_board(board_class)(rules=s.board.rules, code=code)
+        mask_board = get_board(board_class)(rules={}, code=code)
+
+    s = Summon(
+        size=mask_board.get_config(MASTER_BOARD, "size"), total=-2, rules=rules[:],
+        board=board_class, drop_r=drop_r
+    )
 
     s.board = mask_board
 
