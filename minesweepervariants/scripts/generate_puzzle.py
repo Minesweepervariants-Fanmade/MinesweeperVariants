@@ -212,5 +212,5 @@ def main(
     logger.info("[Discord Spoiler Format - Hide Clues]\n" + _board.show_board_discord(answer_board=answer_board, hide_clues=True) + "\n")
     logger.info(answer + "\n")
 
-    logger.info(f"board: {board_code.hex()}")
-    logger.info(f"answer: {answer_code.hex()}")
+    logger.info(f"|[BOARD]: {board_code.hex()}|")
+    logger.info(f"|[ANSWER_BOARD]: {answer_code.hex()}|")

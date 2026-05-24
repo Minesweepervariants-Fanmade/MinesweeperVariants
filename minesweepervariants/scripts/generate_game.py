@@ -224,7 +224,7 @@ def main(
                                     f"-R{s.total}/{n_num}" +
                                     ("\n" if unseed else f"-{get_seed()}\n")))
 
-        logger.info(f"board: {board_code.hex()}")
-        logger.info(f"answer: {answer_code.hex()}")
+        logger.info(f"|[BOARD]: {board_code.hex()}|")
+        logger.info(f"|[ANSWER_BOARD]: {answer_code.hex()}|")
 
         return
