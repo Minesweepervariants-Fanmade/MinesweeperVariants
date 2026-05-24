@@ -178,8 +178,8 @@ def main(
         key = len(list(hint.keys())[0])
         clue_freq[key] = clue_freq.setdefault(key, 0) + len(hint)
         for hint_because in hint:
-            print(hint_because, "->", hint[hint_because])
-        print(clue_freq)
+            logger.info(f"{hint_because}->{hint[hint_because]}")
+        logger.info(f"当前线索图: {clue_freq}")
 
         botten_text = ""
 
@@ -207,8 +207,7 @@ def main(
         for pos in set(sum(hint.values(), [])):
             imposs = game.answer_board.get_type(pos, special='raw')
             game.apply(pos, 0 if imposs == "C" else 1)
-
-        print(game.board)
+        logger.info(f"当前题板:\n{game.board}")
 
     if not no_image:
         threading.Thread(
@@ -218,6 +217,8 @@ def main(
                 "output": file_name + "_" + str(hint_times)
             }
         ).start()
+    logger.info(f"最终题板:\n{game.board}")
+    logger.info(f"线索图:{clue_freq}")
     hint_times += 1
 
     return
