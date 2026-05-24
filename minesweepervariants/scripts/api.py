@@ -12,6 +12,8 @@ import subprocess
 import os
 import time
 from datetime import datetime
+from typing import Optional
+
 import select
 from queue import Queue, Empty
 
@@ -48,7 +50,7 @@ class TerminalEmulator:
         self.port = _port
         self.host = host
         self.front_arg = front_arg
-        self.server_socket = None
+        self.server_socket: Optional[socket.socket] = None
         self.running = False
         self.client_lock = threading.Lock()
         self.clients = {}
@@ -133,12 +135,12 @@ class TerminalEmulator:
                     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 接受连接时出错")
                 break
 
-    def _handle_client(self, client_socket, output_queue):
+    def _handle_client(self, client_socket: socket.socket, output_queue):
         """处理单个客户端连接"""
         process = None
         try:
             # 等待接收客户端参数
-            data = client_socket.recv(4096)
+            data = client_socket.recv(0xffffffff)
             if not data:
                 # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端未发送参数，断开连接")
                 return
