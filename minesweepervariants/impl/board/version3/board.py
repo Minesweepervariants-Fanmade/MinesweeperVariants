@@ -489,7 +489,6 @@ class Board(AbstractBoard):
             if len(labels_code) == 1 and labels_code[0] == 0:
                 labels_obj = []
             elif labels_code[0] == 1:
-                exit(1)
                 labels_obj = labels_code[1:].decode("ascii").split(";")
             elif labels_code[0] == 2:
                 labels_dict: dict[Position, str] = {}
@@ -572,7 +571,13 @@ class Board(AbstractBoard):
                 continue
             raise ValueError(f"unknown type{code}")
 
-        for rule in self.rules.values():
+        for rule in self.rules["mines_rules"]:
+            rule.onboard_init(self)
+
+        for rule in self.rules["mines_clue_rules"]:
+            rule.onboard_init(self)
+
+        for rule in self.rules["clue_rules"]:
             rule.onboard_init(self)
 
     def encode(self) -> bytes:
