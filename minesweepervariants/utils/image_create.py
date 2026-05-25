@@ -529,55 +529,63 @@ def draw_board(
                 else:
                     draw.rectangle([x0, y0, x0 + cell_size, y0 + cell_size], fill=dye_color)
 
-        # ========== 新增：提示叠加层 ==========
-        # 半透明度（0~255，建议 100 左右）
-        HINT_ALPHA = 95
+        # ========== 使用混合模式 + 动态采样底色 ==========
+        def blend_multiply(base_rgb, overlay_rgb):
+            return tuple((b * o) // 255 for b, o in zip(base_rgb, overlay_rgb))
+
+        def blend_screen(base_rgb, overlay_rgb):
+            return tuple(int(255 - ((255 - b) * (255 - o * 0.5)) // 255) for b, o in zip(base_rgb, overlay_rgb))
+
+        BLEND_MODE = blend_screen  # 根据需要选择
 
         # 处理 hint_because
         if hint_because:
             bc_color_hex = CONFIG["hint_because"]["white_bg" if background_white else "black_bg"]
-            bc_color_rgb = _hex_to_rgb(bc_color_hex)
-            bc_color_rgba = bc_color_rgb + (HINT_ALPHA,)
+            overlay_rgb = _hex_to_rgb(bc_color_hex)
+
             for pos in hint_because:
-                # 只绘制当前 board_key 下的位置
                 if getattr(pos, 'board_key', None) != key:
                     continue
-                # 获取该格子的绘制区域
+
+                # 计算格子中心坐标
                 x0, y0, x_center, y_center = get_cell_box(
                     pos, grid_type, x_offset, margin, cell_size, hex_metrics
                 )
-                if grid_type == "hex":
-                    # 六边形需要计算六个顶点
-                    base_hex_size = hex_metrics[0]  # hex_size
-                    points = get_hex_points(x_center, y_center, base_hex_size)
-                    draw.polygon(points, fill=bc_color_rgba)
-                else:
-                    # 方形格子
-                    draw.rectangle(
-                        [x0, y0, x0 + cell_size, y0 + cell_size],
-                        fill=bc_color_rgba
-                    )
 
-        # 处理 hint_deduced
+                # 从当前图像中采样该点的实际颜色（RGBA → RGB）
+                pixel = image.getpixel((int(x_center), int(y_center)))
+                base_rgb = pixel[:3]  # 忽略 Alpha
+
+                # 混合得到最终颜色（不透明）
+                mixed_rgb = BLEND_MODE(base_rgb, overlay_rgb)
+
+                if grid_type == "hex":
+                    points = get_hex_points(x_center, y_center, hex_metrics[0])
+                    draw.polygon(points, fill=mixed_rgb)
+                else:
+                    draw.rectangle([x0, y0, x0 + cell_size, y0 + cell_size], fill=mixed_rgb)
+
+        # 处理 hint_deduced —— 同理
         if hint_deduced:
             dc_color_hex = CONFIG["hint_deduced"]["white_bg" if background_white else "black_bg"]
-            dc_color_rgb = _hex_to_rgb(dc_color_hex)
-            dc_color_rgba = dc_color_rgb + (HINT_ALPHA,)
+            overlay_rgb = _hex_to_rgb(dc_color_hex)
+
             for pos in hint_deduced:
                 if getattr(pos, 'board_key', None) != key:
                     continue
+
                 x0, y0, x_center, y_center = get_cell_box(
                     pos, grid_type, x_offset, margin, cell_size, hex_metrics
                 )
+                pixel = image.getpixel((int(x_center), int(y_center)))
+                base_rgb = pixel[:3]
+                mixed_rgb = BLEND_MODE(base_rgb, overlay_rgb)
+
                 if grid_type == "hex":
-                    base_hex_size = hex_metrics[0]
-                    points = get_hex_points(x_center, y_center, base_hex_size)
-                    draw.polygon(points, fill=dc_color_rgba)
+                    points = get_hex_points(x_center, y_center, hex_metrics[0])
+                    draw.polygon(points, fill=mixed_rgb)
                 else:
-                    draw.rectangle(
-                        [x0, y0, x0 + cell_size, y0 + cell_size],
-                        fill=dc_color_rgba
-                    )
+                    draw.rectangle([x0, y0, x0 + cell_size, y0 + cell_size], fill=mixed_rgb)
 
         # 网格线
         if grid_type == "hex":
