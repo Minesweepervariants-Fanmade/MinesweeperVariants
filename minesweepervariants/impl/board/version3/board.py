@@ -25,12 +25,6 @@ from ....abs.Rrule import AbstractClueValue
 from ....abs.Mrule import AbstractMinesValue
 
 
-
-# def get_value(pos=None, clue_type=None, code=None):
-#     from minesweepervariants.impl.impl_obj import get_value
-#     return get_value(pos, clue_type, code)
-
-
 def alpha(col: int) -> str:
     alpha_map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     if col < 26:

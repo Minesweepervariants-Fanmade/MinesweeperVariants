@@ -125,8 +125,6 @@ def main(
             continue
         game.board = _board
         game.answer_board = s.answer_board.clone()
-        # game.board = get_board("0B")(code=b'')
-        # game.answer_board = get_board("0B")(code=b'')
         _board = game.board.clone()
         game.logger.info("\n" + "=" * 30 + "\nanswer_board:\n" + game.answer_board.show_board())
         game.logger.info("\nboard:\n" + game.board.show_board())
