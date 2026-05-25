@@ -109,13 +109,14 @@ def main(
         if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
             raise ValueError("input board is not feasible")
 
-        for pos, var in board(mode="var"):
-            if answer_board[pos] is not None:
-                continue
-            if solver.Value(var) == 1:
-                answer_board[pos] = MINES_TAG
-            else:
-                answer_board[pos] = VALUE_QUESS
+        for key in board.get_board_keys():
+            for pos, var in board(mode="var", key=key):
+                if answer_board[pos] is not None:
+                    continue
+                if solver.Value(var) == 1:
+                    answer_board[pos] = board.get_config(key, "MINES")
+                else:
+                    answer_board[pos] = board.get_config(key, "VALUE")
 
     logger.info(f"题板内容:\n{mask_board}")
     logger.info(f"答案题板:\n{answer_board}")
@@ -174,6 +175,9 @@ def main(
     while game.deduced():
         hint = game.hint()
         hint = {b: hint[b] for b in hint if len(b) == min(len(key) for key in hint)}
+        if not hint:
+            logger.error("hint返回空 deduced仍然存在可推格 待检查规则/副板未框定")
+            break
         key = len(list(hint.keys())[0])
         clue_freq[key] = clue_freq.setdefault(key, 0) + len(hint)
         for hint_because in hint:
