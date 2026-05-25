@@ -771,7 +771,7 @@ class Summon:
                         mines_total += 1
                 else:
                     board[pos] = board.get_config(key, "VALUE")
-        print("\n\n", board)
+        self.logger.info(f"答案题板:\n{board}")
         print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
         if self.total == -2:
             self.total = mines_total
