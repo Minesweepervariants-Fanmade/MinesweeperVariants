@@ -810,7 +810,7 @@ class Summon:
                 history.append((code, _model))
                 total -= 1
             else:
-                board = type(board)(rules=board.rules, code=code)
+                board = type(board)(rules=board.rules, data=code)
                 board[pos] = board.get_config(pos.board_key, "VALUE")
                 del model
                 model = _model
@@ -820,7 +820,7 @@ class Summon:
         while history:
             code, model = history.pop()
             board = type(board)(
-                code=code, rules={
+                data=code, rules={
                     "clue_rules": [self.clue_rule],
                     "mines_rules": self._generation_mines_rules(),
                     "mines_clue_rules": [self.mines_clue_rule],
