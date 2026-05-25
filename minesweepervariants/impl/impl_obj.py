@@ -150,6 +150,85 @@ def _resolve_rule_alias(name: str) -> str:
         current = matched_base
 
 
+def add_rule(
+    board: AbstractBoard,
+    rule_id: str,
+    data: str | None = None,
+    add: bool = True
+) -> AbstractRule | None:
+    """
+    增量式添加单个规则及其依赖到 board.rules
+
+    :param board: 目标题板对象
+    :param rule: 单个规则ID字符串（可含 delimiter 分隔的 data）
+    """
+
+    # 检查是否已添加过该规则（避免重复）
+    all_rules: list[AbstractRule] = (
+        board.rules.get("clue_rules", []) +
+        board.rules.get("mines_rules", []) +
+        board.rules.get("mines_clue_rules", [])
+    )
+
+    # for existing_rule in all_rules:
+    #     if existing_rule.id == rule_id and existing_rule.__data == data:
+    #         return existing_rule
+
+    # # 不需要添加直接返回
+    # if not add:
+    #     return None
+
+    # 实例化规则
+    rule_instance: AbstractRule = get_rule(rule_id)(board=board, data=data)
+
+    if rule_instance is None:
+        get_logger().error(f"键入了一个未知的规则: {rule_id}")
+        return None
+
+    result_rule = rule_instance
+
+    # 递归处理依赖
+    rule_deps = rule_instance.get_deps()
+    for dep in rule_deps:
+        add_rule(board, dep, data, add)
+
+    if add:
+        # 根据类型分类添加
+        if isinstance(rule_instance, AbstractClueRule):
+            board.rules["clue_rules"].append(rule_instance)
+        elif isinstance(rule_instance, AbstractMinesRule):
+            board.rules["mines_rules"].append(rule_instance)
+        elif isinstance(rule_instance, AbstractMinesClueRule):
+            board.rules["mines_clue_rules"].append(rule_instance)
+        else:
+            raise ValueError(f"Unknown Rule: {rule_id}")
+
+    # 检查是否为 lib_only 规则
+    if rule_instance.lib_only:
+        # 检查该规则是否被其他规则依赖
+        for existing_rule in all_rules:
+            if rule_id in existing_rule.get_deps():
+                break
+        else:  # 未被依赖
+            v_rule: AbstractRule = get_rule("V''")(board=board, data=rule_id)
+            if add: board.rules["clue_rules"].append(v_rule)
+            result_rule = v_rule
+
+    result_rule.onboard_init(board)
+
+    if add:
+        # 更新所有规则的 combine 信息
+        all_rules = (board.rules["clue_rules"] +
+                     board.rules["mines_rules"] +
+                     board.rules["mines_clue_rules"])
+        rules_info: list[tuple[AbstractRule, str | None]] = [(r, None) for r in all_rules]  # 简化版本，data 信息在规则实例中
+
+        for r in all_rules:
+            r.combine(rules_info)
+
+    return result_rule
+
+
 def get_rule(name: str) -> type:
     rule_name = _resolve_rule_alias(name)
     all_sub_rule = [
@@ -159,6 +238,7 @@ def get_rule(name: str) -> type:
             AbstractMinesRule
         ]
     ]
+
     def _show_rule_info(rule_cls: type) -> type:
         get_logger().debug(f"rule info: {rule_cls.get_info()}")
         return rule_cls

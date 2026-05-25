@@ -409,7 +409,7 @@ class AbstractBoard(ABC):
 
     default_special = 'raw'
 
-    rules: dict[str, 'AbstractRule'] = {}
+    rules: dict[str, list['AbstractRule']] = {}
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
