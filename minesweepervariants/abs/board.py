@@ -485,25 +485,18 @@ class AbstractBoard(ABC):
         if self.get_interactive_keys() != other.get_interactive_keys():
             return False
         for key in self.get_board_keys():
-            for pos, obj1 in self(key=key, special='raw'):
+            for pos, obj1 in self(key=key, special='raw', mode="obj"):
                 obj2 = other[pos]
                 if obj1 is None and obj2 is None:
                     continue
                 if obj1 is None or obj2 is None:
                     return False
 
-                @runtime_checkable
-                class _CodeAndType(Protocol):
-                    def code(self) -> bytes: ...
-                    def type(self) -> bytes: ...
+                from minesweepervariants.abs.rule import AbstractValue
 
-                if isinstance(obj1, _CodeAndType):
-                    if obj1.code() != obj2.code():
+                if isinstance(obj1, AbstractValue):
+                    if obj1.json() != obj2.json():
                         return False
-                    if obj1.type() != obj2.type():
-                        return False
-
-                return False
         return True
 
     def dyed(self, name: str) -> None:
