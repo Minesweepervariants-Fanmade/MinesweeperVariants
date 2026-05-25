@@ -201,9 +201,10 @@ def main(
                 thread_list.append(thread)
                 hint_times += 1
 
-        for pos in set(sum(hint.values(), [])):
-            imposs = game.answer_board.get_type(pos, special='raw')
-            game.apply(pos, 0 if imposs == "C" else 1)
+                for pos in hint[hint_because]:
+                    imposs = game.answer_board.get_type(pos, special='raw')
+                    game.apply(pos, 0 if imposs == "C" else 1)
+                break
         logger.info(f"当前题板:\n{game.board}")
 
     if not no_image:
