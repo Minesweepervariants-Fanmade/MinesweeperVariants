@@ -8,6 +8,7 @@ import os
 import threading
 import time
 
+from minesweepervariants.abs.board import Size, compress, json_dumps
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed
@@ -36,6 +37,8 @@ def main(
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
     attempt_index = 0
+    if isinstance(size, tuple):
+        size = Size(size[0], size[1])
     s = Summon(
         size=size, total=total, rules=rules, early_rules=early_rules,
         board=board_class, mask=mask_dye, dye=dye, unseed=unseed
@@ -81,7 +84,7 @@ def main(
             f.write(rule_text)
             f.write("\n"+_board.show_board())
 
-            f.write(f"\n题板: img -c {_board.encode().hex()} ")
+            f.write(f"\n答案: img -c {compress(json_dumps(_board.json()))} ")
             f.write(f"-r \"{rule_text}-R{s.total}")
             if unseed:
                 f.write(" ")
@@ -91,9 +94,14 @@ def main(
 
         if image:
             def d():
-                draw_board(board=_board, cell_size=100, output="answer",
-                        bottom_text=rule_text + f"-R{s.total}-{get_seed()}\n")
-            threading.Thread(target=d, daemon=True).start()
+                draw_board(
+                    board=_board, cell_size=100, output="answer",
+                    bottom_text=rule_text + f"-R{s.total}-{get_seed()}\n"
+                )
+            if attempt_index != attempts:
+                threading.Thread(target=d, daemon=True).start()
+            else:
+                d()
 
         logger.info("\n\n" + "=" * 20 + "\n")
         logger.info("\n生成时间" + logger.get_time() + "\n")

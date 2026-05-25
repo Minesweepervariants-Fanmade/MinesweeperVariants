@@ -166,7 +166,7 @@ def main(
         f.write(board_str)
         f.write(answer)
 
-        f.write(f"\n答案: img -c {json_dumps(answer_code)} ")
+        f.write(f"\n答案: img -c {compress(json_dumps(answer_code))} ")
         f.write(f"-r \"{rule_text}-R{s.total}/")
         f.write(f"{n_num}")
         if unseed:
@@ -175,7 +175,7 @@ def main(
             f.write(" ")
         f.write("-o answer\n")
 
-        f.write(f"\n题板: img -c {json_dumps(board_code)} ")
+        f.write(f"\n题板: img -c {compress(json_dumps(board_code))} ")
         f.write(f"-r \"{rule_text}-R{'*' if drop_r else s.total}/")
         f.write(f"{n_num}")
         if unseed:

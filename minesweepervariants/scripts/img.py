@@ -8,6 +8,7 @@
 import sys
 import argparse
 
+from minesweepervariants.abs.board import json_loads, decompress
 from minesweepervariants.impl.impl_obj import get_board, decode_board
 from minesweepervariants.utils.image_create import draw_board
 
@@ -42,12 +43,7 @@ if args.code is None:
     parser.print_help()
     sys.exit(0)
 
-try:
-    board = decode_board(args.code)
-except:
-    code = bytes.fromhex(args.code)
-    board = get_board(args.board_class)(rules={}, code=code)
-
+board = decode_board(data=json_loads(decompress(args.code)))
 
 draw_board(
     board=board,

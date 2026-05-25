@@ -128,8 +128,6 @@ def main(
         _board = game.board.clone()
         game.logger.info("\n" + "=" * 30 + "\nanswer_board:\n" + game.answer_board.show_board())
         game.logger.info("\nboard:\n" + game.board.show_board())
-        game.logger.info("board: " + str(game.board.json()))
-        game.logger.info("answer: " + str(game.answer_board.json()))
         try:
             game.logger.info("开始计算线索图")
             clue_freq = game.check_difficulty(diff=query if early_stop else None)
@@ -191,7 +189,7 @@ def main(
             f.write("\n" + board_str)
             f.write("\n" + answer)
 
-            f.write(f"\n答案: img -c {answer_code} ")
+            f.write(f"\n答案: img -c {compress(json_dumps(answer_code))} ")
             f.write(f"-r \"{rule_text}-R{s.total}/")
             f.write(f"{n_num}")
             if unseed:
@@ -200,7 +198,7 @@ def main(
                 f.write(" ")
             f.write("-o answer\n")
 
-            f.write(f"\n题板: img -c {board_code} ")
+            f.write(f"\n题板: img -c {compress(json_dumps(board_code))} ")
             f.write(f"-r \"{rule_text}-R{'*' if drop_r else s.total}/")
             f.write(f"{n_num}")
             if unseed:
