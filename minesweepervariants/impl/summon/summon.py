@@ -846,7 +846,6 @@ class Summon:
             self.logger.error("题板无解 请检查规则约束与fill是否语义对齐")
             self.logger.error("warn board:\n" + board.show_board())
             raise ValueError("题板无解 请检查规则约束与fill是否语义对齐")
-            return None
         if state == 2:
             self.logger.warn("题板多解 可能是右线规则约束过弱 需要重试/+R")
             self.logger.warn("warn board:\n" + board.show_board())
