@@ -374,7 +374,6 @@ class AbstractValue(ABC):
         from minesweepervariants.abs.board import ImmutableDict
         return ImmutableDict({"old_style": True, "type": b64encode(self.type()).decode(), "code": b64encode(self.code()).decode()})
 
-    @abstractmethod
     def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
         """
         获取code并初始化 输入值为code函数的返回值
