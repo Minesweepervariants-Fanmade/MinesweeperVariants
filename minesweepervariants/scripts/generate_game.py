@@ -101,6 +101,14 @@ def main(
 
     attempt_index = 0
 
+    if dye:
+        rule_text += f"[@{dye}]"
+    if mask_dye:
+        rule_text += f"[&{mask_dye}]"
+    rule_text += f"{size.cols}x{size.rows}"
+    if size_c > 1:
+        rule_text += f"x{size_c}"
+
     while True:
         s = Summon(
             size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
@@ -143,14 +151,6 @@ def main(
         answer = game.answer_board.show_board()
         board_code = _board.json()
         answer_code = game.answer_board.json()
-        if dye:
-            rule_text += f"[@{dye}]"
-        if mask_dye:
-            rule_text += f"[&{mask_dye}]"
-        rule_text += f"{size.cols}x{size.rows}"
-        if size_c > 1:
-            rule_text += f"x{size_c}"
-
         if query[0] is not None and max(clue_freq.keys()) < query[0]:
             continue
         if query[1] is not None and max(clue_freq.keys()) > query[1]:
