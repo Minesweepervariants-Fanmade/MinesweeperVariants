@@ -621,6 +621,15 @@ class AbstractBoard(ABC):
         ...
 
     @abstractmethod
+    def has_type_special(self, name: str) -> bool:
+        """
+        是否有指定名称的类型特殊处理函数
+        :param name: 特殊名称
+        :return: 是否存在
+        """
+        ...
+
+    @abstractmethod
     def get_type(self, pos: 'AbstractPosition', special: str='') -> str:
         """
         位置的类型
