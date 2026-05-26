@@ -667,6 +667,12 @@ class Board(AbstractBoard):
 
             self.board_data[key]["type_special"][name] = func
 
+    def has_type_special(self, name: str) -> bool:
+        for key in self.board_data:
+            if "type_special" in self.board_data[key] and name in self.board_data[key]["type_special"]:
+                return True
+        return False
+
     def get_type(self, pos: 'Position', special: str = '', *args, **kwargs) -> str:
         special = special or self.default_special
 
