@@ -20,6 +20,7 @@ from minesweepervariants import puzzle_query
 from minesweepervariants import puzzle
 from minesweepervariants import test
 from minesweepervariants import hint
+from minesweepervariants import img
 
 from minesweepervariants.abs.board import Size
 from minesweepervariants.config.config import DEFAULT_CONFIG
@@ -44,6 +45,23 @@ subparsers = parser.add_subparsers(dest='command', required=False)
 parser_list = subparsers.add_parser('list', help=_('CLI_LIST_RULE_DOCS'))
 
 parser_hint = subparsers.add_parser("hint", help="根据输入的内容进行逐步提示操作")
+
+parser_img = subparsers.add_parser("img", help="根据输入的内容进行逐步提示操作")
+
+parser_img.add_argument("-c", "--code", type=str,
+                        help="题板字节码")  # 字符串类型
+parser_img.add_argument("-r", "--rule-text", type=str, default="",
+                        help="规则字符串，有空格需要带引号")  # 字符串类型
+parser_img.add_argument("-o", "--output", type=str, default=defaults["output_file"],
+                        help="输出的文件名（不含后缀）")  # 字符串类型
+parser_img.add_argument("-s", "--size", type=int, default=defaults["cell_size"],
+                        help="单元格像素数")  # 整数
+parser_img.add_argument("-b", "--because", nargs="+", default=[],
+                        help="从什么格子推出")
+parser_img.add_argument("-d", "--deduced", nargs="+", default=[],
+                        help="可推出什么格子")
+parser_img.add_argument("-w", "--white-base", action="store_true", default=defaults["white_base"],
+                        help="题板背景是否是白底的")
 
 parser.add_argument("-s", "--size", nargs="+",
                     help=_("CLI_BOARD_SIZE"))
@@ -121,6 +139,7 @@ parser_list.add_argument("--json", action="store_true", default=False)
 
 args = parser.parse_args()
 
+
 # ==== 调用生成 ====
 
 
@@ -148,7 +167,6 @@ def _build_list_display(rule_info, rule_key):
     else:
         lang = locale_mod.getlocale()[0]
         display_name = name_map.get(lang) or name_map.get("default", rule_info.get("id", "Unknown"))
-
 
     # 构建作者文本
     author = rule_info.get("author", {})
@@ -222,6 +240,17 @@ def main():
 
         return
 
+    if args.command == "img":
+        img(
+            code=args.code,
+            rule_text=args.rule_text,
+            output=args.output,
+            white_base=args.white_base,
+            size=args.size,
+            because=args.because,
+            deduced=args.deduced,
+        )
+        return
     if args.command == "hint":
         hint(
             board_code=args.board_code,
@@ -248,7 +277,7 @@ def main():
         elif len(args.size) == 1:
             size = Size(int(args.size[0]), int(args.size[0]))
         else:
-            size = Size(cols = int(args.size[0]), rows = int(args.size[1]))
+            size = Size(cols=int(args.size[0]), rows=int(args.size[1]))
 
     if args.seed != defaults.get("seed"):
         args.attempts = 1
