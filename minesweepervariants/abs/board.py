@@ -8,7 +8,8 @@
 from abc import ABC, abstractmethod
 from collections import UserDict
 from types import MappingProxyType
-from typing import Callable, Final, Generator, Iterator, List, Literal, Mapping, Optional, Protocol, Sequence, Tuple, TypeIs, Union, TYPE_CHECKING, cast, get_origin, runtime_checkable
+from typing import Callable, Final, Generator, Iterator, List, Literal, Mapping, Optional, Protocol, Sequence, Tuple, \
+    TypeIs, Union, TYPE_CHECKING, cast, get_origin, runtime_checkable, override, overload
 from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
@@ -28,9 +29,11 @@ if TYPE_CHECKING:
 
 MASTER_BOARD = "1"
 
+
 class Size(NamedTuple):
     cols: int
     rows: int
+
 
 @dataclass(order=True)
 class AbstractPosition(ABC):
@@ -57,16 +60,17 @@ class AbstractPosition(ABC):
     @deprecated("y is deprecated, use row instead")
     def y(self) -> int:
         return self.row
+
     @y.setter
     def y(self, value: int) -> None:
         self.row = value
 
     def __eq__(self, other: object) -> bool:
         return (
-            isinstance(other, self.__class__) and
-            self.col == other.col and
-            self.row == other.row and
-            self.board_key == other.board_key
+                isinstance(other, self.__class__) and
+                self.col == other.col and
+                self.row == other.row and
+                self.board_key == other.board_key
         )
 
     def __hash__(self) -> int:
@@ -285,7 +289,8 @@ class AbstractPosition(ABC):
     #     :return: 位置列表，按距离从近到远排序。
     #     """
 
-class ImmutableDict[K,V](Mapping[K, V]):
+
+class ImmutableDict[K, V](Mapping[K, V]):
     _data: dict[K, V]
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -307,17 +312,22 @@ class ImmutableDict[K,V](Mapping[K, V]):
         return self._data
 
 
-
 type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject, ...] | str | int | float | bool | None
 type JSONString = str
 
-type JSONDirectlySerializable = dict[str, JSONDirectlySerializable] | list[JSONDirectlySerializable] | str | int | float | bool | None
+type JSONDirectlySerializable = dict[str, JSONDirectlySerializable] | list[
+    JSONDirectlySerializable] | str | int | float | bool | None
+
+
 @runtime_checkable
 class SerializeAble(Protocol):
     def from_json(self, data: JSONObject) -> None: ...
+
     def json(self) -> JSONObject: ...
 
+
 type JSONLikeType = SerializeAble | JSONObject | Sequence[JSONLikeType] | Mapping[str, JSONLikeType]
+
 
 def _deep_unwrap(obj: JSONObject) -> JSONDirectlySerializable:
     if isinstance(obj, ImmutableDict):
@@ -328,6 +338,7 @@ def _deep_unwrap(obj: JSONObject) -> JSONDirectlySerializable:
 
     if isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
+
 
 def _deep_wrap(obj: JSONDirectlySerializable) -> JSONObject:
     if isinstance(obj, dict):
@@ -360,7 +371,6 @@ def json_loads(json_str: JSONString) -> JSONObject:
         return _deep_wrap(json_loads_std(json_str))
 
 
-
 def compress(s: str) -> str:
     from base64 import urlsafe_b64encode
     import zstandard as zstd
@@ -369,6 +379,7 @@ def compress(s: str) -> str:
     compressor = zstd.ZstdCompressor(level=22)
 
     return urlsafe_b64encode(compressor.compress(b)).decode()
+
 
 def decompress(s: str) -> str:
     from base64 import urlsafe_b64decode
@@ -385,6 +396,7 @@ def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
         raise TypeError("Invalid JSON format: expected a mapping at the top level, got " + str(type(data)))
     return True
 
+
 def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
     assert valid(d, ImmutableDict[str, JSONObject])
     if key not in d:
@@ -392,6 +404,7 @@ def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
 
     assert valid((v := d[key]), type_)
     return v
+
 
 def jsonify(obj: JSONLikeType) -> JSONObject:
     if isinstance(obj, SerializeAble):
@@ -403,6 +416,7 @@ def jsonify(obj: JSONLikeType) -> JSONObject:
     if isinstance(obj, Mapping):
         return ImmutableDict({k: jsonify(v) for k, v in obj.items()})
 
+
 class AbstractBoard(ABC):
     version = -1
     name = ""
@@ -413,20 +427,20 @@ class AbstractBoard(ABC):
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
-        "by_mini",      # 题板是否附带类角标
-        "pos_label",    # 题板是否有X=N标志
-        "row_col",      # 题板是否启用行列号
-        "interactive"   # 允许在该题板上放置雷和删除线索
+        "by_mini",  # 题板是否附带类角标
+        "pos_label",  # 题板是否有X=N标志
+        "row_col",  # 题板是否启用行列号
+        "interactive"  # 允许在该题板上放置雷和删除线索
     ]
 
     @abstractmethod
     def __init__(
-        self,
-        *,
-        rules: dict[str, 'AbstractRule'] | None = None,
-        size: Size | None = None,
-        data: JSONObject = None,
-        default_special: str = "",
+            self,
+            *,
+            rules: dict[str, 'AbstractRule'] | None = None,
+            size: Size | None = None,
+            data: JSONObject = None,
+            default_special: str = "",
     ) -> None:
         """
         :param size: 题板尺寸
@@ -444,20 +458,67 @@ class AbstractBoard(ABC):
     def __repr__(self) -> str:
         return self.show_board()
 
+    @overload
     @abstractmethod
     def __call__(
             self, target: str = "always",
-            mode: Literal['object', 'obj', 'type', 'variable', 'var', 'dye', 'none'] = "object",
+            mode: Literal["object", "obj"] = "object",
+            key: Optional[str] = None,
+            *args: object, **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, Union["AbstractClueValue", "AbstractMinesValue", None]], None, None]:
+        ...
+
+    @overload
+    @abstractmethod
+    def __call__(
+            self, target: str = "always",
+            mode: Literal["type"] = "object",
+            key: Optional[str] = None,
+            *args: object, **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, str], None, None]:
+        ...
+
+    @overload
+    @abstractmethod
+    def __call__(
+            self, target: str = "always",
+            mode: Literal["variable", "var"] = "object",
+            key: Optional[str] = None,
+            *args: object, **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, IntVar], None, None]:
+        ...
+
+    @overload
+    @abstractmethod
+    def __call__(
+            self, target: str = "always",
+            mode: Literal["dye"] = "object",
+            key: Optional[str] = None,
+            *args: object, **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, bool], None, None]:
+        ...
+
+    @overload
+    @abstractmethod
+    def __call__(
+            self, target: str = "always",
+            mode: Literal["none"] = "object",
+            key: Optional[str] = None,
+            *args: object, **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, None], None, None]:
+        ...
+
+    @abstractmethod
+    def __call__(
+            self, target: str = "always",
+            mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "object",
             key: Optional[str] = None,
             *args: object, **kwargs: object
     ) -> Generator[
         Tuple[
-            'AbstractPosition',
-            Union[
-            'AbstractClueValue',
-            'AbstractMinesValue',
-            str, IntVar, bool, None
-            ]],
+            AbstractPosition,
+            Union["AbstractClueValue", "AbstractMinesValue", str, IntVar, bool, None]
+        ],
         None, None
     ]:
         """
@@ -471,7 +532,8 @@ class AbstractBoard(ABC):
     def __getitem__(self, pos: 'AbstractPosition') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         return self.get_value(pos)
 
-    def __setitem__(self, pos: 'AbstractPosition', value: Union['AbstractClueValue', 'AbstractMinesValue', None]) -> None:
+    def __setitem__(self, pos: 'AbstractPosition',
+                    value: Union['AbstractClueValue', 'AbstractMinesValue', None]) -> None:
         return self.set_value(pos, value)
 
     def __contains__(self, item: object) -> bool:
@@ -539,7 +601,8 @@ class AbstractBoard(ABC):
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
-    def _bound_get_rule_instance(self, get_rule_instance: Callable[[str, str | None, bool], AbstractRule | None]) -> None:
+    def _bound_get_rule_instance(self,
+                                 get_rule_instance: Callable[[str, str | None, bool], AbstractRule | None]) -> None:
         """
         绑定get_rule_instance方法
         :param get_rule_instance: 方法
@@ -630,7 +693,7 @@ class AbstractBoard(ABC):
         ...
 
     @abstractmethod
-    def get_type(self, pos: 'AbstractPosition', special: str='') -> str:
+    def get_type(self, pos: 'AbstractPosition', special: str = '') -> str:
         """
         位置的类型
         返回 F:雷, C:线索, N:未赋值
@@ -648,7 +711,7 @@ class AbstractBoard(ABC):
         ...
 
     @abstractmethod
-    def get_value(self, pos: 'AbstractPosition')\
+    def get_value(self, pos: 'AbstractPosition') \
             -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         """
         获取位置里的对象
@@ -756,13 +819,62 @@ class AbstractBoard(ABC):
         :return: 矩形框内的所有位置
         """
 
+    @overload
+    def batch(
+            self, positions: List['AbstractPosition'],
+            mode: Literal["var", "variable"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[IntVar]:
+        ...
+
+    @overload
+    def batch(
+            self, positions: List['AbstractPosition'],
+            mode: Literal["type"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[str]:
+        ...
+
+    @overload
+    def batch(
+            self, positions: List['AbstractPosition'],
+            mode: Literal["obj", "object"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[Union[
+        'AbstractClueValue',
+        'AbstractMinesValue',
+        None,
+    ]]:
+        ...
+
+    @overload
+    def batch(
+            self, positions: List['AbstractPosition'],
+            mode: Literal["dye"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[bool]:
+        ...
+
     @abstractmethod
-    def batch(self, positions: List['AbstractPosition'], mode: str, drop_none: bool = False, *args: object, **kwargs: object) -> List[Union['AbstractClueValue', 'AbstractMinesValue', None]]:
+    def batch(
+            self, positions: List['AbstractPosition'],
+            mode: Literal["var", "variable", "obj", "object", "type", "dye"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[Union[
+        str, bool, None, IntVar,
+        'AbstractClueValue',
+        'AbstractMinesValue'
+    ]]:
         """
         批量获取指定位置上的信息。
         :param positions: 位置列表
         :param mode: 模式字符串，表示要获取的类型:
-            - "object": 返回原始对象
+            - "object"/"obj": 返回原始对象
             - "type": 返回位置的类型
             - "variable"/"var": 返回 OR-Tools 中与该位置关联的变量
             - "dye": 返回染色情况
@@ -788,14 +900,12 @@ class AbstractBoard(ABC):
         """
 
     def serialize(self) -> object:
-        from ..impl.impl_obj import encode_board
-        return encode_board(self.encode())
+        return compress(json_dumps(self.json()))
 
     @classmethod
     def from_str(cls, data: str) -> object:
         from ..impl.impl_obj import decode_board
         return decode_board(data)
-
 
 
 # --------实例类-------- #
