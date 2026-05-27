@@ -21,7 +21,7 @@ from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
 def _build_rule_text(board) -> str:
     rule_names = []
     seen = set(rule_names)
-    hidden_defaults = {"R", "V", "F", "F#", "#"}
+    hidden_defaults = {"R", "V", "F", "F#", "#", "?"}
 
     rules = getattr(board, "rules", {})
     if isinstance(rules, dict):
