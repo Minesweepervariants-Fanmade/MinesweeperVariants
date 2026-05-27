@@ -34,7 +34,7 @@ def _build_rule_text(board) -> str:
                 if rule is None:
                     continue
                 rule_name = rule.get_name()
-                if rule_name in seen or rule_name in hidden_defaults:
+                if rule_name in seen or rule.id in hidden_defaults:
                     continue
                 seen.add(rule_name)
                 rule_names.append(rule_name)
