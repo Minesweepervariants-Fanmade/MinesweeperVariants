@@ -348,9 +348,9 @@ class Summon:
 
     def create_puzzle(self):
         if self.summon_board() is None:
-            self.logger.warn("生成失败 左线/雷数出现矛盾")
-            return None
-            # raise ValueError("生成失败 左线/雷数出现矛盾")
+            # self.logger.warn("生成失败 左线/雷数出现矛盾")
+            # return None
+            raise ValueError("生成失败 左线/雷数出现矛盾")
         self.logger.info("题板初始化完毕")
         board_bytes = self.board.json()
 
