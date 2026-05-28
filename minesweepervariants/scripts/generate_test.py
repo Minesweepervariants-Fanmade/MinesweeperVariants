@@ -44,7 +44,7 @@ def _build_rule_text(board) -> str:
 def main(
         log_lv: str,  # 日志等级
         seed: int,  # 随机种子
-        size: tuple[int, int],  # 题板尺寸
+        size: tuple[int, int] | Size,  # 题板尺寸
         total: int,  # 总雷数
         rules: list[str],  # 规则id集合
         early_rules: list[str],  # 仅初始生成阶段生效的左线规则
