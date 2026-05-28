@@ -23,7 +23,7 @@ from .solver import solver_by_csp, solver_model, Switch
 from ...utils.tool import get_random, get_logger
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
-from ...abs.board import AbstractBoard, AbstractPosition, Size
+from ...abs.board import AbstractBoard, AbstractPosition, Size, JSONObject
 
 from ..impl_obj import get_rule, get_board
 from ...impl.rule.Mrule.sharp import RuleSharp as RuleMinesSharp
@@ -56,7 +56,8 @@ class Summon:
         vice_board: bool = False,
         dynamic_dig_rounds: Optional[int] = None,
         dynamic_dig_max_batch: Optional[int] = None,
-        unseed: bool = False
+        unseed: bool = False,
+        board_data: JSONObject = None
     ):
         """
         :param size: 题板的尺寸
@@ -83,7 +84,7 @@ class Summon:
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
 
         # 题板初始化
-        self.board = get_board(board)(rules = None, size = size)
+        self.board = get_board(board)(rules=None, size=size, data=board_data)
 
         # 绑定 get_rule_instance 方法
         def _get_rule_instance(_self: AbstractBoard, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
@@ -746,6 +747,7 @@ class Summon:
         random_total = int(total * (2 ** (1 - len(self._generation_mines_rules()))))
         if total:
             self.logger.info("规则约束构建完毕")
+
         while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)\r", end="", flush=True)
