@@ -328,6 +328,7 @@ def main():
         f"{_('OUT_MASK')}{args.mask if args.mask else _('OUT_EMPTY')}"
     )
     get_logger().info(f"{_('OUT_USED_RULES')}{args.rules}{_('OUT_EARLY_RULE')}{args.early_rules}")
+    get_logger().info(f"{_('OUT_USED_R')}[USED_R]: {args.used_r}")
 
     try:
         if args.test:

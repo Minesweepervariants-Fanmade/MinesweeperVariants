@@ -116,3 +116,6 @@ msgstr "Optional dependency `image` is not installed. Install it with `pip insta
 
 msgid "OUT_END"
 msgstr "minesweepervariants END"
+
+msgid "OUT_USED_R"
+msgstr "Using the total number of mines for reasoning"

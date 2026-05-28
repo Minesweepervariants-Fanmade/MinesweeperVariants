@@ -116,3 +116,6 @@ msgstr "可选依赖`image`未安装，请使用`pip install minesweepervariants
 
 msgid "OUT_END"
 msgstr "minesweepervariants END"
+
+msgid "OUT_USED_R"
+msgstr "使用总雷数进行推理"
