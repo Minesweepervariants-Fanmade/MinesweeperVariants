@@ -12,6 +12,8 @@ import threading
 import time
 from typing import Any, Union, Callable, List, Tuple, Optional
 
+from ortools.sat.python import cp_model
+
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -784,6 +786,7 @@ class GameSession:
         self.logger.trace("构建新模型")
         board.clear_variable()
         model = board.get_model()
+        model: cp_model.CpModel
         switch = Switch()
 
         all_rules = self.summon.mines_rules.rules[:]
@@ -808,10 +811,10 @@ class GameSession:
         # 3.获取所有变量并赋值已解完的部分
         for key in board.get_board_keys():
             for _, var in board("C", mode="variable", key=key, special='raw'):
-                model.Add(var == 0)
+                model.add(var == 0)
                 self.logger.trace(f"var: {var} == 0")
             for _, var in board("F", mode="variable", key=key, special='raw'):
-                model.Add(var == 1)
+                model.add(var == 1)
                 self.logger.trace(f"var: {var} == 1")
 
         results = {}
@@ -861,6 +864,52 @@ class GameSession:
                     results[result].append(pos)
                 except Exception as exc:
                     raise exc
+
+        min_size = min([len(k) for k in results])
+        min_deduced = set(item for k, v in results.items() if len(k) == min_size for item in v)
+
+        if [len(k) for k in results].count(min_size) > 1:
+            with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
+                for key in results:
+                    if len(key) > min_size:
+                        continue
+                    _model = model.clone()
+                    hint_var = []
+                    for hint_obj in key:
+                        if isinstance(hint_obj, AbstractPosition):
+                            hint_var.append(switch.get_switches_by_obj(hint_obj)[0][1])
+                        elif isinstance(hint_obj, tuple):
+                            for var_tuple in switch.get_switches_by_obj('RULE|' + hint_obj[0]):
+                                if (
+                                    hint_obj[1] is not None and
+                                    hint_obj[1] != var_tuple[0]
+                                ):
+                                    continue
+                                hint_var.append(var_tuple[1])
+                        else:
+                            self.logger.warn("UNKNOW Switch")
+                    _model.add_bool_and(hint_var)
+                    future_to_param = {}
+                    for pos in min_deduced:
+                        __model = _model.clone()
+                        __model.add(
+                            board.get_variable(pos) == (
+                                self.answer_board.get_type(pos) == "C"
+                            )
+                        )
+                        fut = executor.submit(
+                            solver_model, __model, False
+                        )
+                        future_to_param[fut] = pos
+
+                    key_deduced = []
+
+                    for fut in as_completed(future_to_param):
+                        state = fut.result()
+                        pos = future_to_param[fut]
+                        if not state:
+                            key_deduced.append(pos)
+                    results[key] = key_deduced
 
         self.last_hint[0] = board.clone()
         self.last_hint[1] = results
