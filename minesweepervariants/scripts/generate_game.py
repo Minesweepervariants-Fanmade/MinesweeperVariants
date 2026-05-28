@@ -144,6 +144,8 @@ def main(
         if not clue_freq:
             logger.warn("生成失败")
             continue
+        logger.info(f"题板: {compress(json_dumps(game.board.json()))}")
+        logger.info(f"答案题板: {compress(json_dumps(game.answer_board.json()))}")
         game.logger.info(f"线索图: {clue_freq}")
         time_used = time.time() - a_time
         n_num = len([None for _ in _board("N")])

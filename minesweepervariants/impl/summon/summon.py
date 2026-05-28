@@ -981,5 +981,5 @@ class Summon:
         progress_info["running"] = False
         progress_info["step"] = False
         thread.join()
-        print("\n" + board.show_board())  # 清空残留
+        # self.logger.info("\n" + board.show_board())  # 清空残留
         return board
