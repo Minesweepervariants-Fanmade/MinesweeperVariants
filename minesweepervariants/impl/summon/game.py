@@ -10,7 +10,7 @@ import queue
 from re import A
 import threading
 import time
-from typing import Any, Union, Callable, List, Tuple, Optional
+from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set
 
 from ortools.sat.python import cp_model
 
@@ -924,27 +924,27 @@ class GameSession:
         max为n的时候表示线索数至多包含n线索推理
         """
 
-        def format_time(seconds):
-            seconds = int(round(seconds))  # 四舍五入取整
-            days, seconds = divmod(seconds, 86400)  # 1天=86400秒
-            hours, seconds = divmod(seconds, 3600)  # 1小时=3600秒
-            minutes, seconds = divmod(seconds, 60)  # 1分钟=60秒
-
-            parts = []
-            if days > 0:
-                parts.append(f"{days}d")
-            if hours > 0 or days > 0:  # 如果有天，即使小时=0也要显示
-                parts.append(f"{hours:02d}")
-            if minutes > 0 or hours > 0 or days > 0:  # 如果有更高单位，分钟必须显示
-                parts.append(f"{minutes:02d}")
-            if (days + hours + minutes) > 0:
-                parts.append(f"{seconds:02d}")  # 秒始终显示
-            else:
-                parts.append(f"{seconds}s")
-
-            return ":".join(parts)
-
         def progress_thread():
+            def format_time(seconds):
+                seconds = int(round(seconds))  # 四舍五入取整
+                days, seconds = divmod(seconds, 86400)  # 1天=86400秒
+                hours, seconds = divmod(seconds, 3600)  # 1小时=3600秒
+                minutes, seconds = divmod(seconds, 60)  # 1分钟=60秒
+
+                parts = []
+                if days > 0:
+                    parts.append(f"{days}d")
+                if hours > 0 or days > 0:  # 如果有天，即使小时=0也要显示
+                    parts.append(f"{hours:02d}")
+                if minutes > 0 or hours > 0 or days > 0:  # 如果有更高单位，分钟必须显示
+                    parts.append(f"{minutes:02d}")
+                if (days + hours + minutes) > 0:
+                    parts.append(f"{seconds:02d}")  # 秒始终显示
+                else:
+                    parts.append(f"{seconds}s")
+
+                return ":".join(parts)
+
             start_time = time.time()
             while True:
                 n_length = global_map['n_length']
@@ -963,12 +963,81 @@ class GameSession:
                     break
                 time.sleep(0.2)
 
+        def max_disjoint_lists(data: Dict[Tuple, List[AbstractPosition]]) -> List[List[AbstractPosition]]:
+            """
+            从字典的列表中选出互不相交的子集，使并集元素数最大。
+            返回选中的列表（保持原始列表顺序）。
+            """
+            items = list(data.items())  # [(key, list), ...]
+            n = len(items)
+            # 将列表转换为集合
+            sets = [set(lst) for _, lst in items]
+            # 元素到索引列表的映射，用于快速检查冲突
+            elem_to_indices = {}
+            for idx, s in enumerate(sets):
+                for elem in s:
+                    elem_to_indices.setdefault(elem, []).append(idx)
+
+            # 按集合大小降序排序，优先尝试大集合
+            indices = list(range(n))
+            indices.sort(key=lambda i: -len(sets[i]))
+            # 重新排序 sets 和 items
+            sorted_sets = [sets[i] for i in indices]
+            sorted_items = [items[i] for i in indices]
+
+            best_selection = []
+            best_size = 0
+
+            def dfs(start_idx: int, used: Set[Any], selected: List[int], cur_size: int):
+                nonlocal best_selection, best_size
+                # 剪枝：剩余集合即使全部不冲突且全选，最大可能大小
+                if cur_size + max_possible(start_idx, used) <= best_size:
+                    return
+
+                if cur_size > best_size:
+                    best_size = cur_size
+                    # 保存选中的原始列表（按原顺序？这里先按排序后的顺序，最后再恢复？）
+                    # 为了方便，保存 selected 列表的索引（排序后的）
+                    best_selection = selected[:]
+
+                # 尝试从 start_idx 开始选下一个集合
+                for i in range(start_idx, n):
+                    s = sorted_sets[i]
+                    # 如果有任何元素已被使用，则跳过
+                    if used.intersection(s):
+                        continue
+                    # 选择该集合
+                    used.update(s)
+                    selected.append(i)
+                    dfs(i + 1, used, selected, cur_size + len(s))
+                    # 回溯
+                    selected.pop()
+                    used.difference_update(s)
+
+            def max_possible(start_idx: int, used: Set[Any]) -> int:
+                """乐观估计：剩余未使用且不与已选冲突的集合大小和（简单贪心）"""
+                # 简单上界：剩余所有集合的大小的和（忽略冲突，过于乐观但安全）
+                # 更紧的上界：可以计算剩余元素总数，但需要谨慎
+                total = 0
+                for i in range(start_idx, n):
+                    s = sorted_sets[i]
+                    if not used.intersection(s):
+                        total += len(s)
+                return total
+
+            # 执行搜索
+            dfs(0, set(), [], 0)
+
+            # 将选中的索引（排序后的）转换回原始列表顺序
+            result_lists = [sorted_items[i][1] for i in best_selection]  # 注意：sorted_items[i][1] 是原始列表
+            return result_lists
+
         clue_freq = {}
         _board = self.board.clone()
         n_num = len([None for key in _board.get_board_keys()
                      for _ in _board('N', key=key)])
         global_map = {"n_length": n_num, "clue_freq": clue_freq}
-        progress_thread = threading.Thread(target=progress_thread)
+        progress_thread = threading.Thread(target=progress_thread, daemon=True)
         progress_thread.start()
         while self.board.has("N"):
             if diff is not None and clue_freq:
@@ -983,41 +1052,36 @@ class GameSession:
 
             # print(f"{n_num - len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])}"
             #       f"/{n_num}", end="\r", flush=True)
-            num_clues_used = float("inf")
 
             global_map["n_length"] = len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
-            grouped_hints = self.hint().items()
+            grouped_hints = self.hint()
             if not grouped_hints:
                 self.logger.warn("hint无返回值")
                 self.logger.warn("\n" + self.board.show_board())
                 clue_freq = None
                 break
             self.logger.debug("\n" + self.board.show_board())
-            [self.logger.debug(str(i[0]) + " -> " + str(i[1])) for i in grouped_hints]
-            pos_clues = {}
-            for hints, deduceds in grouped_hints:
-                if ("R", None) in hints:
-                    hints_length = 1 + (len(hints) // 4)
-                else:
-                    hints_length = len(hints)
-                if hints_length > num_clues_used:
-                    continue
-                elif hints_length < num_clues_used:
-                    num_clues_used = hints_length
-                    pos_clues.clear()
-                for deduced in deduceds:
-                    pos_clues[deduced] = num_clues_used
+            minsize = min([len(k) for k in self.hint()])
+            grouped_hints: dict[tuple, list[AbstractPosition]] = {
+                hints: deduceds
+                for hints, deduceds in grouped_hints.items()
+                if len(hints) == minsize
+            }
+            apply_hint = max_disjoint_lists(grouped_hints)
+            for apply in apply_hint:
+                for i in grouped_hints.items():
+                    if i[1] == apply:
+                        self.logger.debug(f"{i[0]} -> {i[1]}")
+                        break
+            pos_clues = [item for deduced in apply_hint for item in deduced]
             for pos in pos_clues:
                 imposs = self.answer_board.get_type(pos, special='raw')
                 self.apply(pos, 0 if imposs == "C" else 1)
-                if pos_clues[pos] not in clue_freq:
-                    clue_freq[pos_clues[pos]] = 0
-            for hints, deduceds in grouped_hints:
-                if len(hints) != num_clues_used:
-                    continue
-                clue_freq[len(hints)] += 1
+            if minsize not in clue_freq:
+                clue_freq[minsize] = 0
+            clue_freq[minsize] += len(apply_hint)
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
         self.board = _board
