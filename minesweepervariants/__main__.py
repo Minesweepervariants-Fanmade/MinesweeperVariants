@@ -121,6 +121,8 @@ parser_hint.add_argument("-r", "--used-r", action="store_true", default=defaults
                          help=_("CLI_USED_R"))
 parser_hint.add_argument("-m", "--game-mode", type=str, default=defaults.get("game_mode"),
                          help="枚举值, game的游戏模式[专家:EXPERT/终极:ULTIMATE/纸笔:PUZZLE]")
+parser_hint.add_argument("-t", "--total", type=int, default=-1,
+                         help="总雷数的数量")
 
 parser_hint.add_argument("-B", "--board-class", default=defaults.get("board_class"),
                          help="题板的类名/题板的名称 通常使用默认值即可")
@@ -258,6 +260,7 @@ def main():
             log_lv=args.log_lv,
             no_image=args.no_image,
             game_mode=args.game_mode,
+            total=args.total,
         )
         return
 

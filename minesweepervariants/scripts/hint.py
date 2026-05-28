@@ -101,6 +101,7 @@ def main(
     no_image: bool,
     drop_r: bool,
     game_mode: str,
+    total: int,
 ):
     DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
@@ -118,7 +119,7 @@ def main(
             raise ValueError(f"unknown game mode: {game_mode}")
 
     s = Summon(
-        size=Size(0, 0), total=-2, rules=rules[:],
+        size=Size(0, 0), total=total, rules=rules[:],
         board=board_class, drop_r=drop_r, board_data=json_loads(decompress(board_code))
     )
 
