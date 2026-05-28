@@ -215,10 +215,9 @@ class GameSession:
         else:
             board[pos] = self.clue_tag
         board: AbstractBoard
-        print("=" * 20)
-        print(board)
-        print(board)
-        print("=" * 20)
+        # print("=" * 20)
+        # print(board)
+        # print("=" * 20)
         model = board.get_model()
         switch = Switch()
         for rule in all_rules:
@@ -875,10 +874,53 @@ class GameSession:
         min为n的时候表示线索数至少包含n线索推理
         max为n的时候表示线索数至多包含n线索推理
         """
+
+        def format_time(seconds):
+            seconds = int(round(seconds))  # 四舍五入取整
+            days, seconds = divmod(seconds, 86400)  # 1天=86400秒
+            hours, seconds = divmod(seconds, 3600)  # 1小时=3600秒
+            minutes, seconds = divmod(seconds, 60)  # 1分钟=60秒
+
+            parts = []
+            if days > 0:
+                parts.append(f"{days}d")
+            if hours > 0 or days > 0:  # 如果有天，即使小时=0也要显示
+                parts.append(f"{hours:02d}")
+            if minutes > 0 or hours > 0 or days > 0:  # 如果有更高单位，分钟必须显示
+                parts.append(f"{minutes:02d}")
+            if (days + hours + minutes) > 0:
+                parts.append(f"{seconds:02d}")  # 秒始终显示
+            else:
+                parts.append(f"{seconds}s")
+
+            return ":".join(parts)
+
+        def progress_thread():
+            start_time = time.time()
+            while True:
+                n_length = global_map['n_length']
+                elapsed = time.time() - start_time
+                avg_time = (elapsed / (n_num - n_length)) if (n_num - n_length) > 0 else 0           # 平均每项耗时
+                predicted_total = avg_time * n_num                # 预计总时间
+                print(
+                    f"线索: {str(global_map['clue_freq']).replace(' ', '')}  "
+                    f"进度: {n_num - n_length}/{n_num}  "
+                    f"用时:{format_time(elapsed)}"
+                    f"<{format_time(predicted_total)}"
+                    f"~{format_time(predicted_total - elapsed)}      ",
+                    end="\r", flush=True
+                )
+                if global_map['n_length'] == 0:
+                    break
+                time.sleep(0.2)
+
         clue_freq = {}
         _board = self.board.clone()
         n_num = len([None for key in _board.get_board_keys()
                      for _ in _board('N', key=key)])
+        global_map = {"n_length": n_num, "clue_freq": clue_freq}
+        progress_thread = threading.Thread(target=progress_thread)
+        progress_thread.start()
         while self.board.has("N"):
             if diff is not None and clue_freq:
                 if diff[1] is not None:
@@ -894,8 +936,7 @@ class GameSession:
             #       f"/{n_num}", end="\r", flush=True)
             num_clues_used = float("inf")
 
-            n_length = len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])
-            print(f"{n_num - n_length}/{n_num}", end="\r", flush=True)
+            global_map["n_length"] = len([None for key in self.board.get_board_keys() for _ in self.board('N', key=key)])
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
             grouped_hints = self.hint().items()
@@ -931,6 +972,8 @@ class GameSession:
             self.logger.debug("\n" + self.board.show_board())
             self.logger.debug(clue_freq)
         self.board = _board
+        global_map["n_length"] = 0
+        progress_thread.join()
         return clue_freq if clue_freq else None
 
     def get_generation_progress(self) -> tuple[float, float, float]:
