@@ -963,75 +963,6 @@ class GameSession:
                     break
                 time.sleep(0.2)
 
-        def max_disjoint_lists(data: Dict[Tuple, List[AbstractPosition]]) -> List[List[AbstractPosition]]:
-            """
-            从字典的列表中选出互不相交的子集，使并集元素数最大。
-            返回选中的列表（保持原始列表顺序）。
-            """
-            items = list(data.items())  # [(key, list), ...]
-            n = len(items)
-            # 将列表转换为集合
-            sets = [set(lst) for _, lst in items]
-            # 元素到索引列表的映射，用于快速检查冲突
-            elem_to_indices = {}
-            for idx, s in enumerate(sets):
-                for elem in s:
-                    elem_to_indices.setdefault(elem, []).append(idx)
-
-            # 按集合大小降序排序，优先尝试大集合
-            indices = list(range(n))
-            indices.sort(key=lambda i: -len(sets[i]))
-            # 重新排序 sets 和 items
-            sorted_sets = [sets[i] for i in indices]
-            sorted_items = [items[i] for i in indices]
-
-            best_selection = []
-            best_size = 0
-
-            def dfs(start_idx: int, used: Set[Any], selected: List[int], cur_size: int):
-                nonlocal best_selection, best_size
-                # 剪枝：剩余集合即使全部不冲突且全选，最大可能大小
-                if cur_size + max_possible(start_idx, used) <= best_size:
-                    return
-
-                if cur_size > best_size:
-                    best_size = cur_size
-                    # 保存选中的原始列表（按原顺序？这里先按排序后的顺序，最后再恢复？）
-                    # 为了方便，保存 selected 列表的索引（排序后的）
-                    best_selection = selected[:]
-
-                # 尝试从 start_idx 开始选下一个集合
-                for i in range(start_idx, n):
-                    s = sorted_sets[i]
-                    # 如果有任何元素已被使用，则跳过
-                    if used.intersection(s):
-                        continue
-                    # 选择该集合
-                    used.update(s)
-                    selected.append(i)
-                    dfs(i + 1, used, selected, cur_size + len(s))
-                    # 回溯
-                    selected.pop()
-                    used.difference_update(s)
-
-            def max_possible(start_idx: int, used: Set[Any]) -> int:
-                """乐观估计：剩余未使用且不与已选冲突的集合大小和（简单贪心）"""
-                # 简单上界：剩余所有集合的大小的和（忽略冲突，过于乐观但安全）
-                # 更紧的上界：可以计算剩余元素总数，但需要谨慎
-                total = 0
-                for i in range(start_idx, n):
-                    s = sorted_sets[i]
-                    if not used.intersection(s):
-                        total += len(s)
-                return total
-
-            # 执行搜索
-            dfs(0, set(), [], 0)
-
-            # 将选中的索引（排序后的）转换回原始列表顺序
-            result_lists = [sorted_items[i][1] for i in best_selection]  # 注意：sorted_items[i][1] 是原始列表
-            return result_lists
-
         clue_freq = {}
         _board = self.board.clone()
         n_num = len([None for key in _board.get_board_keys()
@@ -1069,6 +1000,7 @@ class GameSession:
                 for hints, deduceds in grouped_hints.items()
                 if len(hints) == minsize
             }
+            from minesweepervariants.scripts.hint import max_disjoint_lists
             apply_hint = max_disjoint_lists(grouped_hints)
             for apply in apply_hint:
                 for i in grouped_hints.items():

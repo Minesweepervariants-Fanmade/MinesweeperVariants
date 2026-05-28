@@ -6,10 +6,11 @@
 # @FileName: hint.py
 
 import threading
+from typing import Set, Any, Dict, Tuple, List
 
-from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, decompress, json_loads
+from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, decompress, json_loads, Size
 from minesweepervariants.config.config import DEFAULT_CONFIG
-from minesweepervariants.impl.impl_obj import get_board, decode_board
+from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, Mode, UMode
 from minesweepervariants.utils import tool
@@ -18,6 +19,76 @@ from minesweepervariants.utils.tool import get_logger
 
 defaults = {}
 defaults.update(DEFAULT_CONFIG)
+
+
+def max_disjoint_lists(data: Dict[Tuple, List[AbstractPosition]]) -> List[List[AbstractPosition]]:
+    """
+    从字典的列表中选出互不相交的子集，使并集元素数最大。
+    返回选中的列表（保持原始列表顺序）。
+    """
+    items = list(data.items())  # [(key, list), ...]
+    n = len(items)
+    # 将列表转换为集合
+    sets = [set(lst) for _, lst in items]
+    # 元素到索引列表的映射，用于快速检查冲突
+    elem_to_indices = {}
+    for idx, s in enumerate(sets):
+        for elem in s:
+            elem_to_indices.setdefault(elem, []).append(idx)
+
+    # 按集合大小降序排序，优先尝试大集合
+    indices = list(range(n))
+    indices.sort(key=lambda i: -len(sets[i]))
+    # 重新排序 sets 和 items
+    sorted_sets = [sets[i] for i in indices]
+    sorted_items = [items[i] for i in indices]
+
+    best_selection = []
+    best_size = 0
+
+    def dfs(start_idx: int, used: Set[Any], selected: List[int], cur_size: int):
+        nonlocal best_selection, best_size
+        # 剪枝：剩余集合即使全部不冲突且全选，最大可能大小
+        if cur_size + max_possible(start_idx, used) <= best_size:
+            return
+
+        if cur_size > best_size:
+            best_size = cur_size
+            # 保存选中的原始列表（按原顺序？这里先按排序后的顺序，最后再恢复？）
+            # 为了方便，保存 selected 列表的索引（排序后的）
+            best_selection = selected[:]
+
+        # 尝试从 start_idx 开始选下一个集合
+        for i in range(start_idx, n):
+            s = sorted_sets[i]
+            # 如果有任何元素已被使用，则跳过
+            if used.intersection(s):
+                continue
+            # 选择该集合
+            used.update(s)
+            selected.append(i)
+            dfs(i + 1, used, selected, cur_size + len(s))
+            # 回溯
+            selected.pop()
+            used.difference_update(s)
+
+    def max_possible(start_idx: int, used: Set[Any]) -> int:
+        """乐观估计：剩余未使用且不与已选冲突的集合大小和（简单贪心）"""
+        # 简单上界：剩余所有集合的大小的和（忽略冲突，过于乐观但安全）
+        # 更紧的上界：可以计算剩余元素总数，但需要谨慎
+        total = 0
+        for i in range(start_idx, n):
+            s = sorted_sets[i]
+            if not used.intersection(s):
+                total += len(s)
+        return total
+
+    # 执行搜索
+    dfs(0, set(), [], 0)
+
+    # 将选中的索引（排序后的）转换回原始列表顺序
+    result_lists = [sorted_items[i][1] for i in best_selection]  # 注意：sorted_items[i][1] 是原始列表
+    return result_lists
 
 
 def main(
@@ -48,14 +119,12 @@ def main(
         case _:
             raise ValueError(f"unknown game mode: {game_mode}")
 
-    mask_board = decode_board(data=json_loads(decompress(board_code)))
-
     s = Summon(
-        size=mask_board.get_config(MASTER_BOARD, "size"), total=-2, rules=rules[:],
-        board=board_class, drop_r=drop_r
+        size=Size(0, 0), total=-2, rules=rules[:],
+        board=board_class, drop_r=drop_r, board_data=json_loads(decompress(board_code))
     )
 
-    s.board = mask_board
+    mask_board = s.board
 
     if answer:
         answer_board = decode_board(data=json_loads(decompress(answer)))
