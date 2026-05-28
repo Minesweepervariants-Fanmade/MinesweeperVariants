@@ -130,10 +130,6 @@ parser_hint.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
                          help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
 parser_hint.add_argument("-F", "--file-name", default=defaults.get("hint_file"),
                          help="文件名的前缀")
-parser_hint.add_argument("--output-path", default=defaults["output_file"],
-                         help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
-parser_hint.add_argument("--log-path", default=None,
-                         help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
 
 parser_list.add_argument("--json", action="store_true", default=False)
 
@@ -258,8 +254,6 @@ def main():
             rules=args.rules,
             drop_r=not args.used_r,
             board_class=args.board_class,
-            log_path=args.log_path,
-            output_path=args.output_path,
             file_name=args.file_name,
             log_lv=args.log_lv,
             no_image=args.no_image,

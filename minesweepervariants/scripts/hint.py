@@ -96,8 +96,6 @@ def main(
     answer: str,
     rules: list[str],
     board_class: str,
-    log_path: str,
-    output_path: str,
     file_name: str,
     log_lv: str,
     no_image: bool,
