@@ -175,6 +175,7 @@ def main(
         mask = mask.to_bytes(byte_length, "big", signed=False)
 
         rule_code = [base64.urlsafe_b64encode(rule.encode("utf-8")).decode("utf-8") for rule in rule_code]
+        total = s.total
 
         with (open(os.path.join(DEFAULT_CONFIG["output_path"], f"{file_name}.txt" if file_name else "demo.txt"), "a", encoding="utf-8") as f):
             f.write("\n" + ("=" * 100) + "\n\n生成时间" + logger.get_time() + "\n")
@@ -224,5 +225,5 @@ def main(
 
         logger.info(f"|[BOARD]: {compress(json_dumps(board_code))}|")
         logger.info(f"|[ANSWER_BOARD]: {compress(json_dumps(answer_code))}|")
-
+        logger.info(f"|[TOTAL]: {total}|")
         return
