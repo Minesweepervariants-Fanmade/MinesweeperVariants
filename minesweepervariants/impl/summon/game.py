@@ -549,27 +549,27 @@ class GameSession:
         return self.apply(pos, 1)
 
     def step(self) -> bool:
-        print("step")
+        self.logger.debug("step")
         if self.ultimate_mode & ULTIMATE_F:
             for pos in self.deduced():
                 if self.answer_board.get_type(pos, special='raw') != "F":
                     continue
                 if pos.board_key not in self.board.get_interactive_keys():
                     continue
-                print("[step]has flag")
+                self.logger.debug("[step]has flag")
                 return False
         if self.ultimate_mode & ULTIMATE_S:
             for pos in self.deduced():
                 if pos.board_key in self.board.get_interactive_keys():
                     continue
-                print("[step]has mark")
+                self.logger.debug("[step]has mark")
                 return False
         for pos in self.deduced():
             if pos.board_key not in self.board.get_interactive_keys():
                 continue
             if self.answer_board.get_type(pos, special='raw') == "F":
                 continue
-            print("[step]has clue")
+            self.logger.debug("[step]has clue")
             return False
         for key in self.board.get_board_keys():
             for pos, obj in self.board(key=key):
@@ -599,20 +599,20 @@ class GameSession:
                         continue
                     if pos.board_key not in self.board.get_interactive_keys():
                         continue
-                    print("[deduced]has flag")
+                    self.logger.debug("[deduced]has flag")
                     return self.last_deduced[1]
             if self.ultimate_mode & ULTIMATE_S:
                 for pos in self.last_deduced[1]:
                     if pos.board_key in self.board.get_interactive_keys():
                         continue
-                    print("[deduced]has mark")
+                    self.logger.debug("[deduced]has mark")
                     return self.last_deduced[1]
             for pos in self.last_deduced[1]:
                 if pos.board_key not in self.board.get_interactive_keys():
                     continue
                 if self.answer_board.get_type(pos, special='raw') == "F":
                     continue
-                print("[deduced]has clue")
+                self.logger.debug("[deduced]has clue")
                 return self.last_deduced[1]
         self.deduced_queue.put("process")  # 请求处理权
         try:
@@ -668,7 +668,7 @@ class GameSession:
             for pos, obj in _board():
                 if type(obj) in [type(self.clue_tag), type(self.flag_tag)]:
                     positions.append(pos)
-            print("step: ", positions)
+            self.logger.debug("step: ", positions)
             return {tuple(positions): []}
 
         self.hint_queue.put("process")  # 请求处理权
