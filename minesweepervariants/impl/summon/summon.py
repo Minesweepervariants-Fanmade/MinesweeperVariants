@@ -714,7 +714,8 @@ class Summon:
         switch = Switch()
         random = get_random()
         model = board.get_model()
-        self.logger.info("开始构建所有规则的约束")
+        if total:
+            self.logger.info("开始构建所有规则的约束")
         if self.total == -2:
             _, total_info = self.init_total()
             all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
@@ -743,7 +744,8 @@ class Summon:
         model.AddBoolAnd(switch.get_all_vars())
         __count = 0
         random_total = int(total * (2 ** (1 - len(self._generation_mines_rules()))))
-        self.logger.info("规则约束构建完毕")
+        if total:
+            self.logger.info("规则约束构建完毕")
         while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)\r", end="", flush=True)
