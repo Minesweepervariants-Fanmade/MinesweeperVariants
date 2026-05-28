@@ -12,7 +12,7 @@ from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, decomp
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.impl.summon import Summon
-from minesweepervariants.impl.summon.game import GameSession, Mode, UMode
+from minesweepervariants.impl.summon.game import GameSession, Mode, UMode, max_disjoint_lists
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.tool import get_logger
@@ -20,75 +20,6 @@ from minesweepervariants.utils.tool import get_logger
 defaults = {}
 defaults.update(DEFAULT_CONFIG)
 
-
-def max_disjoint_lists(data: Dict[Tuple, List[AbstractPosition]]) -> List[List[AbstractPosition]]:
-    """
-    从字典的列表中选出互不相交的子集，使并集元素数最大。
-    返回选中的列表（保持原始列表顺序）。
-    """
-    items = list(data.items())  # [(key, list), ...]
-    n = len(items)
-    # 将列表转换为集合
-    sets = [set(lst) for _, lst in items]
-    # 元素到索引列表的映射，用于快速检查冲突
-    elem_to_indices = {}
-    for idx, s in enumerate(sets):
-        for elem in s:
-            elem_to_indices.setdefault(elem, []).append(idx)
-
-    # 按集合大小降序排序，优先尝试大集合
-    indices = list(range(n))
-    indices.sort(key=lambda i: -len(sets[i]))
-    # 重新排序 sets 和 items
-    sorted_sets = [sets[i] for i in indices]
-    sorted_items = [items[i] for i in indices]
-
-    best_selection = []
-    best_size = 0
-
-    def dfs(start_idx: int, used: Set[Any], selected: List[int], cur_size: int):
-        nonlocal best_selection, best_size
-        # 剪枝：剩余集合即使全部不冲突且全选，最大可能大小
-        if cur_size + max_possible(start_idx, used) <= best_size:
-            return
-
-        if cur_size > best_size:
-            best_size = cur_size
-            # 保存选中的原始列表（按原顺序？这里先按排序后的顺序，最后再恢复？）
-            # 为了方便，保存 selected 列表的索引（排序后的）
-            best_selection = selected[:]
-
-        # 尝试从 start_idx 开始选下一个集合
-        for i in range(start_idx, n):
-            s = sorted_sets[i]
-            # 如果有任何元素已被使用，则跳过
-            if used.intersection(s):
-                continue
-            # 选择该集合
-            used.update(s)
-            selected.append(i)
-            dfs(i + 1, used, selected, cur_size + len(s))
-            # 回溯
-            selected.pop()
-            used.difference_update(s)
-
-    def max_possible(start_idx: int, used: Set[Any]) -> int:
-        """乐观估计：剩余未使用且不与已选冲突的集合大小和（简单贪心）"""
-        # 简单上界：剩余所有集合的大小的和（忽略冲突，过于乐观但安全）
-        # 更紧的上界：可以计算剩余元素总数，但需要谨慎
-        total = 0
-        for i in range(start_idx, n):
-            s = sorted_sets[i]
-            if not used.intersection(s):
-                total += len(s)
-        return total
-
-    # 执行搜索
-    dfs(0, set(), [], 0)
-
-    # 将选中的索引（排序后的）转换回原始列表顺序
-    result_lists = [sorted_items[i][1] for i in best_selection]  # 注意：sorted_items[i][1] 是原始列表
-    return result_lists
 
 
 def main(
@@ -234,53 +165,72 @@ def main(
             target=draw_board,
             kwargs={
                 "board": game.board.clone(),
-                "output": file_name + "_" + str(hint_times)
+                "output": (file_name if file_name else "hint") + "_" + str(hint_times)
             }
         )
         thread.start()
         thread_list.append(thread)
     hint_times += 1
     while game.deduced():
-        hint = game.hint()
-        hint = {b: hint[b] for b in hint if len(b) == min(len(key) for key in hint)}
-        if not hint:
+        hints = game.hint()
+        if not hints:
             logger.error("hint返回空 deduced仍然存在可推格 待检查规则/副板未框定")
             break
-        key = len(list(hint.keys())[0])
-        clue_freq[key] = clue_freq.setdefault(key, 0) + len(hint)
-        for hint_because in hint:
-            logger.info(f"{hint_because}->{hint[hint_because]}")
+        minsize = min([len(k) for k in hints])
+        hints: dict[tuple, list[AbstractPosition]] = {
+            because: deduceds
+            for because, deduceds in hints.items()
+            if len(because) == minsize
+        }
+        apply_hint = max_disjoint_lists(hints)
+        grouped_hints = {}
+        for apply in apply_hint:
+            for b, t in hints.items():
+                if t == apply:
+                    grouped_hints[b] = apply
+                    break
+        pos_clues = [item for deduced in apply_hint for item in deduced]
+
+        if minsize not in clue_freq:
+            clue_freq[minsize] = 0
+        clue_freq[minsize] += len(apply_hint)
         logger.info(f"clue freq now: {clue_freq}")
 
+        for hint_because, hint_deduced in grouped_hints.items():
+            logger.info(f"{hint_because} -> {hint_deduced}")
+
         if not no_image:
-            for hint_because in hint:
-                bottom_text = '; '.join([b[0] + (f":{b[1]}" if b[1] else "") for b in hint_because if isinstance(b, tuple)])
+            for hint_because in grouped_hints:
+                bottom_text = []
+                for b in hint_because:
+                    if isinstance(b, tuple):
+                        bottom_text.append(b[0] + (f":{b[1]}" if b[1] else ""))
+                bottom_text = "; ".join(bottom_text)
                 thread = threading.Thread(
                     target=draw_board,
                     kwargs={
                         "board": game.board.clone(),
                         "bottom_text": bottom_text,
-                        "output": file_name + "_" + str(hint_times),
+                        "output": (file_name if file_name else "hint") + "_" + str(hint_times),
                         "hint_because": [pos for pos in hint_because if isinstance(pos, AbstractPosition)],
-                        "hint_deduced": hint[hint_because]
+                        "hint_deduced": grouped_hints[hint_because]
                     }
                 )
                 thread.start()
                 thread_list.append(thread)
                 hint_times += 1
-
-                for pos in hint[hint_because]:
-                    imposs = game.answer_board.get_type(pos, special='raw')
-                    game.apply(pos, 0 if imposs == "C" else 1)
-                break
         logger.info(f"当前题板:\n{game.board}")
+
+        for pos in pos_clues:
+            imposs = game.answer_board.get_type(pos, special='raw')
+            game.apply(pos, 0 if imposs == "C" else 1)
 
     if not no_image:
         thread = threading.Thread(
             target=draw_board,
             kwargs={
                 "board": game.board.clone(),
-                "output": file_name + "_" + str(hint_times)
+                "output": (file_name if file_name else "hint") + "_" + str(hint_times)
             }
         )
         thread.start()
