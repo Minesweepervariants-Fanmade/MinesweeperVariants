@@ -312,7 +312,7 @@ class ImmutableDict[K, V](Mapping[K, V]):
         return self._data
 
 
-type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject, ...] | str | int | float | bool | None
+type JSONObject[T: JSONObject = JSONObject] = ImmutableDict[str, T] | tuple[T, ...] | str | int | float | bool | None
 type JSONString = str
 
 type JSONDirectlySerializable = dict[str, JSONDirectlySerializable] | list[
@@ -391,19 +391,47 @@ def decompress(s: str) -> str:
     return decompressor.decompress(b).decode()
 
 
-def valid[T: JSONObject](data: JSONObject, type_: type[T]) -> TypeIs[T]:
+@overload
+def valid[T](data: object, type_: type[T]) -> TypeIs[T]: ...
+
+@overload
+def valid[T1, T2](data: object, type_: tuple[type[T1], type[T2]]) -> TypeIs[T1 | T2]: ...
+
+def valid(data: object, type_: type | tuple[type, ...]) -> bool:
+    if isinstance(type_, tuple):
+        return any(valid(data, t) for t in type_)
     if not isinstance(data, get_origin(type_) or type_):
-        raise TypeError("Invalid JSON format: expected a mapping at the top level, got " + str(type(data)))
+        return False
     return True
 
+@overload
+def assert_[T](data: object, type_: type[T]) -> T: ...
 
-def get_with_valid[V: JSONObject](d: JSONObject, key: str, type_: type[V]) -> V:
-    assert valid(d, ImmutableDict[str, JSONObject])
-    if key not in d:
-        raise KeyError(f"字典缺少键: '{key}'")
+@overload
+def assert_[T1, T2](data: object, type_: tuple[type[T1], type[T2]]) -> T1 | T2: ...
 
-    assert valid((v := d[key]), type_)
-    return v
+def assert_[T1, T2](data: object, type_: type[T1] | tuple[type[T1], type[T2]]):
+    if valid(data, type_):
+        return data
+    if isinstance(type_, tuple):
+        expected_types = ", ".join(t.__name__ for t in type_)
+    else:
+        expected_types = type_.__name__
+    raise TypeError(f"Expected type {expected_types}, got {type(data).__name__}")
+
+
+@overload
+def get_with_valid[T](data: object, key: str, type_: type[T]) -> T: ...
+
+@overload
+def get_with_valid[T1, T2](data: object, key: str, type_: tuple[type[T1], type[T2]]) -> T1 | T2: ...
+
+def get_with_valid[T1, T2](data: object, key: str, type_: type[T1] | tuple[type[T1], type[T2]]):
+    data = assert_(data, ImmutableDict[str, object])
+    if key not in data:
+        raise KeyError(key)
+
+    return assert_((data[key]), type_)
 
 
 def jsonify(obj: JSONLikeType) -> JSONObject:

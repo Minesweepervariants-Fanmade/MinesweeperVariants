@@ -185,6 +185,30 @@ class Position(AbstractPosition):
 
         return result
 
+    @classmethod
+    def parse(cls, s: str, board_key: Optional[str] = None) -> Optional['Position']:
+        try:
+            if ':' in s:
+                bk, pos_str = s.split(':', 1)
+                if bk != MASTER_BOARD:
+                    board_key = bk
+            else:
+                pos_str = s
+
+            col_str = ''.join(filter(str.isalpha, pos_str)).upper()
+            row_str = ''.join(filter(str.isdigit, pos_str))
+
+            col = 0
+            for char in col_str:
+                col = col * 26 + (ord(char) - ord('A') + 1)
+            col -= 1
+
+            row = int(row_str) - 1
+
+            return cls(col, row, board_key or MASTER_BOARD)
+        except Exception:
+            return None
+
     # def hex_neighbors(self, *args: int):
     #     """
     #     按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
@@ -471,7 +495,7 @@ class Board(AbstractBoard):
     def generate_board(
             self, board_key: str,
             size: Optional[Size] = None,
-            labels: list[str] = [],
+            labels: list[str] | dict[Position, str] = [],
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
     ) -> None:
@@ -522,7 +546,7 @@ class Board(AbstractBoard):
             mines = cfg["MINES"]
             labels = cfg.get("labels")
             if isinstance(labels, dict):
-                labels = ImmutableDict(labels)
+                labels = ImmutableDict({str(pos): label for pos, label in labels.items()})
             if isinstance(labels, list):
                 labels = tuple(labels)
             flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
@@ -580,12 +604,21 @@ class Board(AbstractBoard):
             cols = get_with_valid(size_obj, "cols", int)
             rows = get_with_valid(size_obj, "rows", int)
             size = Size(cols, rows)
-            labels = get_with_valid(cfg, "labels", tuple)
-            labels_list: list[str] = []
-            for label in labels:
-                assert valid(label, str)
-                labels_list.append(label)
-            self.generate_board(board_key, size=size, labels=labels_list)
+            labels = get_with_valid(cfg, "labels", (ImmutableDict[str, str], tuple[str, ...]))
+            labels_parsed: list[str] | dict[Position, str] = []
+            if isinstance(labels, ImmutableDict):
+                labels_parsed = {}
+                for pos_str, label in labels.items():
+                    pos = Position.parse(pos_str, board_key)
+                    if pos is not None:
+                        assert valid(label, str)
+                        labels_parsed[pos] = label
+            else:
+                labels_parsed = []
+                for label in labels:
+                    assert valid(label, str)
+                    labels_parsed.append(label)
+            self.generate_board(board_key, size=size, labels=labels_parsed)
 
             # flags
             flags = get_with_valid(cfg, "flags", ImmutableDict[str, JSONObject])
