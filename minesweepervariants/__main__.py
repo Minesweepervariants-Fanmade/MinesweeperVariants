@@ -21,6 +21,7 @@ from minesweepervariants import puzzle
 from minesweepervariants import test
 from minesweepervariants import hint
 from minesweepervariants import img
+from minesweepervariants import game
 
 from minesweepervariants.abs.board import Size
 from minesweepervariants.config.config import DEFAULT_CONFIG
@@ -136,6 +137,29 @@ parser_hint.add_argument("--output-path", default=defaults["output_file"],
                          help="图片输出目录路径，图片将保存到此目录（默认使用配置中的路径）")
 parser_hint.add_argument("--log-path", default=None,
                          help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
+
+parser_game = subparsers.add_parser("game", help="交互式游戏 CLI，命令: r/f/h/q")
+
+parser_game.add_argument("-b", "--board-code", type=str,
+                         help="题板字节码")
+parser_game.add_argument("-a", "--answer-code", type=str,
+                         help="答案题板字节码")
+parser_game.add_argument("-c", "--rules", nargs="+", default=[],
+                         help="规则字符串，有空格/单引号/双引号等特殊字符需要带引号")
+parser_game.add_argument("-r", "--used-r", action="store_true", default=defaults.get("used_r"),
+                         help=_("CLI_USED_R"))
+parser_game.add_argument("-m", "--game-mode", type=str, default=defaults.get("game_mode"),
+                         help="游戏模式: EXPERT/ULTIMATE/PUZZLE")
+parser_game.add_argument("-t", "--total", type=int, default=-1,
+                         help="总雷数的数量")
+parser_game.add_argument("-B", "--board-class", default=defaults.get("board_class"),
+                         help="题板的类名/题板的名称")
+parser_game.add_argument("-I", "--no-image", action="store_true", default=defaults.get("no_image"),
+                         help="是否不生成图片")
+parser_game.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
+                         help="日志等级")
+parser_game.add_argument("-F", "--file-name", default=defaults.get("hint_file"),
+                         help="图片文件名前缀")
 
 parser_list.add_argument("--json", action="store_true", default=False)
 
@@ -263,6 +287,21 @@ def main():
             file_name=args.file_name,
             log_lv=args.log_lv,
             no_image=args.no_image,
+            game_mode=args.game_mode,
+            total=args.total,
+        )
+        return
+
+    if args.command == "game":
+        game(
+            board_code=args.board_code,
+            answer=args.answer_code,
+            rules=args.rules,
+            board_class=args.board_class,
+            file_name=args.file_name,
+            log_lv=args.log_lv,
+            no_image=args.no_image,
+            drop_r=not args.used_r,
             game_mode=args.game_mode,
             total=args.total,
         )

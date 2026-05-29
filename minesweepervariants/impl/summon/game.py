@@ -526,7 +526,7 @@ class GameSession:
                 for _pos in chord_positions:
                     self.board[_pos] = self.answer_board[_pos]
             elif self.mode in [ULTIMATE, PUZZLE]:
-                # 如果是纸笔和专家就放标志
+                # 如果是纸笔和终极就放标志
                 for _pos in chord_positions:
                     if _pos.board_key not in self.board.get_interactive_keys():
                         if self.answer_board.get_type(_pos, special='raw') == "C":

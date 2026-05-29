@@ -1,5 +1,16 @@
 from importlib.metadata import version
 
+__all__ = [
+    "puzzle",
+    "puzzle_query",
+    "test",
+    "hint",
+    "img",
+    "game",
+    "tuple_version",
+    "__version__",
+]
+
 try:
     __version__ = version("minesweepervariants")
 except Exception:
@@ -24,3 +35,5 @@ from .scripts.generate_game import main as puzzle_query
 from .scripts.generate_test import main as test
 from .scripts.hint import main as hint
 from .scripts.img import main as img
+
+from .scripts.game import main as game
