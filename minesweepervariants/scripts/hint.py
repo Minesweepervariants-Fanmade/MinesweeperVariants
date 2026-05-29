@@ -59,17 +59,19 @@ def main(
     if answer:
         answer_board = decode_board(data=json_loads(decompress(answer)))
     else:
+        answer_board = None
+
+    if not answer or (answer_board.has("N")):
         from ortools.sat.python import cp_model
 
         from minesweepervariants.impl.summon.solver import Switch, get_solver
         from minesweepervariants.abs.rule import AbstractRule, AbstractValue
         from minesweepervariants.abs.Lrule import Rule0R
-        from minesweepervariants.impl.impl_obj import MINES_TAG, VALUE_QUESS
 
-        board = s.board.clone()
-        answer_board = s.board.clone()
-        board.clear_variable()
-        model = board.get_model()
+        # board = s.board.clone()
+        answer_board = answer_board if answer_board else s.board.clone()
+        answer_board.clear_variable()
+        model = answer_board.get_model()
         switch = Switch()
         # 2.获取所有规则约束
         for rule in (
@@ -81,21 +83,21 @@ def main(
             if drop_r and isinstance(rule, Rule0R):
                 continue
             rule: AbstractRule
-            rule.create_constraints(board, switch)
+            rule.create_constraints(answer_board, switch)
 
-        for key in board.get_board_keys():
-            for pos, obj in board(key=key):
+        for key in answer_board.get_board_keys():
+            for pos, obj in answer_board(key=key):
                 if obj is None:
                     continue
                 obj: AbstractValue
-                obj.create_constraints(board, switch)
+                obj.create_constraints(answer_board, switch)
 
         # 3.获取所有变量并赋值已解完的部分
-        for key in board.get_board_keys():
-            for _, var in board("C", mode="variable", key=key, special='raw'):
+        for key in answer_board.get_board_keys():
+            for _, var in answer_board("C", mode="variable", key=key, special='raw'):
                 model.add(var == 0)
                 logger.trace(f"var: {var} == 0")
-            for _, var in board("F", mode="variable", key=key, special='raw'):
+            for _, var in answer_board("F", mode="variable", key=key, special='raw'):
                 model.add(var == 1)
                 logger.trace(f"var: {var} == 1")
 
@@ -108,14 +110,14 @@ def main(
         if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
             raise ValueError("input board is not feasible")
 
-        for key in board.get_board_keys():
-            for pos, var in board(mode="var", key=key):
+        for key in answer_board.get_board_keys():
+            for pos, var in answer_board(mode="var", key=key):
                 if answer_board[pos] is not None:
                     continue
                 if solver.Value(var) == 1:
-                    answer_board[pos] = board.get_config(key, "MINES")
+                    answer_board[pos] = answer_board.get_config(key, "MINES")
                 else:
-                    answer_board[pos] = board.get_config(key, "VALUE")
+                    answer_board[pos] = answer_board.get_config(key, "VALUE")
 
     logger.info(f"题板内容:\n{mask_board}")
     logger.info(f"答案题板:\n{answer_board}")
