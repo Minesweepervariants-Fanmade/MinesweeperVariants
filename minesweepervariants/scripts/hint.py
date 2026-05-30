@@ -108,6 +108,7 @@ def main(
         solver = get_solver(False)
         status = solver.solve(model)
         if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
+            logger.error("键入题板无解")
             raise ValueError("input board is not feasible")
 
         for key in answer_board.get_board_keys():
@@ -175,6 +176,7 @@ def main(
     hint_times += 1
     while game.deduced():
         hints = game.hint()
+        [logger.debug(f"{i[0]} -> {i[1]}") for i in hints.items()]
         if not hints:
             logger.error("hint返回空 deduced仍然存在可推格 待检查规则/副板未框定")
             break
