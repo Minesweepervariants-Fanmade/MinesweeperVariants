@@ -23,11 +23,12 @@ reportExplicitAny = "warning"
 reportUnnecessaryCast = "information"
 reportUnnecessaryTypeIgnoreComment = "information"
 reportUnnecessaryIsInstance = "information"
-reportUnknownVariableType = false
+# reportUnknownVariableType = false
 reportUnknownParameterType = false
 reportUnknownArgumentType = false
-reportUnknownLambdaType = false
-reportUnknownMemberType = false
+# reportUnknownLambdaType = false
+# reportUnknownMemberType = false
+reportCallInDefaultInitializer = "error"
 
 [project.optional-dependencies]
 image = ["pillow>=11.3.0,<11.4.0"]
