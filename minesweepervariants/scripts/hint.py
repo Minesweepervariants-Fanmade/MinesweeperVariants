@@ -6,9 +6,9 @@
 # @FileName: hint.py
 
 import threading
-from typing import Set, Any, Dict, Tuple, List
+import time
 
-from minesweepervariants.abs.board import AbstractPosition, MASTER_BOARD, decompress, json_loads, Size
+from minesweepervariants.abs.board import AbstractPosition, decompress, json_loads, Size
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.impl.summon import Summon
@@ -20,6 +20,46 @@ from minesweepervariants.utils.tool import get_logger
 defaults = {}
 defaults.update(DEFAULT_CONFIG)
 
+
+def progress(global_map):
+    def format_time(seconds):
+        seconds = int(round(seconds))  # 四舍五入取整
+        days, seconds = divmod(seconds, 86400)  # 1天=86400秒
+        hours, seconds = divmod(seconds, 3600)  # 1小时=3600秒
+        minutes, seconds = divmod(seconds, 60)  # 1分钟=60秒
+
+        parts = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0 or days > 0:  # 如果有天，即使小时=0也要显示
+            parts.append(f"{hours:02d}")
+        if minutes > 0 or hours > 0 or days > 0:  # 如果有更高单位，分钟必须显示
+            parts.append(f"{minutes:02d}")
+        if (days + hours + minutes) > 0:
+            parts.append(f"{seconds:02d}")  # 秒始终显示
+        else:
+            parts.append(f"{seconds}s")
+
+        return ":".join(parts)
+
+    start_time = time.time()
+    _n_num = global_map['n_length']
+    while True:
+        n_length = global_map['n_length']
+        elapsed = time.time() - start_time
+        avg_time = (elapsed / (_n_num - n_length)) if (_n_num - n_length) > 0 else 0  # 平均每项耗时
+        predicted_total = avg_time * _n_num  # 预计总时间
+        print(
+            f"线索: {str(global_map['clue_freq']).replace(' ', '')}  "
+            f"进度: {_n_num - n_length}/{_n_num}  "
+            f"用时:{format_time(elapsed)}"
+            f"<{format_time(predicted_total)}"
+            f"~{format_time(predicted_total - elapsed)}      ",
+            end="\r", flush=True
+        )
+        if global_map['n_length'] == 0:
+            break
+        time.sleep(0.2)
 
 
 def main(
@@ -174,7 +214,13 @@ def main(
         thread.start()
         thread_list.append(thread)
     hint_times += 1
+    n_num = len([None for key in mask_board.get_board_keys()
+                 for _ in mask_board('N', key=key)])
+    global_map = {"n_length": n_num, "clue_freq": clue_freq}
+    progress_thread = threading.Thread(target=progress, args=(global_map, ), daemon=True)
+    progress_thread.start()
     while game.deduced():
+        global_map["n_length"] = len([None for key in mask_board.get_board_keys() for _ in mask_board('N', key=key)])
         hints = game.hint()
         [logger.debug(f"{i[0]} -> {i[1]}") for i in hints.items()]
         if not hints:
@@ -240,6 +286,8 @@ def main(
         thread.start()
         thread_list.append(thread)
     hint_times += 1
+    global_map["n_length"] = 0
+    progress_thread.join()
     for thread in thread_list:
         thread.join()
 
