@@ -357,7 +357,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         """
         return []
 
-    def json(self) -> JSONObject:
+    def json(self) -> 'JSONObject':
         return self.id
 
 class AbstractValue(ABC):
