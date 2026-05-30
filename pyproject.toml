@@ -34,8 +34,8 @@ reportUnnecessaryIsInstance = "information"
 # reportUnknownVariableType = false
 reportUnknownParameterType = false
 reportUnknownArgumentType = false
-# reportUnknownLambdaType = false
-# reportUnknownMemberType = false
+reportUnknownLambdaType = false
+reportUnknownMemberType = false
 reportCallInDefaultInitializer = "error"
 
 [project.optional-dependencies]
