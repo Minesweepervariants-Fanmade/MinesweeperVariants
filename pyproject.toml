@@ -17,6 +17,14 @@ dependencies = [
     "frozendict>=2.4.0",
 ]
 
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.5",
+    "ipython>=9.4.0",
+    "jurigged @ git+https://github.com/Minesweepervariants-Fanmade/jurigged.git@0.6.1-dev",
+]
+
+
 [tool.basedpyright]
 typeCheckingMode = "strict"
 reportExplicitAny = "warning"
@@ -41,7 +49,7 @@ server = [
 ]
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling>=1.26.0", "hatch-vcs>=0.4.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -49,9 +57,3 @@ source = "vcs"
 
 [tool.hatch.version.raw-options]
 local_scheme = "no-local-version"
-
-dependency-groups.dev = [
-    "basedpyright>=1.39.5",
-    "ipython>=9.4.0",
-    "jurigged @ git+https://github.com/Minesweepervariants-Fanmade/jurigged.git@0.6.1-dev",
-]
