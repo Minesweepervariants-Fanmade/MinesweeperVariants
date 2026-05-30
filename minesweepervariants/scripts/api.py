@@ -44,7 +44,7 @@ class TerminalEmulator:
     ):
         if front_arg is None:
             front_arg = [
-                "uv", "run", "python",
+                "D:\\python3.13t\\python.exe",
                 "-m", "minesweepervariants"
             ]
         self.port = _port
