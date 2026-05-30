@@ -44,7 +44,7 @@ class TerminalEmulator:
     ):
         if front_arg is None:
             front_arg = [
-                "D:\\python3.13t\\python.exe",
+                "uv", "run", "python",
                 "-m", "minesweepervariants"
             ]
         self.port = _port
@@ -66,7 +66,11 @@ class TerminalEmulator:
         self.running = True
 
         def get_all_ips():
-            import netifaces
+            try:
+                import netifaces
+            except ImportError:
+                print("请安装 netifaces 模块以获取本机IP地址: pip install netifaces")
+                return []
             ips = []
             for iface in netifaces.interfaces():
                 addrs = netifaces.ifaddresses(iface)
@@ -157,8 +161,11 @@ class TerminalEmulator:
             process = subprocess.Popen(
                 self.front_arg + args,
                 cwd=os.getcwd(),
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                # 确保 Python 子进程使用无缓冲输出，以便提示符和交互及时可见
+                env=dict(os.environ, PYTHONUNBUFFERED='1'),
                 encoding='utf-8',  # 指定编码
                 errors='replace',  # 替换无法解码的字符
                 universal_newlines=True,   # 自动处理换行符
@@ -175,7 +182,7 @@ class TerminalEmulator:
             # 启动输出捕获线程
             threading.Thread(
                 target=self._capture_output,
-                args=(process, output_queue, args),
+                args=(process, output_queue, args, client_socket),
                 daemon=True
             ).start()
 
@@ -201,7 +208,15 @@ class TerminalEmulator:
                     if not data:
                         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端断开连接")
                         break
-
+                    # 将客户端输入转发到子进程的 stdin，以支持交互式游戏
+                    try:
+                        if process and process.poll() is None and process.stdin:
+                            # 以 utf-8 解码并写入子进程 stdin
+                            text = data.decode('utf-8', errors='replace')
+                            process.stdin.write(text)
+                            process.stdin.flush()
+                    except Exception as e:
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 转发客户端输入到子进程时出错: {str(e)}")
                 self._send_output(client_socket, output_queue)
 
         except (ConnectionResetError, BrokenPipeError):
@@ -212,6 +227,12 @@ class TerminalEmulator:
             # 清理资源 - 确保进程终止
             if process:
                 try:
+                    # 先尝试关闭 stdin，允许进程自然退出
+                    try:
+                        if process.stdin:
+                            process.stdin.close()
+                    except Exception:
+                        pass
                     kill_process_tree(process)
                     with self.client_lock:
                         self.process_count -= 1  # 减少进程计数
@@ -229,17 +250,40 @@ class TerminalEmulator:
             # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 客户端连接已关闭")
 
     @staticmethod
-    def _capture_output(process: subprocess.Popen, output_queue, args):
+    def _capture_output(process: subprocess.Popen, output_queue, args, client_socket):
         """捕获子进程输出"""
         output_queue.put(f"PID:[{process.pid}]\n")
         try:
+            # 按字符读取 stdout，避免等待换行，从而让提示符等无换行输出也能及时到达客户端
             while True:
-                line = process.stdout.readline()
-                if not line and process.poll() is not None:
-                    break
-                if line:
-                    # 将输出添加到队列
-                    output_queue.put(line)
+                ch = process.stdout.read(1)
+                if ch == '' or ch is None:
+                    # 无可读内容
+                    if process.poll() is not None:
+                        break
+                    # 进程未退出但当前无数据，短暂休眠后继续
+                    time.sleep(0.01)
+                    continue
+                # 读取到字符，加入队列（字符或小片段）
+                output_queue.put(ch)
+                # 立即尝试把队列里的内容发送给对应客户端，实现“有字符立即转发”
+                try:
+                    if client_socket.fileno() != -1:
+                        out_parts = []
+                        while True:
+                            try:
+                                out_parts.append(output_queue.get_nowait())
+                            except Empty:
+                                break
+                        if out_parts:
+                            try:
+                                client_socket.sendall(''.join(out_parts).encode('utf-8'))
+                            except Exception:
+                                # 发送失败则把内容放回队列供后续发送尝试
+                                for p in out_parts:
+                                    output_queue.put(p)
+                except Exception:
+                    pass
             stderr = process.stderr.read()
             if stderr:
                 output_queue.put("\n[STDERR]:\n" + stderr + "\n:[STDERR]")
