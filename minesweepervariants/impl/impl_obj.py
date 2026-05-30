@@ -3,6 +3,9 @@
 # @Time    : 2025/06/07 13:45
 # @Author  : Wu_RH
 # @FileName: impl_obj.py
+from minesweepervariants.abs.board import AbstractBoard
+
+
 import base64
 from ctypes import Union
 import os
@@ -77,7 +80,7 @@ def get_all_subclasses(cls):
     return subclasses
 
 
-def get_board(name: Optional[str] = None):
+def get_board(name: Optional[str] = None) -> type[AbstractBoard]:
     if name is None:
         v = -1
         b = None
@@ -92,7 +95,7 @@ def get_board(name: Optional[str] = None):
         for i in AbstractBoard.__subclasses__():
             if i.name == name:
                 return i
-
+        raise ValueError(f"未找到名为 {name} 的棋盘")
 
 def _iter_concrete_rule_classes():
     for cls in get_all_subclasses(AbstractRule):
@@ -278,9 +281,7 @@ def get_value(pos: Optional[AbstractPosition], clue_type: str, data: JSONObject)
 
 def decode_board(data: JSONObject, name: Optional[str] = None):
     board_cls = get_board(name)
-    if board_cls is None:
-        raise ValueError("未找到棋盘")
-    return board_cls(rules={}, data=data)
+    return board_cls.from_json(data)
 
 
 for pkg in [rule] + hypothesis_board:

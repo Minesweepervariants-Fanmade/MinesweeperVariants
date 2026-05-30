@@ -6,7 +6,7 @@
 
 from base64 import b64decode
 from minesweepervariants.abs.board import ImmutableDict, JSONObject
-from typing import List, Literal, Optional, TypedDict, Union, Tuple, Any, Generator, overload, override
+from typing import List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload, override
 import heapq
 
 import gc
@@ -16,7 +16,7 @@ from ortools.sat.python.cp_model import IntVar
 
 
 
-from ....abs.rule import AbstractValue
+from ....abs.rule import AbstractRule, AbstractValue
 from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
 from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
 from ....utils.tool import get_logger, get_random
@@ -325,96 +325,87 @@ class Board(AbstractBoard):
     name = "Board2"
     version = 0
 
-    def __init__(self, *, rules=None, size: Optional[Size] = None, default_special: str = 'raw', data: JSONObject = None):
+    def __init__(self, *, rules: Optional[dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']]] = None, raw_rules: Optional[list[Tuple[str, str | None]]] = None, default_special: str = 'raw'):
         # traceback.print_stack()
-        if rules is None:
-            rules = {}
+
         self._model = None
         self.board_data: dict[str, BoardData] = dict()
         self.default_special = default_special
-        self.rules = rules
+        self.rules = {
+            "clue_rules": [],
+            "mines_rules": [],
+            "mines_clue_rules": []
+        }
+        if rules is not None:
+            self.rules.update(rules)
+        self.raw_rules = [] if raw_rules is None else raw_rules
 
-        if rules:
-            for _rules in rules.values():
-                for rule in _rules:
-                    rule.onboard_init(self)
-        if data:
-            self.from_json(data)
-        else:
-            if size is None:
-                raise ValueError("board size Undefined")
-            self.generate_board(MASTER_BOARD, size=size)
-            self.board_data[MASTER_BOARD]["config"]["row_col"] = True
-            self.board_data[MASTER_BOARD]["config"]["interactive"] = True
-            self.board_data[MASTER_BOARD]["config"]["VALUE"] = VALUE_QUESS
-            self.board_data[MASTER_BOARD]["config"]["MINES"] = MINES_TAG
+        for _rules in self.rules.values():
+            for rule in _rules:
+                rule.onboard_init(self)
 
     @overload
     def __call__(
-        self, target: str,
-        mode: Literal['object', 'obj'],
-        key: Optional[str] = None,
-
-        *args: object, **kwargs: object
-    ) -> Generator[
-        Tuple[
-            'Position',
-             'AbstractClueValue | AbstractMinesValue | None'
-            ],
-        None, None
-    ]: ...
+            self, target: str = "always",
+            *args: object,
+            mode: Literal["object", "obj"] = "object",
+            key: Optional[str] = None,
+             **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
+        ...
 
     @overload
     def __call__(
-        self, target: str,
-        mode: Literal['variable', 'var'],
-        key: Optional[str] = None,
-        *args: object, **kwargs: object
-    ) -> Generator[
-        Tuple[
-            'Position', Union[
-            'AbstractClueValue',
-            'AbstractMinesValue',
-            None
-            ]],
-        None, None
-    ]: ...
+            self, target: str = "always",
+            *args: object,
+            mode: Literal["type"],
+            key: Optional[str] = None,
+            **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, str], None, None]:
+        ...
 
     @overload
     def __call__(
-        self, target: str,
-        mode: Literal['dye'],
-        key: Optional[str] = None,
-        *args: object, **kwargs: object
-    ) -> Generator[
-        Tuple['Position', bool],
-        None, None
-    ]: ...
+            self, target: str = "always",
+            *args: object,
+            mode: Literal["variable", "var"],
+            key: Optional[str] = None,
+            **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, IntVar], None, None]:
+        ...
 
     @overload
     def __call__(
-        self, target: str,
-        mode: Literal['none'],
-        key: Optional[str] = None,
-        *args: object, **kwargs: object
-    ) -> Generator[
-        Tuple['Position', None],
-        None, None
-    ]: ...
+            self, target: str = "always",
+            *args: object,
+            mode: Literal["dye"],
+            key: Optional[str] = None,
+            **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, bool], None, None]:
+        ...
+
+    @overload
+    def __call__(
+            self, target: str = "always",
+            *args: object,
+            mode: Literal["none"],
+            key: Optional[str] = None,
+           **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, None], None, None]:
+        ...
+
 
     def __call__(
             self, target: str = "always",
-            mode: Literal['object', 'obj', 'type', 'variable', 'var', 'dye', 'none'] = "object",
+            *args: object,
+            mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "object",
             key: Optional[str] = None,
-            *args: object, **kwargs: object
+            **kwargs: object
     ) -> Generator[
         Tuple[
-            'Position',
-            Union[
-            'AbstractClueValue',
-            'AbstractMinesValue',
-            str, IntVar, bool, None
-            ]],
+            AbstractPosition,
+            Union["AbstractClueValue", "AbstractMinesValue", str, IntVar, bool, None]
+        ],
         None, None
     ]:
         """
@@ -451,15 +442,11 @@ class Board(AbstractBoard):
 
                     # 检查是否符合目标类型
                     if target == "always" or pos_type in target:
-                        if mode == "object":
-                            yield pos, self.get_value(pos, *args, **kwargs)
-                        elif mode == "obj":
+                        if mode in ("object", "obj"):
                             yield pos, self.get_value(pos, *args, **kwargs)
                         elif mode == "type":
                             yield pos, self.get_type(pos, *args, **kwargs)
-                        elif mode == "var":
-                            yield pos, self.get_variable(pos, *args, **kwargs)
-                        elif mode == "variable":
+                        elif mode in ("variable", "var"):
                             yield pos, self.get_variable(pos, *args, **kwargs)
                         elif mode == "dye":
                             yield pos, self.get_dyed(pos, *args, **kwargs)
@@ -495,7 +482,7 @@ class Board(AbstractBoard):
     def generate_board(
             self, board_key: str,
             size: Optional[Size] = None,
-            labels: list[str] | dict[Position, str] = [],
+            labels: list[str] | dict[Position, str] | None = [],
             true_tag: "AbstractValue" = VALUE_CROSS,
             false_tag: "AbstractValue" = VALUE_CIRCLE,
     ) -> None:
@@ -510,9 +497,11 @@ class Board(AbstractBoard):
         if board_key in self.board_data:
             return
 
-
         if size is None:
             raise ValueError("size Undefined")
+
+        if labels is None:
+            labels = {}
 
         config: Config = {
             "size": size,
@@ -536,6 +525,11 @@ class Board(AbstractBoard):
         }
         self.board_data[board_key] = data
         self.labels = labels
+        if board_key == MASTER_BOARD:
+            self.board_data[board_key]["config"]["row_col"] = True
+            self.board_data[board_key]["config"]["interactive"] = True
+            self.board_data[board_key]["config"]["VALUE"] = VALUE_QUESS
+            self.board_data[board_key]["config"]["MINES"] = MINES_TAG
 
     def json(self) -> JSONObject:
         boards: dict[str, JSONObject] = {}
@@ -552,7 +546,7 @@ class Board(AbstractBoard):
             flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
 
             # mask as list of booleans (row-major: cols x rows)
-            mask = []
+            mask: list[bool] = []
             for col_idx in range(size.cols):
                 for row_idx in range(size.rows):
                     pos = self.get_pos(row_idx, col_idx, board_key)
@@ -581,22 +575,36 @@ class Board(AbstractBoard):
                 "size": ImmutableDict({"cols": size.cols, "rows": size.rows}),
                 "flags": ImmutableDict(flags),
                 "mask": tuple(mask),
-                "value": {"type": value.type().decode("ascii"),"data": value.json()},
-                "mines": {"type": mines.type().decode("ascii"),"data": mines.json()},
+                "value": ImmutableDict({"type": value.type().decode("ascii"), "data": value.json()}),
+                "mines": ImmutableDict({"type": mines.type().decode("ascii"),"data": mines.json()}),
                 "labels": labels,
                 "cells": tuple(cells)
             })
 
-        return jsonify({"boards": boards})
+        rules = {k: [rule.json() for rule in v] for k, v in self.rules.items()}
 
+        return jsonify({"boards": boards, "rules": rules, "default_special": self.default_special, "raw_rules": self.raw_rules})
 
-    def from_json(self, data: JSONObject) -> None:
+    @classmethod
+    def from_json(cls, data: JSONObject, with_rules: bool | dict[str, list['AbstractRule']] = False) -> Self:
         """Load board state from json produced by json()"""
+        self = cls()
 
         from minesweepervariants.impl.impl_obj import get_value
         from minesweepervariants.impl.impl_obj import get_value_type
 
         boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
+        if with_rules is True:
+            rules = get_with_valid(data, "rules", ImmutableDict[str, tuple[JSONObject, ...]])
+            raise NotImplementedError("rule loading not implemented yet")
+        elif with_rules is False:
+            rules = {}
+        else:
+            rules = with_rules
+
+        raw_rules = get_with_valid(data, "raw_rules", tuple[tuple[str, str]])
+        self.raw_rules = list(raw_rules)
+
         # clear existing
         self.board_data = {}
         for board_key, cfg in boards.items():
@@ -669,6 +677,12 @@ class Board(AbstractBoard):
                 if isinstance(value_obj, (AbstractMinesValue, AbstractClueValue)):
                     self.set_value(pos, value_obj)
 
+        for _rules in rules.values():
+            for rule in _rules:
+                rule.onboard_init(self)
+
+        return self
+
 
     def boundary(self, key=MASTER_BOARD) -> "Position":
         if key not in self.get_board_keys():
@@ -706,7 +720,7 @@ class Board(AbstractBoard):
                 return True
         return False
 
-    def get_type(self, pos: 'Position', special: str = '', *args, **kwargs) -> str:
+    def get_type(self, pos: 'AbstractPosition', special: str = '', *args, **kwargs) -> str:
         special = special or self.default_special
 
         key = pos.board_key
@@ -723,29 +737,29 @@ class Board(AbstractBoard):
 
         return ""
 
-    def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
+    def get_value(self, pos: 'AbstractPosition', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["obj"][pos]
         return None
 
-    def set_value(self, pos: 'Position', value):
+    def set_value(self, pos: 'AbstractPosition', value):
         key = pos.board_key
         if self.is_valid(pos):
             self.board_data[key]["obj"][pos] = value
             self.board_data[key]["type"][pos] = self.type_value(value)
 
-    def get_dyed(self, pos: 'Position', *args, **kwargs) -> bool | None:
+    def get_dyed(self, pos: 'AbstractPosition', *args: object, **kwargs: object) -> bool | None:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["dye"][pos]
 
-    def set_dyed(self, pos: 'Position', dyed: bool):
+    def set_dyed(self, pos: 'AbstractPosition', dyed: bool):
         key = pos.board_key
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos] = dyed
 
-    def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
+    def get_variable(self, pos: 'AbstractPosition', special: str = '', *args, **kwargs) -> IntVar | None:
         special = special or self.default_special
         # if special != 'raw':
         #     s = "".join(traceback.format_stack())

@@ -23,7 +23,7 @@ from .solver import solver_by_csp, solver_model, Switch
 from ...utils.tool import get_random, get_logger
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
-from ...abs.board import AbstractBoard, AbstractPosition, Size, JSONObject
+from ...abs.board import MASTER_BOARD, AbstractBoard, AbstractPosition, Size, JSONObject
 
 from ..impl_obj import get_rule, get_board
 from ...impl.rule.Mrule.sharp import RuleSharp as RuleMinesSharp
@@ -47,7 +47,7 @@ class Summon:
     def __init__(
         self, size: Union[tuple[int, int], Size],
         total: int,
-        rules: list[str],
+        rules: Optional[list[str]] = None,
         early_rules: Optional[list[str]] = None,
         drop_r: bool = False,
         mask: str = "",
@@ -83,16 +83,25 @@ class Summon:
         self.dynamic_dig_rounds = 0
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
 
-        # 题板初始化
-        self.board = get_board(board)(rules=None, size=size, data=board_data)
+        if board_data is None:
+            self.board = get_board(board)()
+            self.board.generate_board(MASTER_BOARD, size)
+        else:
+            self.board = get_board(board).from_json(data=board_data)
 
         # 绑定 get_rule_instance 方法
         def _get_rule_instance(_self: AbstractBoard, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
             return self.add_rule(_self, rule_name, data=data, add=add)
 
         self.board._bound_get_rule_instance(_get_rule_instance)
+
         # 初始化规则容器
-        self.board.rules = {"clue_rules": [], "mines_rules": [], "mines_clue_rules": []}
+        if rules is None:
+            rules = []
+
+        for rule in rules:
+            rule_id, data = self._parse_rule_data(rule)
+            self.board.raw_rules.append((rule, data))
 
         if "R" not in rules:
             rules.append("R")
@@ -814,7 +823,7 @@ class Summon:
                 history.append((code, _model))
                 total -= 1
             else:
-                board = type(board)(rules=board.rules, data=code)
+                board = type(board).from_json(code, with_rules=True)
                 board[pos] = board.get_config(pos.board_key, "VALUE")
                 del model
                 model = _model
@@ -823,13 +832,14 @@ class Summon:
             return result
         while history:
             code, model = history.pop()
-            board = type(board)(
-                data=code, rules={
-                    "clue_rules": [self.clue_rule],
-                    "mines_rules": self._generation_mines_rules(),
-                    "mines_clue_rules": [self.mines_clue_rule],
-                }
-            )
+            board = type(board).from_json(code)
+            rules={
+                "clue_rules": [self.clue_rule],
+                "mines_rules": self._generation_mines_rules(),
+                "mines_clue_rules": [self.mines_clue_rule],
+            }
+            board.rules = rules
+
             _board = self.fill_valid(board, total)
             if _board is not None:
                 return _board

@@ -61,7 +61,7 @@ def main(
     else:
         answer_board = None
 
-    if not answer or (answer_board.has("N")):
+    if answer_board is None or (answer_board.has("N")):
         from ortools.sat.python import cp_model
 
         from minesweepervariants.impl.summon.solver import Switch, get_solver

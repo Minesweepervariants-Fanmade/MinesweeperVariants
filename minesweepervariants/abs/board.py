@@ -8,8 +8,8 @@
 from abc import ABC, abstractmethod
 from collections import UserDict
 from types import MappingProxyType
-from typing import Callable, Final, Generator, Iterator, List, Literal, Mapping, Optional, Protocol, Sequence, Tuple, \
-    TypeIs, Union, TYPE_CHECKING, cast, get_origin, runtime_checkable, override, overload
+from typing import Any, Callable, Final, Generator, Iterator, List, Literal, Mapping, Optional, Protocol, Self, Sequence, Tuple, \
+    TypeIs, TypeVar, Union, TYPE_CHECKING, cast, get_origin, runtime_checkable, override, overload
 from typing import NamedTuple
 from dataclasses import dataclass
 from warnings import deprecated
@@ -289,9 +289,16 @@ class AbstractPosition(ABC):
     #     :return: 位置列表，按距离从近到远排序。
     #     """
 
+K = TypeVar("K")
+V = TypeVar("V", covariant=True)
 
-class ImmutableDict[K, V](Mapping[K, V]):
+class ImmutableDict(Mapping[K, V]):
     _data: dict[K, V]
+    @overload
+    def __init__(self, _mapping: Mapping[K, V]) -> None: ...
+
+    @overload
+    def __init__(self, *args: object, **kwargs: object) -> None: ...
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         self._data = dict[K, V](*args, **kwargs)
@@ -450,8 +457,8 @@ class AbstractBoard(ABC):
     name = ""
 
     default_special = 'raw'
-
-    rules: dict[str, list['AbstractRule']] = {}
+    raw_rules: list[tuple[str, str | None]] = []
+    rules: dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']] = {}
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -465,10 +472,9 @@ class AbstractBoard(ABC):
     def __init__(
             self,
             *,
-            rules: dict[str, 'AbstractRule'] | None = None,
-            size: Size | None = None,
-            data: JSONObject = None,
-            default_special: str = "",
+            rules: dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']] | None = None,
+            raw_rules: Optional[list[Tuple[str, str | None]]] = None,
+            default_special: str = ""
     ) -> None:
         """
         :param size: 题板尺寸
@@ -476,10 +482,12 @@ class AbstractBoard(ABC):
         """
         ...
 
-    def from_json(self, data: JSONObject) -> None:
+    @classmethod
+    def from_json(cls, data: JSONObject, with_rules: bool = False) -> Self:
         """
         从json格式解码
         :param data: json对象
+        :param with_rules: 是否包含规则
         """
         ...
 
@@ -487,22 +495,23 @@ class AbstractBoard(ABC):
         return self.show_board()
 
     @overload
-    @abstractmethod
     def __call__(
             self, target: str = "always",
+            *args: object,
             mode: Literal["object", "obj"] = "object",
             key: Optional[str] = None,
-            *args: object, **kwargs: object
-    ) -> Generator[Tuple[AbstractPosition, Union["AbstractClueValue", "AbstractMinesValue", None]], None, None]:
+             **kwargs: object
+    ) -> Generator[Tuple[AbstractPosition, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
         ...
 
     @overload
     @abstractmethod
     def __call__(
             self, target: str = "always",
-            mode: Literal["type"] = "object",
+            *args: object,
+            mode: Literal["type"],
             key: Optional[str] = None,
-            *args: object, **kwargs: object
+            **kwargs: object
     ) -> Generator[Tuple[AbstractPosition, str], None, None]:
         ...
 
@@ -510,9 +519,10 @@ class AbstractBoard(ABC):
     @abstractmethod
     def __call__(
             self, target: str = "always",
-            mode: Literal["variable", "var"] = "object",
+            *args: object,
+            mode: Literal["variable", "var"],
             key: Optional[str] = None,
-            *args: object, **kwargs: object
+            **kwargs: object
     ) -> Generator[Tuple[AbstractPosition, IntVar], None, None]:
         ...
 
@@ -520,9 +530,10 @@ class AbstractBoard(ABC):
     @abstractmethod
     def __call__(
             self, target: str = "always",
-            mode: Literal["dye"] = "object",
+            *args: object,
+            mode: Literal["dye"],
             key: Optional[str] = None,
-            *args: object, **kwargs: object
+            **kwargs: object
     ) -> Generator[Tuple[AbstractPosition, bool], None, None]:
         ...
 
@@ -530,18 +541,20 @@ class AbstractBoard(ABC):
     @abstractmethod
     def __call__(
             self, target: str = "always",
-            mode: Literal["none"] = "object",
+            *args: object,
+            mode: Literal["none"],
             key: Optional[str] = None,
-            *args: object, **kwargs: object
+           **kwargs: object
     ) -> Generator[Tuple[AbstractPosition, None], None, None]:
         ...
 
     @abstractmethod
     def __call__(
             self, target: str = "always",
+            *args: object,
             mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "object",
             key: Optional[str] = None,
-            *args: object, **kwargs: object
+            **kwargs: object
     ) -> Generator[
         Tuple[
             AbstractPosition,
@@ -610,7 +623,7 @@ class AbstractBoard(ABC):
         :return: 克隆后的对象
         """
         json = self.json()
-        new_board = self.__class__(rules={}, data=json)
+        new_board = self.__class__.from_json(json)
         if hasattr(new_board, "_get_rule_instance"):
             new_board._bound_get_rule_instance(self._get_rule_instance)
 
