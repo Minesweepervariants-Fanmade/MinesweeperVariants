@@ -101,7 +101,7 @@ class Summon:
 
         for rule in rules:
             rule_id, data = self._parse_rule_data(rule)
-            self.board.raw_rules.append((rule, data))
+            self.board.raw_rules.append((rule_id, data))
 
         if "R" not in rules:
             rules.append("R")
