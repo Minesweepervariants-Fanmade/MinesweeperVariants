@@ -18,28 +18,6 @@ from minesweepervariants.utils import tool
 from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
 
 
-def _build_rule_text(board) -> str:
-    rule_names = []
-    seen = set(rule_names)
-    hidden_defaults = {"R", "V", "F", "F#", "#", "?"}
-
-    rules = getattr(board, "rules", {})
-    if isinstance(rules, dict):
-        for rule_group in rules.values():
-            for rule in rule_group:
-                if rule is None:
-                    continue
-                rule_name = rule.get_name()
-                if rule_name in seen or rule.id in hidden_defaults:
-                    continue
-                seen.add(rule_name)
-                rule_names.append(rule_name)
-
-    if not rule_names:
-        rule_names = ["V"]
-
-    return "".join(f"[{rule}]" for rule in rule_names)
-
 
 def main(
         log_lv: str,  # 日志等级
@@ -86,7 +64,7 @@ def main(
         logger.info(f"总雷数: {s.total}")
         logger.info("\n" + _board.show_board())
 
-        rule_text = _build_rule_text(s.answer_board)
+        rule_text = _board.rule_text()
         if dye:
             rule_text += f"[@{dye}]"
         rule_text += f"{size.cols}x{size.rows}"

@@ -22,28 +22,6 @@ from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.config.config import DEFAULT_CONFIG
 
 
-def _build_rule_text(board) -> str:
-    rule_names = []
-    seen = set(rule_names)
-    hidden_defaults = {"R", "V", "F", "F#", "#", "?"}
-
-    rules = getattr(board, "rules", {})
-    if isinstance(rules, dict):
-        for rule_group in rules.values():
-            for rule in rule_group:
-                if rule is None:
-                    continue
-                rule_name = rule.get_name()
-                if rule_name in seen or rule.id in hidden_defaults:
-                    continue
-                seen.add(rule_name)
-                rule_names.append(rule_name)
-
-    if not rule_names:
-        rule_names = ["V"]
-
-    return "".join(f"[{rule}]" for rule in rule_names)
-
 
 def main(
         log_lv: str,  # 日志等级
@@ -74,7 +52,7 @@ def main(
                drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
                dynamic_dig_rounds=dynamic_dig_rounds, unseed=unseed,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
-    rule_text = _build_rule_text(s.board)
+    rule_text = s.board.rule_text()
     unseed = s.unseed
     # if total == -2:
     #     s.random_fill(s.board, s.total)

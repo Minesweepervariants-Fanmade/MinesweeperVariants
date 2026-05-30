@@ -935,6 +935,13 @@ class AbstractBoard(ABC):
         from ..impl.impl_obj import decode_board
         return decode_board(data)
 
+    def rule_text(self) -> str:
+        rule_text: list[str] = []
+        for rule, data in self.raw_rules:
+            rule_text .append(f"[{rule}{f':{data}' if data else ''}]")
+
+        return "".join(rule_text)
+
 
 # --------实例类-------- #
 
