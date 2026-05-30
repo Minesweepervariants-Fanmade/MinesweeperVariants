@@ -823,7 +823,7 @@ class Summon:
                 history.append((code, _model))
                 total -= 1
             else:
-                board = type(board).from_json(code, with_rules=True)
+                board = type(board).from_json(code)
                 board[pos] = board.get_config(pos.board_key, "VALUE")
                 del model
                 model = _model
