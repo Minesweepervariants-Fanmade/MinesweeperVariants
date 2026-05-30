@@ -788,6 +788,12 @@ class AbstractBoard(ABC):
         :return: 是否染色
         """
 
+
+    @overload
+    @abstractmethod
+    def get_config(self, board_key: str, config_name: Literal["size"]) -> Size:
+        ...
+
     @abstractmethod
     def get_config(self, board_key: str, config_name: str) -> object:
         """
