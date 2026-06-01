@@ -891,13 +891,14 @@ class GameSession:
         # upper_bound = None
         upper_bound = [float("inf"), threading.Lock()]
 
-        with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
+        with ThreadPoolExecutor(max_workers=(CONFIG["workes_number"] + len(deduced))) as executor:
             # 提交任务
             for pos in deduced:
                 fut = executor.submit(
                     hint_by_csp, board,
                     self.answer_board,
-                    switch, pos, upper_bound
+                    switch, pos,
+                    executor, upper_bound
                 )
                 future_to_param[fut] = pos  # 记录参数以便出错追踪
 

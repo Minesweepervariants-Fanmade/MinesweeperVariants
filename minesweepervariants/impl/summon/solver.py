@@ -438,6 +438,7 @@ def hint_by_csp(
     answer_board: AbstractBoard,
     switch: Switch,
     pos: AbstractPosition,
+    executor: ThreadPoolExecutor,
     upper_bound=None
 ):
     if board[pos] is not None:
@@ -452,7 +453,7 @@ def hint_by_csp(
 
     get_logger().trace(f"pos {pos}: start\n", end="")
     results = _hint_by_csp(
-        model, assumptions,
+        model, assumptions, executor,
         upper_bound, 0, pos,
         board=board,
         answer_board=answer_board
@@ -466,6 +467,7 @@ def hint_by_csp(
 def _hint_by_csp(
     model: cp_model.CpModel,
     assumptions: List[IntVar],
+    executor: ThreadPoolExecutor,
     upper_bound=None,
     offset=0,
     pos=None,
@@ -477,28 +479,27 @@ def _hint_by_csp(
     logger.trace(f"pos {pos} off {offset}: start\n", end="")
     future_to_param = {}
     _results = []
-    with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
-        for var in assumptions:
-            _model = model.clone()
-            _model.Add(var == 0)
-            _model.AddBoolAnd([v for v in assumptions if v != var])
-            solver = get_solver(True)
-            fut = executor.submit(
-                timer(solver.Solve),
-                _model, None
-            )
-            future_to_param[fut] = var
-        for fut in as_completed(future_to_param):
-            try:
-                var = future_to_param[fut]
-                logger.trace(f"pos {pos} off {offset} wait: {var}")
-                status = fut.result()
-                logger.trace(f"pos {pos} off {offset} end wait: {status}")
-                if status in (cp_model.FEASIBLE, cp_model.OPTIMAL):
-                    _results.append(var)
-            except Exception as e:
-                logger.trace(e)
-                continue
+    for var in assumptions:
+        _model = model.clone()
+        _model.Add(var == 0)
+        _model.AddBoolAnd([v for v in assumptions if v != var])
+        solver = get_solver(True)
+        fut = executor.submit(
+            timer(solver.Solve),
+            _model, None
+        )
+        future_to_param[fut] = var
+    for fut in as_completed(future_to_param):
+        try:
+            var = future_to_param[fut]
+            logger.trace(f"pos {pos} off {offset} wait: {var}")
+            status = fut.result()
+            logger.trace(f"pos {pos} off {offset} end wait: {status}")
+            if status in (cp_model.FEASIBLE, cp_model.OPTIMAL):
+                _results.append(var)
+        except Exception as e:
+            logger.trace(e)
+            continue
 
     logger.trace(f"pos {pos} off {offset} end AND [{_results}]")
 
@@ -570,6 +571,7 @@ def _hint_by_csp(
         result = _hint_by_csp(
             _model,
             _assumptions[:],
+            executor=executor,
             upper_bound=upper_bound,
             offset=offset + len(_results) + len(_mcs),
             pos=pos,
