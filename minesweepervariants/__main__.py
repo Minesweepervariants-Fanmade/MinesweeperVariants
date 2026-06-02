@@ -76,6 +76,8 @@ parser.add_argument("-d", "--dye", default=defaults.get("dye"),
                     help=_("CLI_DYE_RULE_NAME"))
 parser.add_argument("-m", "--mask", default=defaults.get("dye"),
                     help=_("CLI_MASK_RULE_NAME"))
+parser.add_argument("-W", "--workes-number", type=int, default=defaults.get("workes_number"),
+                    help="多线程数量")
 parser.add_argument("-r", "--used-r", action="store_true", default=defaults.get("used_r"),
                     help=_("CLI_USED_R"))
 parser.add_argument("-a", "--attempts", type=int, default=defaults.get("attempts"),
@@ -124,6 +126,8 @@ parser_hint.add_argument("-m", "--game-mode", type=str, default=defaults.get("ga
                          help="枚举值, game的游戏模式[专家:EXPERT/终极:ULTIMATE/纸笔:PUZZLE]")
 parser_hint.add_argument("-t", "--total", type=int, default=-1,
                          help="总雷数的数量")
+parser_hint.add_argument("-W", "--workes-number", type=int, default=defaults.get("workes_number"),
+                         help="多线程数量")
 
 parser_hint.add_argument("-B", "--board-class", default=defaults.get("board_class"),
                          help="题板的类名/题板的名称 通常使用默认值即可")
@@ -160,6 +164,8 @@ parser_game.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
                          help="日志等级")
 parser_game.add_argument("-F", "--file-name", default=defaults.get("hint_file"),
                          help="图片文件名前缀")
+parser_game.add_argument("-W", "--workes-number", type=int, default=defaults.get("workes_number"),
+                         help="多线程数量")
 
 parser_list.add_argument("--json", action="store_true", default=False)
 
@@ -265,6 +271,7 @@ def main():
             handle_list_text_output(rule_list)
 
         return
+    DEFAULT_CONFIG["workes_number"] = args.workes_number
 
     if args.command == "img":
         img(

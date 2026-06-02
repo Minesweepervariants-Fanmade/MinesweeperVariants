@@ -27,8 +27,7 @@ from ..impl_obj import ModelGenerateError
 from minesweepervariants.config.config import DEFAULT_CONFIG
 
 # ==== 获取默认值 ====
-CONFIG = {}
-CONFIG.update(DEFAULT_CONFIG)
+CONFIG = DEFAULT_CONFIG
 
 
 def get_solver(b: bool):

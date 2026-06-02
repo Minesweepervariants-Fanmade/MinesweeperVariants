@@ -28,8 +28,7 @@ from ...utils.tool import get_logger, get_random
 from minesweepervariants.config.config import DEFAULT_CONFIG
 
 # ==== 获取默认值 ====
-CONFIG = {}
-CONFIG.update(DEFAULT_CONFIG)
+CONFIG = DEFAULT_CONFIG
 
 
 class Mode(Enum):
