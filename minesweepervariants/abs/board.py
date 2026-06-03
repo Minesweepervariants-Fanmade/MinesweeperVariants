@@ -45,7 +45,7 @@ class AbstractPosition(ABC):
         self.board_key = board_key
 
     @property
-    @deprecated("x is deprecated, use col instead")
+    @deprecated("x is deprecated, use row instead")
     def x(self) -> int:
         return self.row
 
@@ -54,7 +54,7 @@ class AbstractPosition(ABC):
         self.row = value
 
     @property
-    @deprecated("y is deprecated, use row instead")
+    @deprecated("y is deprecated, use col instead")
     def y(self) -> int:
         return self.col
 
