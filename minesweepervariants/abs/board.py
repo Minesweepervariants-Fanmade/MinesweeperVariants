@@ -47,20 +47,20 @@ class AbstractPosition(ABC):
     @property
     @deprecated("x is deprecated, use col instead")
     def x(self) -> int:
-        return self.col
+        return self.row
 
     @x.setter
     def x(self, value: int) -> None:
-        self.col = value
+        self.row = value
 
     @property
     @deprecated("y is deprecated, use row instead")
     def y(self) -> int:
-        return self.row
+        return self.col
 
     @y.setter
     def y(self, value: int) -> None:
-        self.row = value
+        self.col = value
 
     def __eq__(self, other: object) -> bool:
         return (
