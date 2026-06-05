@@ -7,8 +7,13 @@
 
 from abc import ABC, ABCMeta, abstractmethod
 import locale
-from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Tuple, TYPE_CHECKING, TypedDict, TypeGuard, Union, get_args, ItemsView
+from tkinter import IntVar
+from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Tuple, TYPE_CHECKING, \
+    TypedDict, TypeGuard, Union, get_args, ItemsView, Dict
 from collections.abc import MutableMapping
+
+from ortools.sat.python.cp_model import CpModel
+
 from minesweepervariants.utils.tool import get_logger
 
 if TYPE_CHECKING:
@@ -178,6 +183,14 @@ class I18nMeta(ABCMeta):
             pass
         return cls
 
+
+class SuggestionInfo(TypedDict):
+    size: Dict[str, Tuple[int, int]]
+    total: Dict[str, int]
+    interactive: List[str]
+    hard_fns: List[Callable[[CpModel, IntVar], None]]
+    soft_fn: Callable[[int, int], None]
+
 _Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
                    'Strict R', 'Strict Shape', 'Strong', 'Weak',
                    'Anti-Construction', 'Connectivity', 'Construction',
@@ -299,7 +312,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         :param switch: 接收当前规则，返回一个布尔变量，作为该线索激活开关；约束只在该变量为 True 时生效
         """
 
-    def suggest_total(self, info: dict[str, object]) -> None:
+    def suggest_total(self, info: SuggestionInfo) -> None:
         """
         :param info:
             `info (dict)`：上下文信息字典，包含以下关键字段：
