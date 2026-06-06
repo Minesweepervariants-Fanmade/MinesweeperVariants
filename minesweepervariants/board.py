@@ -4,7 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
+from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload, cast
 import gc
 
 from ortools.sat.python import cp_model
@@ -102,6 +102,7 @@ class BoardData(TypedDict):
     type_special: dict[str, Any]
     variable_special: dict[str, Any]
 
+
 class Board:
     version = 0
     name = "Board2"
@@ -115,7 +116,6 @@ class Board:
         "row_col",  # 题板是否启用行列号
         "interactive"  # 允许在该题板上放置雷和删除线索
     ]
-
 
     def __getitem__(self, pos: 'Position') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         return self.get_value(pos)
@@ -169,13 +169,10 @@ class Board:
 
         return new_board
 
-
     def get_interactive_keys(self) -> list[str]:
         """返回所有与主板同等级的题板索引"""
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
-
-
 
     def set_default_special(self, special: str = 'raw') -> None:
         """ 设置默认变量类型(只能设置一次)"""
@@ -183,7 +180,6 @@ class Board:
             self.default_special = special
         else:
             raise ValueError("default_special was already set")
-
 
     def serialize(self) -> object:
         return compress(json_dumps(self.json()))
@@ -193,15 +189,19 @@ class Board:
         from minesweepervariants.impl.impl_obj import decode_board
         return decode_board(data)
 
-
-
     def __init__(self, *, default_special: str = 'raw'):
         # traceback.print_stack()
 
         self._model = None
         self.board_data: dict[str, BoardData] = dict()
         self.default_special = default_special
+        self.type_flag = False
 
+    def set_type_flag(self) -> None:
+        self.type_flag = False
+
+    def get_type_flag(self) -> bool:
+        return self.type_flag
 
     @overload
     def __call__(
@@ -249,16 +249,18 @@ class Board:
             *args: object,
             mode: Literal["none"],
             key: Optional[str] = None,
-           **kwargs: object
-    ) -> Generator[Tuple[Position, None], None, None]:
+            **kwargs: object
+    ) -> Generator[
+        Tuple[Position, None],
+        None, None
+    ]:
         ...
-
 
     def __call__(
             self, target: str = "always",
-            *args: object,
-            mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "object",
+            mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "none",
             key: Optional[str] = None,
+            *args: object,
             **kwargs: object
     ) -> Generator[
         Tuple[
@@ -288,8 +290,18 @@ class Board:
         """
         if key is None:
             for key in self.get_interactive_keys():
-                for i in self(target=target, mode=mode, key=key, *args, **kwargs):
-                    yield i
+                if mode == "object" or mode == "obj":
+                    yield from self(target=target, mode="obj", key=key, *args, **kwargs)   # 匹配重载1
+                elif mode == "type":
+                    yield from self(target=target, mode="type", key=key, *args, **kwargs)   # 匹配重载2
+                elif mode == "variable" or mode == "var":
+                    yield from self(target=target, mode="var", key=key, *args, **kwargs)   # 匹配重载3
+                elif mode == "dye":
+                    yield from self(target=target, mode="dye", key=key, *args, **kwargs)   # 匹配重载4
+                elif mode == "none":
+                    yield from self(target=target, mode="none", key=key, *args, **kwargs)   # 匹配重载5
+                else:
+                    raise ValueError(f"Unexpected key: {key}")
         else:
             size = self.board_data[key]["config"]["size"]
             for row_idx in range(size.rows):
@@ -331,25 +343,24 @@ class Board:
                 random.shuffle(positions)
                 for pos in positions:
                     variables[pos] = \
-                        self._model.NewBoolVar(f"var({self.get_pos(pos.row, pos.col, pos.board_key)})")
+                        self._model.new_bool_var(f"var({self.get_pos(pos.row, pos.col, pos.board_key)})")
 
                 get_logger().trace(f"构建新变量:{variables}")
                 self.board_data[_key]["variable"] = variables
         return self._model
 
-
     def generate_board(
-            self, board_key: str,
-            size: Optional[Size] = None,
-            labels: list[str] | dict[Position, str] | None = None,
-            true_tag: Optional["AbstractValue"] = None,
-            false_tag: Optional["AbstractValue"] = None,
+        self, board_key: str,
+        size: Optional[Size] = None,
+        labels: list[str] | dict[Position, str] | None = None,
+        true_tag: Optional["AbstractValue"] = None,
+        false_tag: Optional["AbstractValue"] = None,
     ) -> None:
         """
         创建一个新的题板
         :param board_key: 题板名称
         :param size: 题板的尺寸 (与code二选一)
-        :param code: 题板的代码 (与size二选一)
+        :param labels: 题板的X=N字符串列表
         :param true_tag: 题板默认非雷对象
         :param false_tag:题板默认雷对象
         """
@@ -410,7 +421,7 @@ class Board:
                 labels = ImmutableDict({str(pos): label for pos, label in labels.items()})
             if isinstance(labels, list):
                 labels = tuple(labels)
-            flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
+            flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}    # type: ignore[typeddict-item]
 
             # mask as list of booleans (row-major: cols x rows)
             mask: list[bool] = []
@@ -448,7 +459,6 @@ class Board:
                 "cells": tuple(cells)
             })
 
-
         return jsonify({"boards": boards, "default_special": self.default_special})
 
     @classmethod
@@ -463,7 +473,6 @@ class Board:
         self = cls()
 
         from minesweepervariants.impl.impl_obj import get_value
-        from minesweepervariants.impl.impl_obj import get_value_type
 
         boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
 
@@ -541,26 +550,25 @@ class Board:
 
         return self
 
-
     def boundary(self, key=MASTER_BOARD_KEY) -> "Position":
         if key not in self.get_board_keys():
             return Position(-1, -1, key)
         size = self.board_data[key]["config"]["size"]
         return Position(size.cols - 1, size.rows - 1, key)
 
-
     def is_valid(self, pos: 'Position') -> bool:
         if pos in self.get_config(pos.board_key, "mask"):
             return False
         return pos.in_bounds(self.boundary(pos.board_key))
 
-    def in_bounds(self, pos: 'AbstractPosition') -> bool:
+    def in_bounds(self, pos: 'Position') -> bool:
         """
         检测对象是否在borad的范围内
         :param pos: 输入位置
         :return: 是否在范围内
         """
         return self.is_valid(pos)
+
     @staticmethod
     def type_value(value) -> str:
         from minesweepervariants.abs.Rrule import AbstractClueValue
@@ -601,6 +609,7 @@ class Board:
                     special not in self.board_data[key]["type_special"]:
                 raise ValueError(f"unknown special type: {special}")
 
+            self.type_flag = True
             return self.board_data[key]["type_special"][special](self, pos, *args, **kwargs)
 
         return ""
@@ -608,6 +617,7 @@ class Board:
     def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
         if self.is_valid(pos):
+            self.type_flag = True
             return self.board_data[key]["obj"][pos]
         return None
 
@@ -719,7 +729,6 @@ class Board:
             pos_list.append(_pos)
         return pos_list
 
-
     def get_pos(self, row: int, col: int, key=MASTER_BOARD_KEY) -> Union['Position', None]:
         size = self.board_data[key]["config"]["size"]
         if -size.cols < col < size.cols and -size.rows < row < size.rows:
@@ -778,6 +787,7 @@ class Board:
         return list(self.board_data.keys())
 
     def show_board(self, show_tag: bool = False):
+        type_flag = self.type_flag
         r = ""
         for key in self.board_data:
             size = self.board_data[key]["config"]["size"]
@@ -793,10 +803,11 @@ class Board:
                     if value is None:
                         r += "______" if show_tag else "___"
                     else:
-                        r += str(value) + ("_" + value.type().decode() if show_tag else "")
+                        r += str(value) + ("_" + value.tag(board=self) if show_tag else "")
                     r += "\t"
                 r += "\n"
             r += "\n\n"
+        self.type_flag = type_flag
         return r[:-2]
 
     def show_board_discord(self, answer_board=None, hide_clues=False):

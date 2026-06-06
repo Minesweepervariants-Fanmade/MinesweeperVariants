@@ -7,7 +7,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 import time
-from ortools.sat.python.cp_model import IntVar
+from ortools.sat.python.cp_model import IntVar, CpModel
 
 from minesweepervariants.utils.timer import timer
 
@@ -221,8 +221,61 @@ class Switch:
         return key
 
 
+def board_create_constraints(
+    board: Board,
+    rules: List[AbstractRule],
+    drop_r: bool,
+    hint_board: Board = None,
+) -> Tuple[CpModel, Switch, bool]:
+    """
+    :param board:
+    :param rules:
+    :param drop_r:
+    :param hint_board:
+    :return: 返回构建完成的CpModel与
+    """
+    logger = get_logger()
+
+    logger.trace("求解器输入:\n" + board.show_board())
+    logger.trace("构建新模型")
+    board.clear_variable()
+    model = board.get_model()
+    switch = Switch()
+
+    # 2.获取所有规则约束
+    board.set_type_flag()
+    for rule in rules:
+        if rule is None:
+            continue
+        if drop_r and isinstance(rule, Rule0R):
+            continue
+        rule: AbstractRule
+        rule.create_constraints(board, switch)
+    flag = board.get_type_flag()
+
+    for key in board.get_board_keys():
+        for pos, obj in board(key=key, mode="obj"):
+            if obj is None:
+                continue
+            obj: AbstractValue
+            board.set_type_flag()
+            obj.create_constraints(board, switch)
+            flag |= board.get_type_flag()
+
+    model: cp_model.CpModel
+    # model.AddAssumptions(switch.var_map.values())
+    # for switch_var in switch.get_all_vars():
+    #     model.add(switch_var == 1)
+
+    if hint_board is not None:
+        add_board_assignment_hints(model, board, hint_board)
+
+    board.set_type_flag()
+    return model, switch, flag
+
+
 def solver_by_csp(
-        mines_rules: MinesRules,
+        mines_rules: Optional[MinesRules],
         clue_rule: Union[AbstractClueRule, None],
         mines_clue_rule: Union[AbstractMinesClueRule, None],
         board: Board,
@@ -259,7 +312,7 @@ def solver_by_csp(
             rule.create_constraints(board, switch)
 
         for key in board.get_board_keys():
-            for pos, obj in board(key=key):
+            for pos, obj in board(key=key, mode="obj"):
                 if obj is None:
                     continue
                 obj: AbstractValue
@@ -268,19 +321,28 @@ def solver_by_csp(
         # 3.获取所有变量并赋值已解完的部分
         for key in board.get_board_keys():
             for _, var in board("C", mode="variable", key=key, special='raw'):
-                model.Add(var == 0)
+                model.add(var == 0)
                 logger.trace(f"var: {var} == 0")
             for _, var in board("F", mode="variable", key=key, special='raw'):
-                model.Add(var == 1)
+                model.add(var == 1)
                 logger.trace(f"var: {var} == 1")
 
         model: cp_model.CpModel
         # model.AddAssumptions(switch.var_map.values())
         for switch_var in switch.get_all_vars():
-            model.Add(switch_var == 1)
+            model.add(switch_var == 1)
 
         if hint_board is not None:
             add_board_assignment_hints(model, board, hint_board)
+
+    # 3.获取所有变量并赋值已解完的部分
+    for key in board.get_board_keys():
+        for _, var in board("C", mode="variable", key=key, special='raw'):
+            model.add(var == 0)
+            logger.trace(f"var: {var} == 0")
+        for _, var in board("F", mode="variable", key=key, special='raw'):
+            model.add(var == 1)
+            logger.trace(f"var: {var} == 1")
 
     # 4.获取求解器并推导
     solver = get_solver(True)
@@ -301,7 +363,7 @@ def solver_by_csp(
             for pos, _ in board("N", key=key):
                 value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
                 val = board.get_variable(pos, special='raw')
-                model_answer.Add(val == value)
+                model_answer.add(val == value)
         add_board_assignment_hints(model_answer, board, answer_board)
 
         status_answer = timer(solver.Solve)(model_answer)
@@ -317,13 +379,13 @@ def solver_by_csp(
             for pos, _ in board("N", key=key):
                 value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
                 val = board.get_variable(pos, special='raw')
-                tmp = model_alt.NewBoolVar(f"answer_tmp{pos}")
+                tmp = model_alt.new_bool_var(f"answer_tmp{pos}")
                 current_solution.append(tmp)
                 logger.trace(f"[{pos}]{val} != {value} ({answer_board.get_type(pos, special='raw')})")
-                model_alt.Add(val != value).OnlyEnforceIf(tmp)
+                model_alt.add(val != value).OnlyEnforceIf(tmp)
 
         if current_solution:
-            model_alt.AddBoolOr(current_solution)
+            model_alt.add_bool_or(current_solution)
         else:
             # 没有可变 N 位，当前解天然唯一。
             return 1
@@ -419,7 +481,7 @@ def deduced_by_csp(
     model: cp_model.CpModel
 
     target_var = board.get_variable(pos, special='raw')
-    model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
+    model.add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
 
     solver = get_solver(False)
     state = timer(solver.Solve)(model)
@@ -446,7 +508,7 @@ def hint_by_csp(
     model: cp_model.CpModel
 
     target_var = board.get_variable(pos, special='raw')
-    model.Add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
+    model.add(target_var == (0 if answer_board.get_type(pos, special='raw') == "F" else 1))
     # add_board_assignment_hints(model, board, answer_board)
     assumptions = switch.get_all_vars()
 
@@ -454,8 +516,6 @@ def hint_by_csp(
     results = _hint_by_csp(
         model, assumptions, executor,
         upper_bound, 0, pos,
-        board=board,
-        answer_board=answer_board
     )
     get_logger().trace(f"pos {pos}: {results}\n", end="")
     if results is None:
@@ -469,9 +529,7 @@ def _hint_by_csp(
     executor: ThreadPoolExecutor,
     upper_bound=None,
     offset=0,
-    pos=None,
-    board: Board = None,
-    answer_board: Board = None
+    pos=None
 ):
     logger = get_logger()
     logger.trace(f"pos {pos} assumptions: {assumptions}\n", end="")
@@ -480,8 +538,8 @@ def _hint_by_csp(
     _results = []
     for var in assumptions:
         _model = model.clone()
-        _model.Add(var == 0)
-        _model.AddBoolAnd([v for v in assumptions if v != var])
+        _model.add(var == 0)
+        _model.add_bool_and([v for v in assumptions if v != var])
         solver = get_solver(True)
         fut = executor.submit(
             timer(solver.Solve),
@@ -506,10 +564,10 @@ def _hint_by_csp(
         logger.trace(f"pos {pos}, off {offset}: fail (len>ub)\n", end="")
         return None
     # 将与的状态保留至model
-    model.AddBoolAnd(_results)
+    model.add_bool_and(_results)
     # 将其他约束加入进行测试是否无解(可推)
     _model = model.clone()
-    _model.Add(sum([v for v in assumptions if v not in _results]) == 0)
+    _model.add(sum([v for v in assumptions if v not in _results]) == 0)
     solver = get_solver(False)
     logger.trace(f"pos {pos} off {offset} verification and start")
     status = timer(solver.Solve)(_model)
@@ -539,7 +597,7 @@ def _hint_by_csp(
     while True:
         _model = model.clone()
 
-        _model.Add(sum(mcs) >= mid)
+        _model.add(sum(mcs) >= mid)
 
         solver = get_solver(False)
         logger.trace(f"pos {pos} off {offset}: OR => start {len(mcs)}-{L}-{mid}-{R}\n", end="")
@@ -563,8 +621,8 @@ def _hint_by_csp(
     for var in _mcs:
         _model = model.clone()
         # 只开启其中一个或节点进行广搜
-        _model.Add(var == 1)
-        _model.AddBoolAnd([v.Not() for v in _mcs if v != var])
+        _model.add(var == 1)
+        _model.add_bool_and([v.Not() for v in _mcs if v != var])
         _assumptions = [v for v in assumptions if v not in _mcs + _results]
 
         result = _hint_by_csp(
@@ -573,9 +631,7 @@ def _hint_by_csp(
             executor=executor,
             upper_bound=upper_bound,
             offset=offset + len(_results) + len(_mcs),
-            pos=pos,
-            board=board,
-            answer_board=answer_board
+            pos=pos
         )
         if result is None:
             # 该节点求解失败或者出现错误或者提前步出
@@ -604,7 +660,7 @@ def solver_board(
         rule.create_constraints(board, switch)
 
     for key in board.get_board_keys():
-        for pos, obj in board(key=key):
+        for pos, obj in board(key=key, mode="obj"):
             if obj is None:
                 continue
             obj: AbstractValue

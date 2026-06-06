@@ -194,6 +194,7 @@ class SuggestionInfo(TypedDict):
     interactive: List[str]
     hard_fns: List[Callable[[CpModel, IntVar], None]]
     soft_fn: Callable[[int, int], None]
+    soft_conds: List[int | float]
 
 _Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
                    'Strict R', 'Strict Shape', 'Strong', 'Weak',

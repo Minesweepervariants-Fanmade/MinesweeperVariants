@@ -124,7 +124,7 @@ def main(
 
     i, mask = 1, 0
     for key in _board.get_board_keys():
-        for _, obj in _board(key=key):
+        for _, obj in _board(key=key, mode="obj"):
             if obj is None:
                 mask += i
             i <<= 1

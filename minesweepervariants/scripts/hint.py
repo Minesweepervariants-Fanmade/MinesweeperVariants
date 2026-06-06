@@ -128,7 +128,7 @@ def main(
             rule.create_constraints(answer_board, switch)
 
         for key in answer_board.get_board_keys():
-            for pos, obj in answer_board(key=key):
+            for pos, obj in answer_board(key=key, mode="obj"):
                 if obj is None:
                     continue
                 obj: AbstractValue
@@ -182,7 +182,7 @@ def main(
 
     deduced = game.deduced()
     undeduced = []
-    for pos, obj in mask_board():
+    for pos, obj in mask_board(mode="obj"):
         if obj is not None:
             continue
         if pos in deduced:

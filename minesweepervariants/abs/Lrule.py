@@ -94,12 +94,12 @@ class Rule0R(AbstractMinesRule):
 
     def create_constraints(self, board: 'Board', switch: "Switch") -> None:
         model: CpModel = board.get_model()
-        model_obj: object = model
         s = switch.get(model, self)
         if self.total == -2:
             return
+        board()
         all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
-        constraint = model_obj.add(sum(all_variable) == self.total)
+        constraint = model.add(sum(all_variable) == self.total)
         constraint.OnlyEnforceIf(s)
 
     def suggest_total(self, info: dict[str, object]) -> None:

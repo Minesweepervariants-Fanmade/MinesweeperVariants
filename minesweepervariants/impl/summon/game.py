@@ -281,7 +281,7 @@ class GameSession:
         for rule in all_rules:
             rule.create_constraints(board, switch)
         for key in board.get_board_keys():
-            for pos, obj in board(key=key):
+            for pos, obj in board(key=key, mode="obj"):
                 obj_type = board.get_type(pos, special='raw')
                 var = board.get_variable(pos, special='raw')
                 if obj_type == "F":
@@ -356,7 +356,7 @@ class GameSession:
         used_type_pos = []      # 使用了类型检查的对象
         pos_switchs = {}
         for key in board.get_board_keys():
-            for pos, obj in board(key=key):
+            for pos, obj in board(key=key, mode="obj"):
                 if obj is None:
                     continue
                 switch = Switch()
@@ -411,7 +411,7 @@ class GameSession:
                      + [self.summon.clue_rule,
                         self.summon.mines_clue_rule]):
             rule.init_clear(board)
-        clues = [i for i in board("CF")]
+        clues = [i for i in board("CF", mode="obj")]
         all_schedule = len(clues)
         self.create_schedule_data = [0.0, time.time()]
         print("game init:", board.show_board(), clues)
@@ -465,7 +465,7 @@ class GameSession:
         board: Board = self.board.clone()
         chord_positions = []
         if obj.deduce_cells(board) is not None:
-            for pos, obj in self.board(special='raw'):
+            for pos, obj in self.board(special='raw', mode="obj"):
                 if (obj is None) and (board[pos] is not None):
                     chord_positions.append(pos)
             return chord_positions
@@ -628,7 +628,7 @@ class GameSession:
             self.logger.debug("[step]has clue")
             return False
         for key in self.board.get_board_keys():
-            for pos, obj in self.board(key=key):
+            for pos, obj in self.board(key=key, mode="obj"):
                 if obj not in [self.clue_tag, self.flag_tag]:
                     continue
                 self.board[pos] = self.answer_board[pos]
@@ -703,7 +703,7 @@ class GameSession:
         if self.last_hint[0] == self.board:
             return self.last_hint[1]
 
-        if None not in [obj for pos, obj in self.board()]:
+        if None not in [obj for pos, obj in self.board(mode="obj")]:
             return {}
 
         deduced = self.deduced()
@@ -721,7 +721,7 @@ class GameSession:
                 positions.append(("R", None))
             self.last_deduced[0] = None
             self.last_hint[0] = None
-            for pos, obj in _board():
+            for pos, obj in _board(mode="obj"):
                 if type(obj) in [type(self.clue_tag), type(self.flag_tag)]:
                     positions.append(pos)
             self.logger.debug("step: ", positions)
@@ -757,7 +757,7 @@ class GameSession:
             rule.create_constraints(board, switch)
 
         for key in board.get_board_keys():
-            for pos, obj in board(key=key, special='raw'):
+            for pos, obj in board(key=key, special='raw', mode="obj"):
                 if obj is None:
                     continue
                 obj.create_constraints(board, switch)
@@ -817,7 +817,7 @@ class GameSession:
         results = {}
         with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
             # 提交任务
-            for pos, obj in board("CF"):
+            for pos, obj in board("CF", mode="obj"):
                 fut = executor.submit(
                     self.chord_clue,
                     pos
@@ -857,7 +857,7 @@ class GameSession:
             rule.create_constraints(board, switch)
 
         for key in board.get_board_keys():
-            for pos, obj in board(key=key):
+            for pos, obj in board(key=key, mode="obj"):
                 if obj is None:
                     continue
                 if obj.invalid(board):

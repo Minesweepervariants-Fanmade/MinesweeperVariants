@@ -5,25 +5,27 @@
 # @FileName: summon.py
 import threading
 import time
-from typing import Literal, Union, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Literal, Union, Optional, TypedDict
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import CpModel, IntVar
 
 from minesweepervariants.json_object import JSONObject
 from minesweepervariants.size import Size
+from ..impl_obj import get_rule
 
 from ...impl.rule.sharpRule import AbstractClueSharp
 
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
-from ...abs.rule import AbstractRule
-from .solver import solver_by_csp, solver_model, Switch
+from ...abs.rule import AbstractRule, SuggestionInfo
+from .solver import solver_by_csp, solver_model, Switch, board_create_constraints, hint_by_csp
 from ...utils.tool import get_random, get_logger
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
 from minesweepervariants.board import MASTER_BOARD_KEY, Board, Position
 
-from ..impl_obj import get_rule
 from ...impl.rule.Mrule.sharp import RuleSharp as RuleMinesSharp
 from ...impl.rule.Rrule.sharp import RuleSharp as RuleClueSharp
 
@@ -39,6 +41,12 @@ CONFIG.update(PUZZLE_CONFIG)
 
 class GenerateError(Exception):
     pass
+
+
+class RuleListDict(TypedDict):
+    clue_rules: list[AbstractClueRule]        # 只能是 ClueRule 的列表
+    mines_rules: list[AbstractMinesRule]      # 只能是 MinesRule 的列表
+    mines_clue_rules: list[AbstractMinesClueRule]
 
 
 class Summon:
@@ -90,7 +98,7 @@ class Summon:
         # summon初始化
         if not isinstance(size, Size):
             size = Size(size[0], size[1])
-        self.answer_board = None
+        self.answer_board: Optional[Board] = None
         self.drop_r = drop_r
         self.logger = get_logger()
         self.answer_board_str = ""
@@ -103,7 +111,7 @@ class Summon:
         self.dynamic_dig_rounds = 0
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
         self.raw_rules = []
-        self.rules = {
+        self.rules: RuleListDict = {
             "clue_rules": [], "mines_rules": [], "mines_clue_rules": []
         }
 
@@ -234,7 +242,9 @@ class Summon:
         增量式添加单个规则及其依赖到 self.rules
 
         :param board: 目标题板对象
-        :param rule: 单个规则ID字符串（可含 delimiter 分隔的 data）
+        :param rule_id: 单个规则ID字符串（可含 delimiter 分隔的 data）
+        :param data:
+        :param add:
         """
 
         # 检查是否已添加过该规则（避免重复）
@@ -317,7 +327,7 @@ class Summon:
         self.board: Board
         ub = sum([size.cols * size.rows for key in self.board.get_board_keys()
                   for size in [self.board.get_config(key, "size")]])
-        info = {
+        info: SuggestionInfo = {
             "size": {key: (size.cols, size.rows) for key in self.board.get_board_keys()
                      for size in [self.board.get_config(key, "size")]},
             "total": {key: len([_ for _, _ in self.board(key=key)])
@@ -351,8 +361,8 @@ class Summon:
 
             model = cp_model.CpModel()
 
-            total_var = model.NewIntVar(0, ub, "total")
-            model.Add(total_var == n)
+            total_var = model.new_int_var(0, ub, "total")
+            model.add(total_var == n)
 
             for hard_fn in info["hard_fns"]:
                 hard_fn(model, total_var)
@@ -387,11 +397,13 @@ class Summon:
         if self.dynamic_dig_rounds > 0:
             dig_fn = self.dynamic_dig_unique
 
-        if dig_fn(self.board) is None:
+        _board = dig_fn(self.board)
+        if _board is None:
             raise GenerateError
         # for rules in self.rules.values():
         #     for rule in rules:
         #         rule.init_board(self.board)
+        self.board = _board
         self.logger.debug(board_bytes, end="\n\n")
         return self.board
 
@@ -462,7 +474,7 @@ class Summon:
         visible: bool,
     ):
         for pos in positions:
-            state = visibility_state.get(pos.board_key, {}).get((pos.x, pos.y), None)
+            state = visibility_state.get(pos.board_key, {}).get((pos.row, pos.col), None)
             if state is None:
                 continue
             visibility_state[pos.board_key][(pos.x, pos.y)] = visible
@@ -643,7 +655,7 @@ class Summon:
 
                     if visible_count == 0:
                         break
-                    vis_model.Add(sum(vis_vars.values()) <= visible_count - 1)
+                    vis_model.add(sum(vis_vars.values()) <= visible_count - 1)
                     continue
 
                 # 禁用当前失败方案（no-good）
@@ -651,7 +663,7 @@ class Summon:
                     vis_vars[p].Not() if assignment[p] else vis_vars[p]
                     for p in candidate_positions
                 ]
-                vis_model.AddBoolOr(nogood)
+                vis_model.add_bool_or(nogood)
         elif candidate_positions:
             self.logger.info("动态删线索策略: 退火式随机显隐")
             rounds = max(1, self.dynamic_dig_rounds)
@@ -774,6 +786,9 @@ class Summon:
         if total:
             self.logger.info("规则约束构建完毕")
 
+        if not solver_model(model):
+            return None
+
         while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)\r", end="", flush=True)
@@ -820,6 +835,10 @@ class Summon:
             model.AddBoolAnd(switch.get_all_vars())
         positions = [pos for pos, _ in self.board("N")]
         random.shuffle(positions)
+
+        if not solver_model(model):
+            return None
+
         for index in range(len(positions)):
             if total <= 0:
                 break
@@ -849,7 +868,7 @@ class Summon:
         while history:
             code, model = history.pop()
             board = type(board).from_json(code)
-            rules={
+            rules: RuleListDict = {
                 "clue_rules": [self.clue_rule],
                 "mines_rules": self._generation_mines_rules(),
                 "mines_clue_rules": [self.mines_clue_rule],
@@ -862,16 +881,25 @@ class Summon:
         return None
 
     def dig_unique(self, board: 'Board'):
-        # import sys
-        # if sys.argv[1:2] == ["-s"]:
-        #     return self._dig_unique(board)
-        state = solver_by_csp(
-            self.mines_rules,
-            self.clue_rule,
-            self.mines_clue_rule,
-            board.clone(),
-            drop_r=self.drop_r
+        board = board.clone()
+
+        model, switch, flag = board_create_constraints(
+            board, [rule for rules in self.rules.values() for rule in rules],
+            drop_r=self.drop_r,
         )
+        _model = model.clone()
+        _model.add_bool_and(switch.get_all_vars())
+
+        state = solver_by_csp(
+            model=_model,
+            mines_rules=None,
+            clue_rule=None,
+            mines_clue_rule=None,
+            board=board,
+            drop_r=self.drop_r,
+            answer_board=self.answer_board,
+        )
+
         if state == 0:
             self.logger.error("题板无解 请检查规则约束与fill是否语义对齐")
             self.logger.error("warn board:\n" + board.show_board())
@@ -880,6 +908,10 @@ class Summon:
             self.logger.warn("题板多解 可能是右线规则约束过弱 需要重试/+R")
             self.logger.warn("warn board:\n" + board.show_board())
             return None
+
+        # if not flag:
+        #     return self.dig_with_dichotomy(model, board, switch)
+        model.add_bool_and(switch.get_all_vars())
 
         phases = max([value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None] + [0]) + 1
 
@@ -924,10 +956,10 @@ class Summon:
                 weak_times = sum(value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None)
 
                 _temp_a_number = len([None for _key in board.get_interactive_keys()
-                                     for _, c in board('C', key=_key)
+                                     for _, c in board('C', key=_key, mode="obj")
                                      if c != board.get_config(_key, "VALUE")])
                 _temp_b_number = len([None for _key in board.get_interactive_keys()
-                                     for _, c in board('F', key=_key)
+                                     for _, c in board('F', key=_key, mode="obj")
                                      if c != board.get_config(_key, "MINES")])
 
                 total_all = init_value_num + weak_times
@@ -1013,3 +1045,31 @@ class Summon:
         thread.join()
         # self.logger.info("\n" + board.show_board())  # 清空残留
         return board
+
+    def dig_with_dichotomy(
+            self, model: CpModel,
+            board: Board, switch: Switch
+    ):
+        value_switchs = []
+        for pos, var in board("CF", mode="var"):
+            value_type = board.get_type(pos)
+            if value_type in "CF":
+                var_switch = model.new_bool_var(f"{pos} var switch")
+                model.add(var == (1 if value_type == "F" else 0)).only_enforce_if(var_switch)
+            else:
+                continue
+            value_switchs.append(var_switch)
+            pos_switchs = switch.get_switches_by_obj(pos)
+            if len(pos_switchs) == 1:
+                model.add(pos_switchs[0][1] == 0).only_enforce_if(var_switch.Not())
+                value_switchs.append(pos_switchs[0][1])
+
+        boolor_switchs = []
+        for pos, t in self.answer_board(mode='type'):
+            bool_switch = model.new_bool_var("")
+            model.add(
+                board.get_variable(pos) == (
+                    0 if t == "F" else 1
+                )
+            ).only_enforce_if(bool_switch)
+            boolor_switchs.append(bool_switch)
