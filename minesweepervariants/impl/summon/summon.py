@@ -3,16 +3,13 @@
 # @Time    : 2025/06/03 05:30
 # @Author  : Wu_RH
 # @FileName: summon.py
-import sys
-from calendar import c
 import threading
 import time
-from typing import Union, List, Optional
-from unittest import result
+from typing import Literal, Union, Optional
 
 from ortools.sat.python import cp_model
-from ortools.sat.python.cp_model import IntVar
 
+from minesweepervariants.json_object import JSONObject
 from minesweepervariants.size import Size
 
 from ...impl.rule.sharpRule import AbstractClueSharp
@@ -20,7 +17,6 @@ from ...impl.rule.sharpRule import AbstractClueSharp
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
 from ...abs.rule import AbstractRule
-from ...utils.impl_obj import set_total, VALUE_QUESS, MINES_TAG
 from .solver import solver_by_csp, solver_model, Switch
 from ...utils.tool import get_random, get_logger
 
@@ -46,6 +42,28 @@ class GenerateError(Exception):
 
 
 class Summon:
+    raw_rules: list[tuple[str, str | None]] | None = None
+    rules: dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']] | None = None
+
+    def rule_text(self) -> str:
+        if self.raw_rules is None:
+            return ''
+        rule_text: list[str] = []
+        for rule, data in self.raw_rules:
+            rule_text.append(f"[{rule}{f':{data}' if data else ''}]")
+
+        return ''.join(rule_text)
+
+
+    def get_rule_instance(self, rule_name: str, data: str | None = None, add: bool = True) -> "AbstractRule | None":
+        """
+        返回指定名称的规则对象
+        :param rule_name: 规则名称
+        :return: 规则对象
+        :add: 如果没有则添加
+        """
+        raise RuntimeError("Method get_rule_instance is not bound")
+
     def __init__(
         self, size: Union[tuple[int, int], Size],
         total: int,
@@ -84,6 +102,10 @@ class Summon:
         self.dynamic_dig_rounds_override = (None if dynamic_dig_rounds is None else int(dynamic_dig_rounds))
         self.dynamic_dig_rounds = 0
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
+        self.raw_rules = []
+        self.rules = {
+            "clue_rules": [], "mines_rules": [], "mines_clue_rules": []
+        }
 
         if board_data is None:
             self.board = Board()
@@ -91,19 +113,13 @@ class Summon:
         else:
             self.board = Board.from_json(data=board_data)
 
-        # 绑定 get_rule_instance 方法
-        def _get_rule_instance(_self: Board, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
-            return self.add_rule(_self, rule_name, data=data, add=add)
-
-        self.board._bound_get_rule_instance(_get_rule_instance)
-
         # 初始化规则容器
         if rules is None:
             rules = []
 
         for rule in rules:
             rule_id, data = self._parse_rule_data(rule)
-            self.board.raw_rules.append((rule_id, data))
+            self.raw_rules.append((rule_id, data))
 
         if "R" not in rules:
             rules.append("R")
@@ -111,13 +127,13 @@ class Summon:
         # 增量式添加规则
         for rule in rules:
             rule_id, data = self._parse_rule_data(rule)
-            if rule_id == "R" and total == -2:
-                data = "2"
+            if rule_id == "R":
+                data = str(self.total)
             self.add_rule(self.board, rule_id, data=data)
 
-        clue_rules = self.board.rules["clue_rules"]
-        mines_rules = self.board.rules["mines_rules"]
-        mines_clue_rules = self.board.rules["mines_clue_rules"]
+        clue_rules = self.rules["clue_rules"]
+        mines_rules = self.rules["mines_rules"]
+        mines_clue_rules = self.rules["mines_clue_rules"]
         if not [i for i in mines_rules if not isinstance(i, Rule0R)] and not early_rules:
             self.unseed = False
 
@@ -194,11 +210,9 @@ class Summon:
         # 雷总数初始化
         if total >= 0:
             self.total = total
-            set_total(total=self.total)
         elif total == -1:
             target_total, _ = self.init_total()
             self.total = target_total
-            set_total(total=target_total)
         elif total == -2:
             # 在total为-2的情况下做不到强制真随机且不固定总雷数
             self.unseed = True
@@ -217,16 +231,16 @@ class Summon:
 
     def add_rule(self, board: Board, rule_id: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
         """
-        增量式添加单个规则及其依赖到 board.rules
+        增量式添加单个规则及其依赖到 self.rules
 
         :param board: 目标题板对象
         :param rule: 单个规则ID字符串（可含 delimiter 分隔的 data）
         """
 
         # 检查是否已添加过该规则（避免重复）
-        all_rules: list[AbstractRule] = (board.rules["clue_rules"] +
-                     board.rules["mines_rules"] +
-                     board.rules["mines_clue_rules"])
+        all_rules: list[AbstractRule] = (self.rules["clue_rules"] +
+                     self.rules["mines_rules"] +
+                     self.rules["mines_clue_rules"])
 
         # for existing_rule in all_rules:
         #     if existing_rule.id == rule_id and existing_rule.__data == data:
@@ -253,11 +267,11 @@ class Summon:
         if add:
             # 根据类型分类添加
             if isinstance(rule_instance, AbstractClueRule):
-                board.rules["clue_rules"].append(rule_instance)
+                self.rules["clue_rules"].append(rule_instance)
             elif isinstance(rule_instance, AbstractMinesRule):
-                board.rules["mines_rules"].append(rule_instance)
+                self.rules["mines_rules"].append(rule_instance)
             elif isinstance(rule_instance, AbstractMinesClueRule):
-                board.rules["mines_clue_rules"].append(rule_instance)
+                self.rules["mines_clue_rules"].append(rule_instance)
             else:
                 raise ValueError(f"Unknown Rule: {rule_id}")
 
@@ -269,14 +283,14 @@ class Summon:
                     break
             else: # 未被依赖
                 v_rule: AbstractRule = get_rule("V''")(board=board, data=rule_id)
-                if add: board.rules["clue_rules"].append(v_rule)
+                if add: self.rules["clue_rules"].append(v_rule)
                 result_rule = v_rule
 
         if add:
             # 更新所有规则的 combine 信息
-            all_rules = (board.rules["clue_rules"] +
-                        board.rules["mines_rules"] +
-                        board.rules["mines_clue_rules"])
+            all_rules = (self.rules["clue_rules"] +
+                        self.rules["mines_rules"] +
+                        self.rules["mines_clue_rules"])
             rules_info: list[tuple[AbstractRule, str | None]] = [(r, None) for r in all_rules]  # 简化版本，data 信息在规则实例中
 
 
@@ -395,7 +409,7 @@ class Summon:
                 _board.set_value(pos, None)
         _board = self.clue_rule.fill(_board)
         _board = self.mines_clue_rule.fill(_board)
-        for rules in self.board.rules.values():
+        for rules in self.rules.values():
             for rule in rules:
                 rule.init_board(_board)
         self.answer_board_str = "\n" + _board.show_board()
@@ -790,7 +804,6 @@ class Summon:
         print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
         if self.total == -2:
             self.total = mines_total
-            set_total(mines_total)
         return board
 
     def fill_valid(self, board: 'Board', total: int, model=None) -> Union[Board, None]:

@@ -53,7 +53,7 @@ def main(
                drop_r=drop_r, mask=mask_dye, dye=dye, vice_board=vice_board,
                dynamic_dig_rounds=dynamic_dig_rounds, unseed=unseed,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
-    rule_text = s.board.rule_text()
+    rule_text = s.rule_text()
     unseed = s.unseed
     # if total == -2:
     #     s.random_fill(s.board, s.total)

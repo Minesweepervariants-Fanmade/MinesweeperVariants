@@ -66,11 +66,6 @@ def recursive_import(module):
                     continue  # 跳过失败的模块
 
 
-def set_total(total: int):
-    global TOTAL
-    TOTAL = total
-
-
 def get_all_subclasses(cls):
     subclasses = set()
     direct_subs = cls.__subclasses__()

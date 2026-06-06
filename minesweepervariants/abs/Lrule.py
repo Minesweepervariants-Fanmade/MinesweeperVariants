@@ -10,7 +10,6 @@ from ortools.sat.python.cp_model import CpModel
 
 from typing import TYPE_CHECKING, Optional, Protocol, TypeGuard
 
-from ..utils.impl_obj import get_total
 from ..utils.tool import get_logger
 from .rule import AbstractRule
 
@@ -84,18 +83,22 @@ class Rule0R(AbstractMinesRule):
     tags = ["Untagged"]
     creation_time = ""
 
+    total: int
+
     def __init__(self, board: "Board | None" = None, data: str | None = None) -> None:
         super().__init__(board, data)
-        self.data: Optional[str] = data
+        if data is None:
+            raise ValueError("Data for Rule0R cannot be None")
+        self.total = int(data)
 
     def create_constraints(self, board: 'Board', switch: "Switch") -> None:
         model: CpModel = board.get_model()
         model_obj: object = model
         s = switch.get(model, self)
-        if self.data == "2" and get_total() == -1:
+        if self.total == -2:
             return
         all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
-        constraint = model_obj.add(sum(all_variable) == get_total())
+        constraint = model_obj.add(sum(all_variable) == self.total)
         constraint.OnlyEnforceIf(s)
 
     def suggest_total(self, info: dict[str, object]) -> None:

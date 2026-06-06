@@ -66,14 +66,6 @@ def decode_singleton(clue_type: str):
     else:
         return None
 
-def set_total(total: int):
-    global TOTAL
-    TOTAL = total
-
-
-def get_total() -> int:
-    return TOTAL
-
 
 def get_seed():
     return tool.SEED

@@ -20,7 +20,7 @@ from minesweepervariants.position import Position
 from minesweepervariants.immutable_dict import ImmutableDict
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.rule import AbstractRule, AbstractValue
+    from minesweepervariants.abs.rule import AbstractValue
     from minesweepervariants.abs.Rrule import AbstractClueValue
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
@@ -106,8 +106,6 @@ class Board:
     name = "Board2"
 
     default_special = 'raw'
-    raw_rules: list[tuple[str, str | None]] = []
-    rules: dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']] = {}
 
     # 设置选项名列表
     CONFIG_FLAGS: list[str] = [
@@ -164,8 +162,6 @@ class Board:
         """
         json = self.json()
         new_board = self.__class__.from_json(json)
-        if hasattr(new_board, "_get_rule_instance"):
-            new_board._bound_get_rule_instance(self._get_rule_instance)
 
         return new_board
 
@@ -175,23 +171,7 @@ class Board:
         return [k for k in self.get_board_keys()
                 if self.get_config(k, "interactive")]
 
-    def _bound_get_rule_instance(self,
-                                 get_rule_instance: Callable[[str, str | None, bool], AbstractRule | None]) -> None:
-        """
-        绑定get_rule_instance方法
-        :param get_rule_instance: 方法
-        """
-        self._get_rule_instance = get_rule_instance
-        self.get_rule_instance = self._get_rule_instance.__get__(self)
 
-    def get_rule_instance(self, rule_name: str, data: str | None = None, add: bool = True) -> "AbstractRule | None":
-        """
-        返回指定名称的规则对象
-        :param rule_name: 规则名称
-        :return: 规则对象
-        :add: 如果没有则添加
-        """
-        raise RuntimeError("Method get_rule_instance is not bound")
 
     def set_default_special(self, special: str = 'raw') -> None:
         """ 设置默认变量类型(只能设置一次)"""
@@ -209,31 +189,15 @@ class Board:
         from ..impl.impl_obj import decode_board
         return decode_board(data)
 
-    def rule_text(self) -> str:
-        rule_text: list[str] = []
-        for rule, data in self.raw_rules:
-            rule_text .append(f"[{rule}{f':{data}' if data else ''}]")
 
-        return "".join(rule_text)
 
-    def __init__(self, *, rules: Optional[dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']]] = None, raw_rules: Optional[list[Tuple[str, str | None]]] = None, default_special: str = 'raw'):
+    def __init__(self, *, default_special: str = 'raw'):
         # traceback.print_stack()
 
         self._model = None
         self.board_data: dict[str, BoardData] = dict()
         self.default_special = default_special
-        self.rules = {
-            "clue_rules": [],
-            "mines_rules": [],
-            "mines_clue_rules": []
-        }
-        if rules is not None:
-            self.rules.update(rules)
-        self.raw_rules = [] if raw_rules is None else raw_rules
 
-        for _rules in self.rules.values():
-            for rule in _rules:
-                rule.onboard_init(self)
 
     @overload
     def __call__(
@@ -480,12 +444,11 @@ class Board:
                 "cells": tuple(cells)
             })
 
-        rules = {k: [rule.json() for rule in v] for k, v in self.rules.items()}
 
-        return jsonify({"boards": boards, "rules": rules, "default_special": self.default_special, "raw_rules": self.raw_rules})
+        return jsonify({"boards": boards, "default_special": self.default_special})
 
     @classmethod
-    def from_json(cls, data: JSONObject, with_rules: bool | dict[str, list['AbstractRule']] = False) -> Self:
+    def from_json(cls, data: JSONObject) -> Self:
         """Load board state from json produced by json()"""
 
         from minesweepervariants.abs.Rrule import AbstractClueValue
@@ -499,16 +462,6 @@ class Board:
         from minesweepervariants.impl.impl_obj import get_value_type
 
         boards = get_with_valid(data, "boards", ImmutableDict[str, JSONObject])
-        if with_rules is True:
-            rules = get_with_valid(data, "rules", ImmutableDict[str, tuple[JSONObject, ...]])
-            raise NotImplementedError("rule loading not implemented yet")
-        elif with_rules is False:
-            rules = {}
-        else:
-            rules = with_rules
-
-        raw_rules = get_with_valid(data, "raw_rules", tuple[tuple[str, str]])
-        self.raw_rules = list(raw_rules)
 
         # clear existing
         self.board_data = {}
@@ -581,10 +534,6 @@ class Board:
                 value_obj = get_value(pos, type_, obj_data)
                 if isinstance(value_obj, (AbstractMinesValue, AbstractClueValue)):
                     self.set_value(pos, value_obj)
-
-        for _rules in rules.values():
-            for rule in _rules:
-                rule.onboard_init(self)
 
         return self
 
