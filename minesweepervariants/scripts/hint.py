@@ -8,11 +8,13 @@
 import threading
 import time
 
+from minesweepervariants.json_object import json_loads, decompress
 from minesweepervariants.position import Position
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, Mode, UMode, max_disjoint_lists
+from minesweepervariants.size import Size
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.tool import get_logger
