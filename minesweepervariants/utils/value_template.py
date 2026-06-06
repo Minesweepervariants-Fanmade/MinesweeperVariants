@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Literal, Mapping, Self, Sequence, TypeIs, TypedDict
+
 from ..json_object import JSONObject, JSONDirectlySerializable, deep_wrap, JSONScalar
 
 
@@ -38,16 +39,16 @@ class ValueTemplate:
         return "?"
 
     def compose(self) -> Mapping[str, object]:
+        from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
 
-        return _get_col(
-            _get_dummy(height=0.3),
-            _get_text(self.__repr__()),
-            _get_dummy(height=0.3),
+        return get_col(
+            get_dummy(height=0.3),
+            get_text(self.__repr__()),
+            get_dummy(height=0.3),
         )
 
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        if "compose" in type(self).__dict__:
-            return self.compose(board)
+    def web_component(self) -> Mapping[str, object]:
+        from minesweepervariants.utils.web_template import Number
         return Number(self.__repr__())
 
 
@@ -74,6 +75,22 @@ class SingleValue(ValueTemplate):
                 return cls(value)
             case _:
                 return None
+
+    def __repr__(self) -> str:
+        return str(self.value)
+
+    def compose(self) -> Mapping[str, object]:
+        from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
+
+        return get_col(
+            get_dummy(height=0.3),
+            get_text(self.__repr__()),
+            get_dummy(height=0.3),
+        )
+
+    def web_component(self) -> Mapping[str, object]:
+        from minesweepervariants.utils.web_template import Number
+        return Number(self.__repr__())
 
 class SingleNumberValue(SingleValue):
     def __init__(self, value: int | float | tuple[int, int]):
