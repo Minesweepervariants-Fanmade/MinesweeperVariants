@@ -20,7 +20,7 @@ from ...utils.tool import get_logger
 
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
-from ...abs.board import AbstractBoard, AbstractPosition
+from minesweepervariants.board import Board, Position
 from ...abs.Lrule import MinesRules, Rule0R
 from ..impl_obj import ModelGenerateError
 
@@ -46,7 +46,7 @@ def get_solver(b: bool):
 
 def add_board_solution_hints(
         model: cp_model.CpModel,
-        board: AbstractBoard,
+        board: Board,
         solver: cp_model.CpSolver
 ):
     """将上一轮可行解作为 hint 提供给后续相近模型。"""
@@ -58,8 +58,8 @@ def add_board_solution_hints(
 
 def add_board_assignment_hints(
         model: cp_model.CpModel,
-        board: AbstractBoard,
-        assignment_board: AbstractBoard
+        board: Board,
+        assignment_board: Board
 ):
     """将指定题板上的当前赋值作为 hint 提供给模型。"""
     for key in board.get_interactive_keys():
@@ -90,11 +90,11 @@ class Switch:
         return self.get(*args, **kwargs)
 
     @staticmethod
-    def to_str(obj: Union[AbstractRule, AbstractValue, AbstractPosition, str]) -> str:
+    def to_str(obj: Union[AbstractRule, AbstractValue, Position, str]) -> str:
         if isinstance(obj, AbstractRule):
             name = f"RULE|{obj.get_name()}"
         elif (
-                isinstance(obj, AbstractPosition) or
+                isinstance(obj, Position) or
                 isinstance(obj, AbstractValue)
         ):
             if isinstance(obj, AbstractValue):
@@ -114,7 +114,7 @@ class Switch:
     def get(
             self,
             model: cp_model.CpModel,
-            obj: Union[AbstractRule, AbstractValue, AbstractPosition, str],
+            obj: Union[AbstractRule, AbstractValue, Position, str],
             index_str: Optional[str] = None
     ) -> cp_model.IntVar:
         """
@@ -163,7 +163,7 @@ class Switch:
 
     def get_switches_by_obj(
             self,
-            obj: Union[AbstractRule, AbstractValue, AbstractPosition, str]
+            obj: Union[AbstractRule, AbstractValue, Position, str]
     ) -> List[Tuple[str, cp_model.IntVar]]:
         """
         获取指定对象的所有开关
@@ -225,12 +225,12 @@ def solver_by_csp(
         mines_rules: MinesRules,
         clue_rule: Union[AbstractClueRule, None],
         mines_clue_rule: Union[AbstractMinesClueRule, None],
-        board: AbstractBoard,
+        board: Board,
         drop_r=False,
         bool_mode=False,
         answer_board=None,
         model=None,
-        hint_board: AbstractBoard = None
+        hint_board: Board = None
 ) -> int:
     """
     返回int 0表示无解 1表示唯一解 2表示多解
@@ -406,9 +406,9 @@ def solver_by_csp(
 
 
 def deduced_by_csp(
-        board: AbstractBoard,
-        answer_board: AbstractBoard,
-        pos: AbstractPosition,
+        board: Board,
+        answer_board: Board,
+        pos: Position,
 ):
     """
     检查是否无解
@@ -433,10 +433,10 @@ def deduced_by_csp(
 
 
 def hint_by_csp(
-    board: AbstractBoard,
-    answer_board: AbstractBoard,
+    board: Board,
+    answer_board: Board,
     switch: Switch,
-    pos: AbstractPosition,
+    pos: Position,
     executor: ThreadPoolExecutor,
     upper_bound=None
 ):
@@ -470,8 +470,8 @@ def _hint_by_csp(
     upper_bound=None,
     offset=0,
     pos=None,
-    board: AbstractBoard = None,
-    answer_board: AbstractBoard = None
+    board: Board = None,
+    answer_board: Board = None
 ):
     logger = get_logger()
     logger.trace(f"pos {pos} assumptions: {assumptions}\n", end="")
@@ -591,7 +591,7 @@ def _hint_by_csp(
 
 
 def solver_board(
-    board: AbstractBoard,
+    board: Board,
     all_rules: List[AbstractRule]
 ):
     model = board.get_model()

@@ -5,9 +5,9 @@
 # @Author  : Wu_RH
 # @FileName: impl_obj.py
 
+from minesweepervariants.position import PositionTag
 from ..utils import tool
 
-from ..abs.board import PositionTag
 from ..abs.Mrule import MinesTag, ValueCircle
 from ..abs.Rrule import ValueQuess, ValueCross
 

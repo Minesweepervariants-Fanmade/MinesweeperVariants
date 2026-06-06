@@ -14,12 +14,13 @@ from collections.abc import MutableMapping
 
 from ortools.sat.python.cp_model import CpModel
 
+from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.utils.tool import get_logger
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.board import AbstractBoard, AbstractPosition
+    from minesweepervariants.board import Board, Position
     from minesweepervariants.impl.summon.solver import Switch
-    from minesweepervariants.abs.board import ImmutableDict, JSONObject
+
 
 
 class RuleInfo(TypedDict):
@@ -213,7 +214,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
 
     lib_only = False
 
-    def __init__(self, board: "AbstractBoard | None" = None, data: str | None = None) -> None:
+    def __init__(self, board: "Board | None" = None, data: str | None = None) -> None:
         self.__data = data
 
     @classmethod
@@ -301,7 +302,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
 
         return info
 
-    def create_constraints(self, board: 'AbstractBoard', switch: 'Switch') -> None:
+    def create_constraints(self, board: 'Board', switch: 'Switch') -> None:
         """
         基于当前线索对象向 CP-SAT 模型添加约束。
         此方法根据当前线索的位置与规则，分析题板上的变量布局，并在模型中添加等价的逻辑约束表达式。
@@ -330,12 +331,12 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         规则在生成阶段调用，向`info`添加硬约束，并通过调用 `info` 根键的软约束函数实现软约束。
         """
 
-    def init_board(self, board: 'AbstractBoard') -> None:
+    def init_board(self, board: 'Board') -> None:
         """
         用于生成answer.png 需要将题板填充至无空
         """
 
-    def init_clear(self, board: 'AbstractBoard') -> None:
+    def init_clear(self, board: 'Board') -> None:
         """
         在题板生成阶段调用，用于删除题板上必须被清除的线索或对象。
         例如纸笔题目中，某些规则可能要求特定位置不能出现雷或线索。
@@ -357,7 +358,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
             return self.id
         return f"{self.id}:{self.__data}"
 
-    def onboard_init(self, board: 'AbstractBoard') -> None:
+    def onboard_init(self, board: 'Board') -> None:
         """
         题板初始化时调用
         :param board:
@@ -375,7 +376,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
 
 class AbstractValue(ABC):
     @classmethod
-    def from_json(cls, pos: 'AbstractPosition', data: 'JSONObject') -> 'AbstractValue':
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
         if isinstance(data, Mapping) and 'old_style' in data and data['old_style'] and 'type' in data:
             if 'code' in data and isinstance((code := data['code']), str):
                 from base64 import b64decode
@@ -387,10 +388,10 @@ class AbstractValue(ABC):
 
     def json(self) -> 'JSONObject':
         from base64 import b64encode
-        from minesweepervariants.abs.board import ImmutableDict
+
         return ImmutableDict({"old_style": True, "type": b64encode(self.type()).decode(), "code": b64encode(self.code()).decode()})
 
-    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
+    def __init__(self, pos: 'Position', *args, **kwargs) -> None:
         """
         获取code并初始化 输入值为code函数的返回值
         :param code: 实例对象代码
@@ -400,21 +401,21 @@ class AbstractValue(ABC):
     def __repr__(self) -> str:
         raise NotImplementedError
 
-    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
         """
         ...
 
-    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
         """
         ...
 
-    def invalid(self, board: 'AbstractBoard') -> bool:
+    def invalid(self, board: 'Board') -> bool:
         high_light = self.high_light(board)
         if high_light is None:
             return False
@@ -433,7 +434,7 @@ class AbstractValue(ABC):
         """
         ...
 
-    def tag(self, board: 'AbstractBoard') -> bytes:
+    def tag(self, board: 'Board') -> bytes:
         """
         返回标签
         默认使用type
@@ -449,7 +450,7 @@ class AbstractValue(ABC):
         """
         return b''
 
-    def create_constraints(self, board: 'AbstractBoard', switch: 'Switch') -> None:
+    def create_constraints(self, board: 'Board', switch: 'Switch') -> None:
         """
         基于当前线索对象向 CP-SAT 模型添加约束。
         此方法根据当前线索的位置与规则，分析题板上的变量布局，并在模型中添加等价的逻辑约束表达式。
@@ -461,7 +462,7 @@ class AbstractValue(ABC):
         """
         ...
 
-    def high_light(self, board: 'AbstractBoard') -> List['AbstractPosition'] | None:
+    def high_light(self, board: 'Board') -> List['Position'] | None:
         """
         输入一个题板 随后返回所有应该显示的高光位置(web)
         :param board: 题板
@@ -469,7 +470,7 @@ class AbstractValue(ABC):
         """
         return None
 
-    def deduce_cells(self, board: 'AbstractBoard') -> Union[bool, None]:
+    def deduce_cells(self, board: 'Board') -> Union[bool, None]:
         """
         快速检查当前题板并修改可以直接得出结论的地方
         :param board: 输入题板
@@ -477,7 +478,7 @@ class AbstractValue(ABC):
         """
         return None
 
-    def weaker(self, board: 'AbstractBoard') -> 'AbstractValue':
+    def weaker(self, board: 'Board') -> 'AbstractValue':
         """
         返回一个比当前对象更弱的对象 用于生成阶段的多次删除线索
         """

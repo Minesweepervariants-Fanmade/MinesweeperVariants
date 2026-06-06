@@ -8,8 +8,8 @@
 import sys
 import argparse
 
-from minesweepervariants.abs.board import json_loads, decompress
-from minesweepervariants.impl.impl_obj import get_board, decode_board
+
+from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.utils.image_create import draw_board
 
 

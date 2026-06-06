@@ -3,7 +3,7 @@
 # @Time    : 2025/06/07 13:45
 # @Author  : Wu_RH
 # @FileName: impl_obj.py
-from minesweepervariants.abs.board import AbstractBoard
+from minesweepervariants.board import Board
 
 
 import base64
@@ -19,7 +19,7 @@ from minesweepervariants.utils.tool import get_logger
 from ..utils.impl_obj import POSITION_TAG, VALUE_QUESS, MINES_TAG, decode_singleton, serialize
 
 from ..abs.rule import AbstractValue, AbstractRule
-from ..abs.board import AbstractBoard, AbstractPosition, JSONObject
+from minesweepervariants.board import Position
 from ..abs.Lrule import AbstractMinesRule
 from ..abs.Mrule import AbstractMinesClueRule, AbstractMinesValue
 from ..abs.Rrule import AbstractClueRule, AbstractClueValue
@@ -80,22 +80,6 @@ def get_all_subclasses(cls):
     return subclasses
 
 
-def get_board(name: Optional[str] = None) -> type[AbstractBoard]:
-    if name is None:
-        v = -1
-        b = None
-        for i in AbstractBoard.__subclasses__():
-            if v < i.version:
-                v = i.version
-                b = i
-        if b is None:
-            raise ValueError("未找到棋盘")
-        return b
-    else:
-        for i in AbstractBoard.__subclasses__():
-            if i.name == name:
-                return i
-        raise ValueError(f"未找到名为 {name} 的棋盘")
 
 def _iter_concrete_rule_classes():
     for cls in get_all_subclasses(AbstractRule):
@@ -154,7 +138,7 @@ def _resolve_rule_alias(name: str) -> str:
 
 
 def add_rule(
-    board: AbstractBoard,
+    board: Board,
     rule_id: str,
     data: str | None = None,
     add: bool = True
@@ -267,7 +251,7 @@ def get_value_type(clue_type: str) -> Optional[type[AbstractValue]]:
     return None
 
 
-def get_value(pos: Optional[AbstractPosition], clue_type: str, data: JSONObject):
+def get_value(pos: Optional[Position], clue_type: str, data: JSONObject):
     singleton = decode_singleton(clue_type)
     if singleton is not None:
         return singleton
@@ -280,8 +264,7 @@ def get_value(pos: Optional[AbstractPosition], clue_type: str, data: JSONObject)
     return None
 
 def decode_board(data: JSONObject, name: Optional[str] = None):
-    board_cls = get_board(name)
-    return board_cls.from_json(data)
+    return Board.from_json(data)
 
 
 for pkg in [rule] + hypothesis_board:

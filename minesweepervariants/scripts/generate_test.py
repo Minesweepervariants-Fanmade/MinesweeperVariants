@@ -8,7 +8,7 @@ import os
 import threading
 import time
 
-from minesweepervariants.abs.board import Size, compress, json_dumps
+
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed

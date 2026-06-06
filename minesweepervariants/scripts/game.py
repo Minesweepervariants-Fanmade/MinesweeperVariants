@@ -9,7 +9,7 @@ from typing import Optional
 
 from ortools.sat.python import cp_model
 
-from minesweepervariants.abs.board import AbstractBoard, AbstractPosition, Size, decompress, json_loads
+from minesweepervariants.board import Board, Position
 from minesweepervariants.abs.Lrule import Rule0R
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import decode_board
@@ -21,11 +21,11 @@ from minesweepervariants.utils.tool import Logger, get_logger
 
 
 def _save_image(
-    board: AbstractBoard,
+    board: Board,
     out_prefix: str,
     turn: int | None = None,
-    hint_because: list[AbstractPosition] | None = None,
-    hint_deduced: list[AbstractPosition] | None = None,
+    hint_because: list[Position] | None = None,
+    hint_deduced: list[Position] | None = None,
     logger: Logger | None = None,
 ) -> str:
     name = out_prefix if turn is None else f"{out_prefix}"
@@ -47,7 +47,7 @@ class _CoordParser:
             cls._instance.last_row = None
         return cls._instance
 
-    def parse(self, text: str, board: AbstractBoard) -> Optional[AbstractPosition]:
+    def parse(self, text: str, board: Board) -> Optional[Position]:
         text = text.strip()
         board_keys = board.get_board_keys()
         if not board_keys:
@@ -92,19 +92,19 @@ def _resolve_state(token: str) -> Optional[str]:
     return None
 
 
-def _click_pos(game: GameSession, pos: AbstractPosition) -> tuple[bool, str]:
+def _click_pos(game: GameSession, pos: Position) -> tuple[bool, str]:
     if game.click(pos) is None:
         return False, "你踩雷了!"
     return True, ""
 
 
-def _flag_pos(game: GameSession, pos: AbstractPosition) -> tuple[bool, str]:
+def _flag_pos(game: GameSession, pos: Position) -> tuple[bool, str]:
     if game.mark(pos) is None:
         return False, "你标记了一个错误的雷!"
     return True, ""
 
 
-def _hint_once(game: GameSession) -> tuple[list[str], list[AbstractPosition], list[AbstractPosition], bool]:
+def _hint_once(game: GameSession) -> tuple[list[str], list[Position], list[Position], bool]:
     hints = game.hint()
     if not hints:
         return ["暂无提示"], [], [], False
@@ -117,7 +117,7 @@ def _hint_once(game: GameSession) -> tuple[list[str], list[AbstractPosition], li
     }
     apply_hint = max_disjoint_lists(hints)
 
-    grouped_hints: dict[tuple[object, ...], list[AbstractPosition]] = {}
+    grouped_hints: dict[tuple[object, ...], list[Position]] = {}
     for apply in apply_hint:
         for because, deduceds in hints.items():
             if deduceds == apply:
@@ -128,7 +128,7 @@ def _hint_once(game: GameSession) -> tuple[list[str], list[AbstractPosition], li
         first_key = next(iter(grouped_hints))
     except StopIteration:
         return ["已无可推格"], [], [], False
-    hint_because = [p for p in first_key if isinstance(p, AbstractPosition)] if isinstance(first_key, tuple) else []
+    hint_because = [p for p in first_key if isinstance(p, Position)] if isinstance(first_key, tuple) else []
     hint_deduced = grouped_hints[first_key]
 
     lines = ["Hints:"]
@@ -140,7 +140,7 @@ def _process_token(
     token: str,
     state: str,
     game: GameSession,
-) -> tuple[str, bool, list[str], list[AbstractPosition], list[AbstractPosition], bool, bool]:
+) -> tuple[str, bool, list[str], list[Position], list[Position], bool, bool]:
     """Process one token.
 
     Returns: (new_state, consumed, messages, hint_because, hint_deduced, should_render, should_exit)
@@ -202,10 +202,10 @@ def _handle_input_line(
     line: str,
     state: str,
     game: GameSession,
-) -> tuple[str, list[str], list[AbstractPosition], list[AbstractPosition], bool, bool]:
+) -> tuple[str, list[str], list[Position], list[Position], bool, bool]:
     messages: list[str] = []
-    hint_because: list[AbstractPosition] = []
-    hint_deduced: list[AbstractPosition] = []
+    hint_because: list[Position] = []
+    hint_deduced: list[Position] = []
     should_render = False
     should_exit = False
 

@@ -8,7 +8,7 @@
 import threading
 import time
 
-from minesweepervariants.abs.board import AbstractPosition, decompress, json_loads, Size
+from minesweepervariants.position import Position
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.impl.summon import Summon
@@ -227,7 +227,7 @@ def main(
             logger.error("hint返回空 deduced仍然存在可推格 待检查规则/副板未框定")
             break
         minsize = min([len(k) for k in hints])
-        hints: dict[tuple, list[AbstractPosition]] = {
+        hints: dict[tuple, list[Position]] = {
             because: deduceds
             for because, deduceds in hints.items()
             if len(because) == minsize
@@ -262,7 +262,7 @@ def main(
                         "board": game.board.clone(),
                         "bottom_text": bottom_text,
                         "output": (file_name if file_name else "hint") + "_" + str(hint_times),
-                        "hint_because": [pos for pos in hint_because if isinstance(pos, AbstractPosition)],
+                        "hint_because": [pos for pos in hint_because if isinstance(pos, Position)],
                         "hint_deduced": grouped_hints[hint_because]
                     }
                 )

@@ -13,6 +13,8 @@ from unittest import result
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
 
+from minesweepervariants.size import Size
+
 from ...impl.rule.sharpRule import AbstractClueSharp
 
 from ...abs.Mrule import AbstractMinesClueRule
@@ -23,9 +25,9 @@ from .solver import solver_by_csp, solver_model, Switch
 from ...utils.tool import get_random, get_logger
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
-from ...abs.board import MASTER_BOARD, AbstractBoard, AbstractPosition, Size, JSONObject
+from minesweepervariants.board import MASTER_BOARD_KEY, Board, Position
 
-from ..impl_obj import get_rule, get_board
+from ..impl_obj import get_rule
 from ...impl.rule.Mrule.sharp import RuleSharp as RuleMinesSharp
 from ...impl.rule.Rrule.sharp import RuleSharp as RuleClueSharp
 
@@ -84,13 +86,13 @@ class Summon:
         self.dynamic_dig_max_batch = max(1, int(CONFIG.get("dynamic_dig_max_batch", 8) if dynamic_dig_max_batch is None else dynamic_dig_max_batch))
 
         if board_data is None:
-            self.board = get_board(board)()
-            self.board.generate_board(MASTER_BOARD, size)
+            self.board = Board()
+            self.board.generate_board(MASTER_BOARD_KEY, size)
         else:
-            self.board = get_board(board).from_json(data=board_data)
+            self.board = Board.from_json(data=board_data)
 
         # 绑定 get_rule_instance 方法
-        def _get_rule_instance(_self: AbstractBoard, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
+        def _get_rule_instance(_self: Board, rule_name: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
             return self.add_rule(_self, rule_name, data=data, add=add)
 
         self.board._bound_get_rule_instance(_get_rule_instance)
@@ -180,7 +182,7 @@ class Summon:
 
         # 掩码规则
         if mask:
-            _board: AbstractBoard = self.board.clone()
+            _board: Board = self.board.clone()
             _board.dyed(mask[1:] if mask.startswith("&") else mask)
             for pos, is_dyed in _board(mode="dye"):
                 if is_dyed: self.board.set_mask(pos)
@@ -213,7 +215,7 @@ class Summon:
         data = parts[1] if len(parts) == 2 else None
         return rule_id, data
 
-    def add_rule(self, board: AbstractBoard, rule_id: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
+    def add_rule(self, board: Board, rule_id: str, data: str|None = None, add: bool = True) -> AbstractRule | None:
         """
         增量式添加单个规则及其依赖到 board.rules
 
@@ -298,7 +300,7 @@ class Summon:
                 soft_conds[0] = diff
             soft_conds.append(total)
 
-        self.board: AbstractBoard
+        self.board: Board
         ub = sum([size.cols * size.rows for key in self.board.get_board_keys()
                   for size in [self.board.get_config(key, "size")]])
         info = {
@@ -439,9 +441,9 @@ class Summon:
 
     def _apply_dynamic_visibility(
         self,
-        board: 'AbstractBoard',
+        board: 'Board',
         visibility_state: dict[str, dict[tuple[int, int], Optional[bool]]],
-        positions: list['AbstractPosition'],
+        positions: list['Position'],
         visible: bool,
     ):
         for pos in positions:
@@ -454,18 +456,18 @@ class Summon:
             else:
                 board.set_value(pos, None)
 
-    def _copy_board_values(self, src: 'AbstractBoard', dst: 'AbstractBoard'):
+    def _copy_board_values(self, src: 'Board', dst: 'Board'):
         for key in dst.get_board_keys():
             for pos, _ in dst(key=key):
                 dst.set_value(pos, src.get_value(pos))
 
     def _apply_visibility_pattern(
         self,
-        board: 'AbstractBoard',
+        board: 'Board',
         visibility_state: dict[str, dict[tuple[int, int], Optional[bool]]],
         pattern: dict[str, tuple[tuple[bool, ...], ...]],
     ):
-        changed_positions: list['AbstractPosition'] = []
+        changed_positions: list['Position'] = []
         for key in board.get_interactive_keys():
             matrix = pattern.get(key)
             if matrix is None:
@@ -488,11 +490,11 @@ class Summon:
 
     def _apply_visibility_assignment(
         self,
-        board: 'AbstractBoard',
+        board: 'Board',
         visibility_state: dict[str, dict[tuple[int, int], Optional[bool]]],
         assignment: dict[tuple[str, int, int], bool],
-    ) -> list['AbstractPosition']:
-        changed_positions: list['AbstractPosition'] = []
+    ) -> list['Position']:
+        changed_positions: list['Position'] = []
         for key in board.get_interactive_keys():
             for (x, y), state in visibility_state.get(key, {}).items():
                 if state is None:
@@ -509,7 +511,7 @@ class Summon:
                 changed_positions.append(pos)
         return changed_positions
 
-    def dynamic_dig_unique(self, board: 'AbstractBoard'):
+    def dynamic_dig_unique(self, board: 'Board'):
         if self.answer_board is None:
             self.logger.warn("动态删线索模式缺少 answer_board, 回退失败")
             return None
@@ -791,7 +793,7 @@ class Summon:
             set_total(mines_total)
         return board
 
-    def fill_valid(self, board: 'AbstractBoard', total: int, model=None) -> Union[AbstractBoard, None]:
+    def fill_valid(self, board: 'Board', total: int, model=None) -> Union[Board, None]:
         random = get_random()
         history: list[tuple] = []
         if model is None:
@@ -845,7 +847,7 @@ class Summon:
                 return _board
         return None
 
-    def dig_unique(self, board: 'AbstractBoard'):
+    def dig_unique(self, board: 'Board'):
         # import sys
         # if sys.argv[1:2] == ["-s"]:
         #     return self._dig_unique(board)

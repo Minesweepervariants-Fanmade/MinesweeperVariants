@@ -23,8 +23,9 @@ from minesweepervariants import hint
 from minesweepervariants import img
 from minesweepervariants import game
 
-from minesweepervariants.abs.board import Size
+
 from minesweepervariants.config.config import DEFAULT_CONFIG
+from minesweepervariants.size import Size
 from minesweepervariants.utils.tool import get_logger
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.i18n import init_gettext

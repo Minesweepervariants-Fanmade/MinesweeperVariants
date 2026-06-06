@@ -9,11 +9,12 @@ import os
 import pathlib
 from typing import Callable
 
-from minesweepervariants.abs.board import AbstractPosition
+from minesweepervariants.position import Position
+from minesweepervariants.size import Size
 
 from .tool import get_logger
 from .. import __path__ as basepath
-from ..abs.board import AbstractBoard, Size
+from minesweepervariants.board import Board
 from ..config.config import IMAGE_CONFIG, DEFAULT_CONFIG
 import minesweepervariants
 
@@ -205,17 +206,17 @@ def get_dummy(
 
 
 def draw_board(
-        board: AbstractBoard,
+        board: Board,
         background_white: bool = None,
         bottom_text: str = "",
         cell_size: int = 100,
         output="output",
-        hint_because: list[AbstractPosition] = None,
-        hint_deduced: list[AbstractPosition] = None,
+        hint_because: list[Position] = None,
+        hint_deduced: list[Position] = None,
 ) -> bytes:
     """
     绘制多个题板图像，支持横向拼接。
-    :param board: AbstractBoard 实例，支持 get_board_keys。
+    :param board: Board 实例，支持 get_board_keys。
     :param background_white: 是否白底。
     :param bottom_text: 底部文字。
     :param cell_size: 单元格大小。
@@ -277,7 +278,7 @@ def draw_board(
             for a in angles
         ]
 
-    def get_hex_neighbor_positions(pos, _board: AbstractBoard):
+    def get_hex_neighbor_positions(pos, _board: Board):
         col, row = pos.col, pos.row
         board_key = pos.board_key
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -374,7 +375,7 @@ def draw_board(
     sizes = {}
     pixel_sizes = {}
     for key in board_keys:
-        br: AbstractPosition = board.boundary(key=key)
+        br: Position = board.boundary(key=key)
         cols = len(board.get_row_pos(br))
         rows = len(board.get_col_pos(br))
         sizes[key] = Size(cols=cols, rows=rows)

@@ -8,13 +8,13 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, List, Mapping
 
-from minesweepervariants.abs.board import AbstractBoard, ImmutableDict, JSONObject
+from minesweepervariants.board import Board
 
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.board import AbstractPosition
+    from minesweepervariants.position import Position
 
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -110,7 +110,7 @@ class AbstractClueRule(AbstractRule):
     dynamic_dig_use_visibility_optimizer = False
 
     @abstractmethod
-    def fill(self, board: 'AbstractBoard') -> 'AbstractBoard':
+    def fill(self, board: 'Board') -> 'Board':
         """
         填充所有None为规则线索对象
         :param board: 题板
@@ -118,7 +118,7 @@ class AbstractClueRule(AbstractRule):
         """
         ...
 
-    def dynamic_init_visibility(self, board: 'AbstractBoard', visibility_state: Dict[str, Dict[tuple[int, int], bool | None]]) -> None:
+    def dynamic_init_visibility(self, board: 'Board', visibility_state: Dict[str, Dict[tuple[int, int], bool | None]]) -> None:
         """
         动态删线索模式初始化回调。
         visibility_state 采用 {key: {(x, y): Optional[bool]}}，
@@ -128,9 +128,9 @@ class AbstractClueRule(AbstractRule):
 
     def dynamic_on_visibility_changed(
         self,
-        board: 'AbstractBoard',
+        board: 'Board',
         visibility_state: Dict[str, Dict[tuple[int, int], bool | None]],
-        changed_positions: List['AbstractPosition'],
+        changed_positions: List['Position'],
     ) -> None:
         """
         动态删线索模式回调: 显隐状态变更后重建线索值/约束前置状态。
@@ -152,7 +152,7 @@ class AbstractClueValue(AbstractValue, ABC):
         """
         return "?"
 
-    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
@@ -163,7 +163,7 @@ class AbstractClueValue(AbstractValue, ABC):
             _get_dummy(height=0.3),
         )
 
-    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
@@ -172,7 +172,7 @@ class AbstractClueValue(AbstractValue, ABC):
             return self.compose(board)
         return Number(self.__repr__())
 
-    def weaker(self, board: AbstractBoard) -> AbstractValue:
+    def weaker(self, board: Board) -> AbstractValue:
         value = board.get_config(self.pos.board_key, "VALUE")
         if isinstance(value, AbstractValue):
             return value
@@ -191,7 +191,7 @@ class ValueQuess(AbstractClueValue):
     问号类(线索非雷)
     """
 
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos)
 
     def __repr__(self) -> str:
@@ -204,10 +204,10 @@ class ValueQuess(AbstractClueValue):
     def code(self) -> bytes:
         return b""
 
-    def high_light(self, board: 'AbstractBoard') -> List['AbstractPosition'] | None:
+    def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
 
-    def weaker(self, board: AbstractBoard) -> AbstractValue:
+    def weaker(self, board: Board) -> AbstractValue:
         return self
 
     def weaker_times(self) -> int:
@@ -219,16 +219,16 @@ class ValueCross(AbstractClueValue):
     副板的叉号
     """
 
-    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
+    def __init__(self, pos: 'Position', *args, **kwargs) -> None:
         super().__init__(pos)
 
     def __repr__(self) -> str:
         return "X"
 
-    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
         return _get_image("cross")
 
-    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Mapping[str, object]:
         return _get_image("cross")
 
     @classmethod
@@ -238,7 +238,7 @@ class ValueCross(AbstractClueValue):
     def code(self) -> bytes:
         return b""
 
-    def weaker(self, board: AbstractBoard) -> AbstractValue:
+    def weaker(self, board: Board) -> AbstractValue:
         return self
 
     def weaker_times(self) -> int:

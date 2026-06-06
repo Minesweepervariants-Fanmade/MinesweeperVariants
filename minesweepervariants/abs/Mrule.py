@@ -10,12 +10,12 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Mapping
 
-from minesweepervariants.abs.board import AbstractBoard, ImmutableDict, JSONObject
+from minesweepervariants.board import Board
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.board import AbstractPosition
+    from minesweepervariants.position import Position
 
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -106,7 +106,7 @@ class AbstractMinesClueRule(AbstractRule, ABC):
     """
 
     @abstractmethod
-    def fill(self, board: 'AbstractBoard') -> 'AbstractBoard':
+    def fill(self, board: 'Board') -> 'Board':
         """
         将在左线放置完成后调用
         需要将题板内的所有雷值赋值为线索
@@ -116,10 +116,10 @@ class AbstractMinesClueRule(AbstractRule, ABC):
 
 
 class AbstractMinesValue(AbstractValue, ABC):
-    pos: 'AbstractPosition'
+    pos: 'Position'
 
     @abstractmethod
-    def __init__(self, pos: 'AbstractPosition', *args, **kwargs) -> None:
+    def __init__(self, pos: 'Position', *args, **kwargs) -> None:
         self.pos = pos
 
     def __repr__(self) -> str:
@@ -129,7 +129,7 @@ class AbstractMinesValue(AbstractValue, ABC):
         """
         return "F"
 
-    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
@@ -140,7 +140,7 @@ class AbstractMinesValue(AbstractValue, ABC):
             _get_dummy(height=0.175),
         )
 
-    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
         """
         返回一个可渲染对象列表
         默认使用__repr__
@@ -149,7 +149,7 @@ class AbstractMinesValue(AbstractValue, ABC):
             return self.compose(board)
         return Number(self.__repr__())
 
-    def weaker(self, board: AbstractBoard) -> AbstractValue:
+    def weaker(self, board: Board) -> AbstractValue:
         value = board.get_config(self.pos.board_key, "MINES")
         if isinstance(value, AbstractValue):
             return value
@@ -168,13 +168,13 @@ class MinesTag(AbstractMinesValue):
     用于暂存表示为类
     """
 
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos, code)
 
     def __repr__(self) -> str:
         return "雷"
 
-    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Mapping[str, object]:
         return _get_image(
             "flag",
             cover_pos_label=False,
@@ -187,7 +187,7 @@ class MinesTag(AbstractMinesValue):
     def code(self) -> bytes:
         return b""
 
-    def weaker(self, board: AbstractBoard) -> AbstractValue:
+    def weaker(self, board: Board) -> AbstractValue:
         return self
 
     def weaker_times(self) -> int:
@@ -202,11 +202,11 @@ class Rule0F(AbstractMinesClueRule):
     tags = ["Untagged"]
     creation_time = ""
 
-    def __init__(self, board: "AbstractBoard | None" = None, data: str | None = None) -> None:
+    def __init__(self, board: "Board | None" = None, data: str | None = None) -> None:
         super().__init__(board, data)
         self.drop = data is None
 
-    def init_clear(self, board: 'AbstractBoard') -> None:
+    def init_clear(self, board: 'Board') -> None:
         if not self.drop:
             return
         for key in board.get_board_keys():
@@ -215,21 +215,21 @@ class Rule0F(AbstractMinesClueRule):
             for pos, _ in board("F", key=key):
                 board.set_value(pos, None)
 
-    def fill(self, board: 'AbstractBoard') -> 'AbstractBoard':
+    def fill(self, board: 'Board') -> 'Board':
         return board
 
 
 class ValueCircle(AbstractMinesValue):
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'') -> None:
+    def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos, code)
 
     def __repr__(self) -> str:
         return "O"
 
-    def web_component(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
         return _get_image("circle", cover_pos_label=False)
 
-    def compose(self, board: 'AbstractBoard') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Mapping[str, object]:
         return _get_image("circle", cover_pos_label=False)
 
     def code(self) -> bytes:
@@ -239,7 +239,7 @@ class ValueCircle(AbstractMinesValue):
     def type(cls) -> bytes:
         return b"O"
 
-    def weaker(self, board: AbstractBoard) -> AbstractValue:
+    def weaker(self, board: Board) -> AbstractValue:
         return self
 
     def weaker_times(self) -> int:

@@ -3,34 +3,29 @@
 # @Time    : 2025/06/03 01:58
 # @Author  : Wu_RH
 # @FileName: board.py
-
-from base64 import b64decode
-from minesweepervariants.abs.board import ImmutableDict, JSONObject
-from typing import List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload, override
-import heapq
-
+from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
 import gc
+
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import IntVar
 
+from minesweepervariants.abs.dye import AbstractDye
+from minesweepervariants.impl.board.dye import get_dye
+from minesweepervariants.json_object import JSONObject, get_with_valid, jsonify, valid
+from minesweepervariants.size import Size
+from minesweepervariants.utils.tool import get_logger, get_random
 
 
+from minesweepervariants.position import Position
+from minesweepervariants.immutable_dict import ImmutableDict
 
-from ....abs.rule import AbstractRule, AbstractValue
-from ....utils.impl_obj import VALUE_QUESS, MINES_TAG
-from ....utils.impl_obj import POSITION_TAG, VALUE_CROSS, VALUE_CIRCLE
-from ....utils.tool import get_logger, get_random
-from ....abs.board import AbstractBoard, AbstractPosition, MASTER_BOARD, JSONObject, Size, ImmutableDict, get_with_valid, jsonify, valid
-from ....abs.Rrule import AbstractClueValue
-from ....abs.Mrule import AbstractMinesValue
+if TYPE_CHECKING:
+    from minesweepervariants.abs.rule import AbstractRule, AbstractValue
+    from minesweepervariants.abs.Rrule import AbstractClueValue
+    from minesweepervariants.abs.Mrule import AbstractMinesValue
 
 
-def alpha(col: int) -> str:
-    alpha_map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    if col < 26:
-        return alpha_map[col]
-    return alpha_map[col // 26 - 1] + alpha_map[col % 26]
-
+MASTER_BOARD_KEY = "1"
 
 def encode_int_7bit(n: int) -> bytes:
     # 编码主体：每7位 -> 1字节（bit6~bit0，bit7=0）
@@ -57,224 +52,12 @@ def decode_bytes_7bit(data: bytes) -> int:
     return result
 
 
-class Position(AbstractPosition):
-    def __repr__(self):
-        return (f"{self.board_key+':' if self.board_key != MASTER_BOARD else ''}"
-                f"{alpha(self.col)}{self.row+1}")
-
-    def _up(self, n: int = 1):
-        self.row -= n
-
-    def _down(self, n: int = 1):
-        self.row += n
-
-    def _left(self, n: int = 1):
-        self.col -= n
-
-    def _right(self, n: int = 1):
-        self.col += n
-
-    def _deviation(self, pos: 'AbstractPosition'):
-        self.row += pos.row
-        self.col += pos.col
-
-    # def _north(self, n: int = 1):
-    #     if self.row % 2 == 1:
-    #         self.col -= n
-    #         self.row -= n
-    #     else:
-    #         self.row -= n
-
-    # def _east(self, n: int = 1):
-    #     if self.row % 2 == 1:
-    #         self.col -= n
-    #         self.row += n
-    #     else:
-    #         self.row += n
-
-    # def _west(self, n: int = 1):
-    #     if self.row % 2 == 1:
-    #         self.row -= n
-    #     else:
-    #         self.col += n
-    #         self.row -= n
-
-    # def _south(self, n: int = 1):
-    #     if self.row % 2 == 1:
-    #         self.row += n
-    #     else:
-    #         self.col += n
-    #         self.row += n
-
-    def in_bounds(self, bound_pos: 'AbstractPosition') -> bool:
-        if bound_pos.board_key != self.board_key:
-            return False
-        return (0 <= self.col <= bound_pos.col and
-                0 <= self.row <= bound_pos.row)
-
-    def neighbors(self, *args: int):
-        """
-        按照欧几里得距离从小到大逐层扩散，筛选范围由距离平方控制（不包含当前位置）。
-
-        调用方式（类似 range）：
-            neighbors(end_layer)
-                返回所有欧几里得距离 ≤ √end_layer 的位置（从第 1 层开始）。
-            neighbors(start_layer, end_layer)
-                返回所有欧几里得距离 ∈ [√start_layer, √end_layer] 的位置。
-
-        :param args: 一个或两个整数
-            - 若提供一个参数 end_layer，视为从 √1 到 √end_layer。
-            - 若提供两个参数 start_layer 和 end_layer，视为从 √start_layer 到 √end_layer。
-            - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
-
-        :return: 位置列表，按距离从近到远排序。
-        """
-
-        # 解析参数
-        if len(args) == 1:
-            low, high = 1, args[0]
-        elif len(args) == 2:
-            low, high = args
-        else:
-            return []
-
-        # 处理无效参数
-        if high < low:
-            return []
-
-        x0, y0 = self.col, self.row
-        directions = [(dx, dy) for dx in (-1, 0, 1)
-                      for dy in (-1, 0, 1) if (dx, dy) != (0, 0)]
-
-        heap = []  # 最小堆存储 (距离平方, x, y)
-        visited = {(x0, y0)}
-        result = []
-
-        # 处理包含自身的情况 (距离平方=0)
-        if low <= 0 <= high:
-            result.append(self.clone())
-
-        # 初始化邻居
-        for dx, dy in directions:
-            nx, ny = x0 + dx, y0 + dy
-            d_sq = (nx - x0) ** 2 + (ny - y0) ** 2
-            if d_sq <= high:
-                heapq.heappush(heap, (d_sq, nx, ny))
-                visited.add((nx, ny))
-
-        # 遍历所有可达位置
-        while heap:
-            d_sq, x, y = heapq.heappop(heap)
-
-            # 检查是否在目标范围内
-            if low <= d_sq <= high:
-                result.append(Position(x, y, self.board_key))
-
-            # 扩展新位置
-            for dx, dy in directions:
-                nx, ny = x + dx, y + dy
-                if (nx, ny) in visited:
-                    continue
-
-                visited.add((nx, ny))
-                new_d_sq = (nx - x0) ** 2 + (ny - y0) ** 2
-
-                # 仅考虑距离平方未超过上限的位置
-                if new_d_sq <= high:
-                    heapq.heappush(heap, (new_d_sq, nx, ny))
-
-        return result
-
-    @classmethod
-    def parse(cls, s: str, board_key: Optional[str] = None) -> Optional['Position']:
-        try:
-            if ':' in s:
-                bk, pos_str = s.split(':', 1)
-                if bk != MASTER_BOARD:
-                    board_key = bk
-            else:
-                pos_str = s
-
-            col_str = ''.join(filter(str.isalpha, pos_str)).upper()
-            row_str = ''.join(filter(str.isdigit, pos_str))
-
-            col = 0
-            for char in col_str:
-                col = col * 26 + (ord(char) - ord('A') + 1)
-            col -= 1
-
-            row = int(row_str) - 1
-
-            return cls(col, row, board_key or MASTER_BOARD)
-        except Exception:
-            return None
-
-    # def hex_neighbors(self, *args: int):
-    #     """
-    #     按照六边形网格距离从小到大逐层扩散，筛选范围由层数控制（不包含当前位置）。
-
-    #     调用方式（类似 range）：
-    #         hex_neighbors(end_layer)
-    #             返回距离 ≤ end_layer 的位置（从第 1 层开始）。
-    #         hex_neighbors(start_layer, end_layer)
-    #             返回距离 ∈ [start_layer, end_layer] 的位置。
-
-    #     :param args: 一个或两个整数
-    #         - 若提供一个参数 end_layer，视为从 1 到 end_layer。
-    #         - 若提供两个参数 start_layer 和 end_layer，视为从 start_layer 到 end_layer。
-    #         - 参数非法（数量不为 1 或 2，或值非法）时返回空列表。
-
-    #     :return: 位置列表，按距离从近到远排序。
-    #     """
-    #     # 参数处理
-    #     if len(args) == 1:
-    #         low, high = 1, args[0]
-    #     elif len(args) == 2:
-    #         low, high = args
-    #     else:
-    #         return []
-
-    #     # 处理无效参数
-    #     if high < low or low < 1:
-    #         return []
-
-    #     result = []
-    #     visited = {(self.col, self.row)}
-    #     current_layer = [self]  # 当前层的位置列表
-
-    #     for distance in range(1, high + 1):
-    #         next_layer = []
-    #         for pos in current_layer:
-    #             # 获取六个邻接方向
-    #             hex_adjacent = [
-    #                 pos.up(),
-    #                 pos.down(),
-    #                 pos.north(),
-    #                 pos.east(),
-    #                 pos.west(),
-    #                 pos.south(),
-    #             ]
-    #             for neighbor in hex_adjacent:
-    #                 key = (neighbor.col, neighbor.row)
-    #                 if key not in visited:
-    #                     visited.add(key)
-    #                     next_layer.append(neighbor)
-    #                     # 如果距离在目标范围内，添加到结果
-    #                     if low <= distance <= high:
-    #                         result.append(neighbor)
-
-    #         if not next_layer:
-    #             break
-    #         current_layer = next_layer
-
-    #     return result
-
 class Matrix[T]:
     def __init__(self, size: Size, default: T = None):
         self.size = size
         self._data: list[list[T]] = [[default for _ in range(self.size.cols)] for _ in range(self.size.rows)]
 
-    def _check(self, pos: AbstractPosition):
+    def _check(self, pos: Position):
         if pos.row < 0 or pos.col < 0:
             raise IndexError("position out of bounds")
         rows = len(self._data)
@@ -282,18 +65,18 @@ class Matrix[T]:
         if pos.row >= rows or pos.col >= cols:
             raise IndexError("position out of bounds")
 
-    def get(self, pos: AbstractPosition) -> T:
+    def get(self, pos: Position) -> T:
         self._check(pos)
         return self._data[pos.row][pos.col]
 
-    def set(self, pos: AbstractPosition, value: T) -> None:
+    def set(self, pos: Position, value: T) -> None:
         self._check(pos)
         self._data[pos.row][pos.col] = value
 
-    def __getitem__(self, pos: AbstractPosition) -> T:
+    def __getitem__(self, pos: Position) -> T:
         return self.get(pos)
 
-    def __setitem__(self, pos: AbstractPosition, value: T) -> None:
+    def __setitem__(self, pos: Position, value: T) -> None:
         self.set(pos, value)
 
 class Config(TypedDict):
@@ -316,14 +99,120 @@ class BoardData(TypedDict):
     type_special: dict[str, Any]
     variable_special: dict[str, Any]
 
-
-
-class Board(AbstractBoard):
-    """
-    通过实现
-    """
-    name = "Board2"
+class Board:
     version = 0
+    name = "Board2"
+
+    default_special = 'raw'
+    raw_rules: list[tuple[str, str | None]] = []
+    rules: dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']] = {}
+
+    # 设置选项名列表
+    CONFIG_FLAGS: list[str] = [
+        "by_mini",  # 题板是否附带类角标
+        "pos_label",  # 题板是否有X=N标志
+        "row_col",  # 题板是否启用行列号
+        "interactive"  # 允许在该题板上放置雷和删除线索
+    ]
+
+
+    def __getitem__(self, pos: 'Position') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
+        return self.get_value(pos)
+
+    def __setitem__(self, pos: 'Position',
+                    value: Union['AbstractClueValue', 'AbstractMinesValue', None]) -> None:
+        return self.set_value(pos, value)
+
+    def __contains__(self, item: object) -> bool:
+        return isinstance(item, str) and self.has(target=item, key='')
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Board):
+            return False
+        if self.get_board_keys() != other.get_board_keys():
+            return False
+        if self.get_interactive_keys() != other.get_interactive_keys():
+            return False
+        for key in self.get_board_keys():
+            for pos, obj1 in self(key=key, special='raw', mode="obj"):
+                obj2 = other[pos]
+                if obj1 is None and obj2 is None:
+                    continue
+                if obj1 is None or obj2 is None:
+                    return False
+
+                from minesweepervariants.abs.rule import AbstractValue
+
+                if isinstance(obj1, AbstractValue):
+                    if obj1.json() != obj2.json():
+                        return False
+        return True
+
+    def dyed(self, name: str) -> None:
+        dye = get_dye(name)
+        if not isinstance(dye, AbstractDye):
+            raise ValueError(f"Dye {name} not found")
+        dye.dye(self)
+
+    def clone(self) -> 'Board':
+        """
+        克隆一个题板对象
+        实际为编码后初始化生成
+        :return: 克隆后的对象
+        """
+        json = self.json()
+        new_board = self.__class__.from_json(json)
+        if hasattr(new_board, "_get_rule_instance"):
+            new_board._bound_get_rule_instance(self._get_rule_instance)
+
+        return new_board
+
+
+    def get_interactive_keys(self) -> list[str]:
+        """返回所有与主板同等级的题板索引"""
+        return [k for k in self.get_board_keys()
+                if self.get_config(k, "interactive")]
+
+    def _bound_get_rule_instance(self,
+                                 get_rule_instance: Callable[[str, str | None, bool], AbstractRule | None]) -> None:
+        """
+        绑定get_rule_instance方法
+        :param get_rule_instance: 方法
+        """
+        self._get_rule_instance = get_rule_instance
+        self.get_rule_instance = self._get_rule_instance.__get__(self)
+
+    def get_rule_instance(self, rule_name: str, data: str | None = None, add: bool = True) -> "AbstractRule | None":
+        """
+        返回指定名称的规则对象
+        :param rule_name: 规则名称
+        :return: 规则对象
+        :add: 如果没有则添加
+        """
+        raise RuntimeError("Method get_rule_instance is not bound")
+
+    def set_default_special(self, special: str = 'raw') -> None:
+        """ 设置默认变量类型(只能设置一次)"""
+        if special == 'raw' or self.default_special == 'raw':
+            self.default_special = special
+        else:
+            raise ValueError("default_special was already set")
+
+
+    def serialize(self) -> object:
+        return compress(json_dumps(self.json()))
+
+    @classmethod
+    def from_str(cls, data: str) -> object:
+        from ..impl.impl_obj import decode_board
+        return decode_board(data)
+
+    def rule_text(self) -> str:
+        rule_text: list[str] = []
+        for rule, data in self.raw_rules:
+            rule_text .append(f"[{rule}{f':{data}' if data else ''}]")
+
+        return "".join(rule_text)
 
     def __init__(self, *, rules: Optional[dict[Literal["clue_rules", "mines_rules", "mines_clue_rules"], list['AbstractRule']]] = None, raw_rules: Optional[list[Tuple[str, str | None]]] = None, default_special: str = 'raw'):
         # traceback.print_stack()
@@ -351,7 +240,7 @@ class Board(AbstractBoard):
             mode: Literal["object", "obj"] = "object",
             key: Optional[str] = None,
              **kwargs: object
-    ) -> Generator[Tuple[AbstractPosition, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
+    ) -> Generator[Tuple[Position, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
         ...
 
     @overload
@@ -361,7 +250,7 @@ class Board(AbstractBoard):
             mode: Literal["type"],
             key: Optional[str] = None,
             **kwargs: object
-    ) -> Generator[Tuple[AbstractPosition, str], None, None]:
+    ) -> Generator[Tuple[Position, str], None, None]:
         ...
 
     @overload
@@ -371,7 +260,7 @@ class Board(AbstractBoard):
             mode: Literal["variable", "var"],
             key: Optional[str] = None,
             **kwargs: object
-    ) -> Generator[Tuple[AbstractPosition, IntVar], None, None]:
+    ) -> Generator[Tuple[Position, IntVar], None, None]:
         ...
 
     @overload
@@ -381,7 +270,7 @@ class Board(AbstractBoard):
             mode: Literal["dye"],
             key: Optional[str] = None,
             **kwargs: object
-    ) -> Generator[Tuple[AbstractPosition, bool], None, None]:
+    ) -> Generator[Tuple[Position, bool], None, None]:
         ...
 
     @overload
@@ -391,7 +280,7 @@ class Board(AbstractBoard):
             mode: Literal["none"],
             key: Optional[str] = None,
            **kwargs: object
-    ) -> Generator[Tuple[AbstractPosition, None], None, None]:
+    ) -> Generator[Tuple[Position, None], None, None]:
         ...
 
 
@@ -403,7 +292,7 @@ class Board(AbstractBoard):
             **kwargs: object
     ) -> Generator[
         Tuple[
-            AbstractPosition,
+            Position,
             Union["AbstractClueValue", "AbstractMinesValue", str, IntVar, bool, None]
         ],
         None, None
@@ -482,9 +371,9 @@ class Board(AbstractBoard):
     def generate_board(
             self, board_key: str,
             size: Optional[Size] = None,
-            labels: list[str] | dict[Position, str] | None = [],
-            true_tag: "AbstractValue" = VALUE_CROSS,
-            false_tag: "AbstractValue" = VALUE_CIRCLE,
+            labels: list[str] | dict[Position, str] | None = None,
+            true_tag: Optional["AbstractValue"] = None,
+            false_tag: Optional["AbstractValue"] = None,
     ) -> None:
         """
         创建一个新的题板
@@ -494,6 +383,14 @@ class Board(AbstractBoard):
         :param true_tag: 题板默认非雷对象
         :param false_tag:题板默认雷对象
         """
+        from minesweepervariants.utils.impl_obj import VALUE_QUESS, MINES_TAG, VALUE_CROSS, VALUE_CIRCLE
+
+        if true_tag is None:
+            true_tag = VALUE_CIRCLE
+
+        if false_tag is None:
+            false_tag = VALUE_CROSS
+
         if board_key in self.board_data:
             return
 
@@ -525,7 +422,7 @@ class Board(AbstractBoard):
         }
         self.board_data[board_key] = data
         self.labels = labels
-        if board_key == MASTER_BOARD:
+        if board_key == MASTER_BOARD_KEY:
             self.board_data[board_key]["config"]["row_col"] = True
             self.board_data[board_key]["config"]["interactive"] = True
             self.board_data[board_key]["config"]["VALUE"] = VALUE_QUESS
@@ -588,6 +485,12 @@ class Board(AbstractBoard):
     @classmethod
     def from_json(cls, data: JSONObject, with_rules: bool | dict[str, list['AbstractRule']] = False) -> Self:
         """Load board state from json produced by json()"""
+
+        from minesweepervariants.abs.Rrule import AbstractClueValue
+        from minesweepervariants.abs.Mrule import AbstractMinesValue
+
+        from minesweepervariants.utils.impl_obj import POSITION_TAG
+
         self = cls()
 
         from minesweepervariants.impl.impl_obj import get_value
@@ -684,19 +587,29 @@ class Board(AbstractBoard):
         return self
 
 
-    def boundary(self, key=MASTER_BOARD) -> "Position":
+    def boundary(self, key=MASTER_BOARD_KEY) -> "Position":
         if key not in self.get_board_keys():
             return Position(-1, -1, key)
         size = self.board_data[key]["config"]["size"]
         return Position(size.cols - 1, size.rows - 1, key)
 
-    def is_valid(self, pos: 'AbstractPosition') -> bool:
+
+    def is_valid(self, pos: 'Position') -> bool:
         if pos in self.get_config(pos.board_key, "mask"):
             return False
-        return super().is_valid(pos)
+        return pos.in_bounds(self.boundary(pos.board_key))
 
+    def in_bounds(self, pos: 'AbstractPosition') -> bool:
+        """
+        检测对象是否在borad的范围内
+        :param pos: 输入位置
+        :return: 是否在范围内
+        """
+        return self.is_valid(pos)
     @staticmethod
     def type_value(value) -> str:
+        from minesweepervariants.abs.Rrule import AbstractClueValue
+        from minesweepervariants.abs.Mrule import AbstractMinesValue
         # 查看value的类型
         if value is None:
             return "N"
@@ -720,7 +633,7 @@ class Board(AbstractBoard):
                 return True
         return False
 
-    def get_type(self, pos: 'AbstractPosition', special: str = '', *args, **kwargs) -> str:
+    def get_type(self, pos: 'Position', special: str = '', *args, **kwargs) -> str:
         special = special or self.default_special
 
         key = pos.board_key
@@ -737,29 +650,29 @@ class Board(AbstractBoard):
 
         return ""
 
-    def get_value(self, pos: 'AbstractPosition', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
+    def get_value(self, pos: 'Position', *args, **kwargs) -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["obj"][pos]
         return None
 
-    def set_value(self, pos: 'AbstractPosition', value):
+    def set_value(self, pos: 'Position', value):
         key = pos.board_key
         if self.is_valid(pos):
             self.board_data[key]["obj"][pos] = value
             self.board_data[key]["type"][pos] = self.type_value(value)
 
-    def get_dyed(self, pos: 'AbstractPosition', *args: object, **kwargs: object) -> bool | None:
+    def get_dyed(self, pos: 'Position', *args: object, **kwargs: object) -> bool | None:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["dye"][pos]
 
-    def set_dyed(self, pos: 'AbstractPosition', dyed: bool):
+    def set_dyed(self, pos: 'Position', dyed: bool):
         key = pos.board_key
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos] = dyed
 
-    def get_variable(self, pos: 'AbstractPosition', special: str = '', *args, **kwargs) -> IntVar | None:
+    def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
         special = special or self.default_special
         # if special != 'raw':
         #     s = "".join(traceback.format_stack())
@@ -852,7 +765,7 @@ class Board(AbstractBoard):
         return pos_list
 
 
-    def get_pos(self, row: int, col: int, key=MASTER_BOARD) -> Union['Position', None]:
+    def get_pos(self, row: int, col: int, key=MASTER_BOARD_KEY) -> Union['Position', None]:
         size = self.board_data[key]["config"]["size"]
         if -size.cols < col < size.cols and -size.rows < row < size.rows:
             col = col if col >= 0 else size.cols + col
@@ -862,7 +775,7 @@ class Board(AbstractBoard):
                 return pos
         return None
 
-    def get_pos_box(self, pos1: "AbstractPosition", pos2: "AbstractPosition") -> List["AbstractPosition"]:
+    def get_pos_box(self, pos1: "Position", pos2: "Position") -> List["Position"]:
         if pos1.board_key != pos2.board_key:
             return []
         if not (self.in_bounds(pos1) and self.in_bounds(pos2)):
@@ -948,6 +861,8 @@ class Board(AbstractBoard):
         - 雷标签(F)：:flag:
         - 问号(?)：❓
         """
+        from minesweepervariants.utils.impl_obj import MINES_TAG, VALUE_QUESS
+
         digit_emojis = {
             '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣',
             '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣'
@@ -1020,7 +935,7 @@ class Board(AbstractBoard):
             r += "\n"
         return r.rstrip()
 
-    def pos_label(self, pos: 'AbstractPosition') -> str:
+    def pos_label(self, pos: 'Position') -> str:
         labels = self.get_config(pos.board_key, "labels")
         if type(labels) is dict:
             if pos in labels:

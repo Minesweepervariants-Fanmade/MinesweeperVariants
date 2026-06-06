@@ -15,7 +15,7 @@ from ..utils.tool import get_logger
 from .rule import AbstractRule
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.board import AbstractBoard
+    from minesweepervariants.board import Board
     from minesweepervariants.impl.summon.solver import Switch
 
 
@@ -84,11 +84,11 @@ class Rule0R(AbstractMinesRule):
     tags = ["Untagged"]
     creation_time = ""
 
-    def __init__(self, board: "AbstractBoard | None" = None, data: str | None = None) -> None:
+    def __init__(self, board: "Board | None" = None, data: str | None = None) -> None:
         super().__init__(board, data)
         self.data: Optional[str] = data
 
-    def create_constraints(self, board: 'AbstractBoard', switch: "Switch") -> None:
+    def create_constraints(self, board: 'Board', switch: "Switch") -> None:
         model: CpModel = board.get_model()
         model_obj: object = model
         s = switch.get(model, self)

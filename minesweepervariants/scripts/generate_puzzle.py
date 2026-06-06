@@ -9,10 +9,11 @@ import os
 import time
 from typing import Optional
 
-from minesweepervariants.abs.board import Size, compress, json_dumps
-from minesweepervariants.impl.impl_obj import decode_board, get_board, ModelGenerateError
+from minesweepervariants.impl.impl_obj import decode_board, ModelGenerateError
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.summon import GenerateError
+from minesweepervariants.json_object import compress, json_dumps
+from minesweepervariants.size import Size
 from minesweepervariants.utils import timer
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.tool import get_logger, get_random

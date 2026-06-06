@@ -18,8 +18,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ...abs.Mrule import AbstractMinesValue
 from ...abs.Rrule import AbstractClueValue
-from ...abs.board import AbstractBoard
-from ...abs.board import AbstractPosition
+from minesweepervariants.board import Board
+from minesweepervariants.position import Position
 from . import Summon
 from .solver import solver_by_csp, hint_by_csp, Switch, deduced_by_csp, solver_model
 from ...utils.impl_obj import MINES_TAG, VALUE_QUESS, POSITION_TAG, serialize as tag_serialize, decode as tag_decode
@@ -58,7 +58,7 @@ ULTIMATE_R = UMode.ULTIMATE_R
 ULTIMATE_P = UMode.ULTIMATE_P
 
 
-def max_disjoint_lists(data: Dict[Tuple, List[AbstractPosition]]) -> List[List[AbstractPosition]]:
+def max_disjoint_lists(data: Dict[Tuple, List[Position]]) -> List[List[Position]]:
     """
     从字典的列表中选出互不相交的子集，使并集元素数最大。
     返回选中的列表（保持原始列表顺序）。
@@ -129,7 +129,7 @@ def max_disjoint_lists(data: Dict[Tuple, List[AbstractPosition]]) -> List[List[A
 
 
 class ValueAsterisk(AbstractClueValue):
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'', *args, **kwargs):
+    def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
     def __repr__(self) -> str:
@@ -142,12 +142,12 @@ class ValueAsterisk(AbstractClueValue):
     def code(self) -> bytes:
         return b""
 
-    def high_light(self, board: 'AbstractBoard') -> List['AbstractPosition'] | None:
+    def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
 
 
 class MinesAsterisk(AbstractMinesValue):
-    def __init__(self, pos: 'AbstractPosition', code: bytes = b'', *args, **kwargs):
+    def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
     def __repr__(self) -> str:
@@ -160,7 +160,7 @@ class MinesAsterisk(AbstractMinesValue):
     def code(self) -> bytes:
         return b""
 
-    def high_light(self, board: 'AbstractBoard') -> List['AbstractPosition'] | None:
+    def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
 
 
@@ -284,7 +284,7 @@ class GameSession:
             board[pos] = self.flag_tag
         else:
             board[pos] = self.clue_tag
-        board: AbstractBoard
+        board: Board
         # print("=" * 20)
         # print(board)
         # print("=" * 20)
@@ -337,10 +337,10 @@ class GameSession:
         total = elapsed / schedule if schedule > 0 else float('inf')
         return schedule, elapsed, total
 
-    def _create_board(self) -> Optional["AbstractBoard"]:
+    def _create_board(self) -> Optional["Board"]:
         board = self.answer_board.clone()
         random = get_random()
-        board: AbstractBoard
+        board: Board
         model = board.get_model()
 
         for rule in self.summon.mines_rules.rules + [
@@ -402,12 +402,12 @@ class GameSession:
 
     def create_board_by_untype(
             self
-    ) -> Union["AbstractBoard", None]:
+    ) -> Union["Board", None]:
         """
         未使用任何type检查的生成题板
         """
 
-    def create_board(self) -> Union["AbstractBoard", None]:
+    def create_board(self) -> Union["Board", None]:
         """
         一层具象
         终极模式的规则是 直到推无可推再给下一步线索 如果倒过来想呢
@@ -461,7 +461,7 @@ class GameSession:
         self.origin_board = board.clone()
         return board
 
-    def chord_clue(self, clue_pos: AbstractPosition) -> list[AbstractPosition]:
+    def chord_clue(self, clue_pos: Position) -> list[Position]:
         # 看最后一次提示有没有包含该格的单线索
         VALUE = self.board.get_config(clue_pos.board_key, "VALUE")
         MINES = self.board.get_config(clue_pos.board_key, "MINES")
@@ -474,7 +474,7 @@ class GameSession:
                     return positions
             return []
         obj = self.board.get_value(clue_pos)
-        board: AbstractBoard = self.board.clone()
+        board: Board = self.board.clone()
         chord_positions = []
         if obj.deduce_cells(board) is not None:
             for pos, obj in self.board(special='raw'):
@@ -500,7 +500,7 @@ class GameSession:
 
         return chord_positions
 
-    def apply(self, pos: AbstractPosition, action: int) -> Union["AbstractBoard", None]:
+    def apply(self, pos: Position, action: int) -> Union["Board", None]:
         """
         :param pos: 交互位置
         :param action: 操作代码
@@ -603,14 +603,14 @@ class GameSession:
             self.thread_deduced()
         return self.board
 
-    def click(self, pos: "AbstractPosition") -> Union["AbstractBoard", None]:
+    def click(self, pos: "Position") -> Union["Board", None]:
         """
         翻开/点击 某个空白格
         :param pos: 翻开的位置
         """
         return self.apply(pos, 0)
 
-    def mark(self, pos: AbstractPosition) -> Union["AbstractBoard", None]:
+    def mark(self, pos: Position) -> Union["Board", None]:
         """
         右键标雷
         """
@@ -819,7 +819,7 @@ class GameSession:
 
         return results
 
-    def _hint(self, board) -> dict[tuple, list[AbstractPosition]]:
+    def _hint(self, board) -> dict[tuple, list[Position]]:
         """
         返回每一类推理依据及其能推出的位置
         """
@@ -945,7 +945,7 @@ class GameSession:
                     _model = model.clone()
                     hint_var = []
                     for hint_obj in key:
-                        if isinstance(hint_obj, AbstractPosition):
+                        if isinstance(hint_obj, Position):
                             hint_var.append(switch.get_switches_by_obj(hint_obj)[0][1])
                         elif isinstance(hint_obj, tuple):
                             for var_tuple in switch.get_switches_by_obj('RULE|' + hint_obj[0]):
@@ -1064,7 +1064,7 @@ class GameSession:
                 break
             self.logger.debug("\n" + self.board.show_board())
             minsize = min([len(k) for k in self.hint()])
-            grouped_hints: dict[tuple, list[AbstractPosition]] = {
+            grouped_hints: dict[tuple, list[Position]] = {
                 hints: deduceds
                 for hints, deduceds in grouped_hints.items()
                 if len(hints) == minsize
@@ -1117,8 +1117,8 @@ class GameSession:
         )
         self.flag_tag = tag_decode(data['flag_tag'])
         self.clue_tag = tag_decode(data['clue_tag'])
-        self.answer_board = AbstractBoard.from_str(data['answer_board'])
-        self.board = AbstractBoard.from_str(data['board'])
+        self.answer_board = Board.from_str(data['answer_board'])
+        self.board = Board.from_str(data['board'])
 
         return self
 

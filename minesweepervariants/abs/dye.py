@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from minesweepervariants.abs.board import AbstractBoard
+    from minesweepervariants.board import Board
 
 
 class AbstractDye(ABC):
@@ -17,5 +17,5 @@ class AbstractDye(ABC):
         self.args = args
 
     @abstractmethod
-    def dye(self, board: "AbstractBoard") -> None:
+    def dye(self, board: "Board") -> None:
         """染色函数"""
