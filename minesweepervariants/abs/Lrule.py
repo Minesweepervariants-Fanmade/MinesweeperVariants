@@ -5,6 +5,7 @@
 # @Author  : Wu_RH
 # @FileName: Lrule.py
 
+from __future__ import annotations
 from ortools.sat.python.cp_model import CpModel
 
 

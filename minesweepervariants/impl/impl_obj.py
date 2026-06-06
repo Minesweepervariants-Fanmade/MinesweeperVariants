@@ -3,6 +3,8 @@
 # @Time    : 2025/06/07 13:45
 # @Author  : Wu_RH
 # @FileName: impl_obj.py
+
+from __future__ import annotations
 from minesweepervariants.board import Board
 
 

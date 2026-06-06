@@ -7,6 +7,7 @@
 
 # 雷线索由于未实装 等待版本大更新
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Mapping
 

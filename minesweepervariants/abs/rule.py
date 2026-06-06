@@ -5,6 +5,7 @@
 # @Author  : Wu_RH
 # @FileName: rule.py
 
+from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
 import locale
 from tkinter import IntVar
