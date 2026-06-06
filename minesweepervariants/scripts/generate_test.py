@@ -59,14 +59,15 @@ def main(
         a_time = time.time()
         _board = s.summon_board()
         if _board is None and not unseed:
-            raise ValueError("左线/总雷数非法")
+            logger.warn("左线/总雷数异常")
+            continue
         if _board is None:
             continue
         logger.info(f"<{attempt_index}>生成用时:{(time_used := time.time() - a_time)}s")
         logger.info(f"总雷数: {s.total}")
         logger.info("\n" + _board.show_board())
 
-        rule_text = _board.rule_text()
+        rule_text = s.rule_text()
         if dye:
             rule_text += f"[@{dye}]"
         rule_text += f"{size.cols}x{size.rows}"

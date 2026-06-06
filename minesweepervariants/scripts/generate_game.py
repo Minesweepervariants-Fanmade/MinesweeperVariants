@@ -68,7 +68,7 @@ def main(
                dynamic_dig_rounds=dynamic_dig_rounds,
                dynamic_dig_max_batch=dynamic_dig_max_batch)
 
-    rule_text = s.board.rule_text()
+    rule_text = s.rule_text()
     size_a = 0
     size_b = 0
     size_c = len(s.board.get_interactive_keys())
