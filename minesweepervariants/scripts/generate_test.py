@@ -10,12 +10,13 @@ import time
 
 
 from minesweepervariants.impl.summon import Summon
+from minesweepervariants.size import Size
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed
 from minesweepervariants.utils.tool import get_logger, get_random
 from minesweepervariants.utils import tool
 
-from minesweepervariants.config.config import DEFAULT_CONFIG, PUZZLE_CONFIG
+from minesweepervariants.config.config import DEFAULT_CONFIG
 
 
 
