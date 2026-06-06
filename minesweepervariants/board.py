@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
 
+__all__ = ["Board", "Config", "BoardData", "Matrix"]
+
 MASTER_BOARD_KEY = "1"
 
 def encode_int_7bit(n: int) -> bytes:

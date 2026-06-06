@@ -1,6 +1,7 @@
 
 from typing import Iterator, Mapping, TypeVar, overload
 
+__all__ = ["ImmutableDict"]
 
 K = TypeVar("K")
 V = TypeVar("V", covariant=True)

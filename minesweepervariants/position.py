@@ -5,6 +5,8 @@ import heapq
 from typing import Optional, Self
 from warnings import deprecated
 
+__all__ = ["Position", "PositionTag", "alpha"]
+
 def alpha(col: int) -> str:
     alpha_map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     if col < 26:
