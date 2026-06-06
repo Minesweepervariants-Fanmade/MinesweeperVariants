@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
 import locale
 from tkinter import IntVar
-from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Tuple, TYPE_CHECKING, \
+from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Self, Tuple, TYPE_CHECKING, \
     TypedDict, TypeGuard, Union, get_args, ItemsView, Dict
 from collections.abc import MutableMapping
 
@@ -18,6 +18,7 @@ from ortools.sat.python.cp_model import CpModel
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.json_object import JSONObject
 from minesweepervariants.utils.tool import get_logger
+from minesweepervariants.utils.value_template import ValueTemplate
 
 if TYPE_CHECKING:
     from minesweepervariants.board import Board, Position
@@ -377,45 +378,38 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         return self.id
 
 class AbstractValue(ABC):
+    @property
+    @abstractmethod
+    def id(self) -> str: ...  # pyright: ignore[reportRedeclaration]
+
+    id: str
+
+    value: ValueTemplate
+
     @classmethod
-    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
-        if isinstance(data, Mapping) and 'old_style' in data and data['old_style'] and 'type' in data:
-            if 'code' in data and isinstance((code := data['code']), str):
-                from base64 import b64decode
-                return cls(pos, **{"code": b64decode(code)})
-            else:
-                raise ValueError(f"Unsupported clue value type {data['type']}")
-        else:
-            raise ValueError(f"Unsupported clue value type")
+    @abstractmethod
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
+        return cls(pos)
 
     def json(self) -> 'JSONObject':
-        from base64 import b64encode
+        return self.value.json()
 
-        return ImmutableDict({"old_style": True, "type": b64encode(self.type()).decode(), "code": b64encode(self.code()).decode()})
-
-    def __init__(self, pos: 'Position', *args, **kwargs) -> None:
+    def __init__(self, pos: 'Position', *args: object, **kwargs: object) -> None:
         """
         获取code并初始化 输入值为code函数的返回值
         :param code: 实例对象代码
         """
         self.pos = pos
+        self.value = ValueTemplate()
 
     def __repr__(self) -> str:
-        raise NotImplementedError
+        return self.value.__repr__()
 
     def compose(self, board: 'Board') -> Mapping[str, object]:
-        """
-        返回一个可渲染对象列表
-        默认使用__repr__
-        """
-        ...
+        return self.value.compose()
 
     def web_component(self, board: 'Board') -> Mapping[str, object]:
-        """
-        返回一个可渲染对象列表
-        默认使用__repr__
-        """
-        ...
+        return self.value.web_component()
 
     def invalid(self, board: 'Board') -> bool:
         high_light = self.high_light(board)
@@ -426,31 +420,12 @@ class AbstractValue(ABC):
                 return False
         return True
 
-    @classmethod
-    @abstractmethod
-    def type(cls) -> bytes:
-        """
-        返回当前规则的类型 必须所有规则返回是不同的
-        如0V返回0V
-        :return:
-        """
-        ...
-
-    def tag(self, board: 'Board') -> bytes:
+    def tag(self, board: 'Board') -> str:
         """
         返回标签
         默认使用type
         """
-        return self.type()
-
-    def code(self) -> bytes:
-        """
-        返回为当前对象的格式化值 返回为str
-        返回值会被初始化的时候使用
-        返回值不可包含空格
-        :return:
-        """
-        return b''
+        return self.id
 
     def create_constraints(self, board: 'Board', switch: 'Switch') -> None:
         """

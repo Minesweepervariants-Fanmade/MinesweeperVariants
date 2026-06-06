@@ -12,7 +12,9 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Mapping
 
 from minesweepervariants.board import Board
+from minesweepervariants.json_object import JSONObject
 from minesweepervariants.utils.image_template import get_col, get_image, get_text, get_dummy
+from minesweepervariants.utils.value_template import SingleImageValue, SingleValue, ValueTemplate
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
 
@@ -38,36 +40,21 @@ class AbstractMinesClueRule(AbstractRule, ABC):
 class AbstractMinesValue(AbstractValue, ABC):
     pos: 'Position'
 
-    @abstractmethod
-    def __init__(self, pos: 'Position', *args, **kwargs) -> None:
+    def __init__(self, pos: 'Position', *args: object, **kwargs: object) -> None:
+        """
+        获取code并初始化 输入值为code函数的返回值
+        :param code: 实例对象代码
+        """
         self.pos = pos
+        self.value = ValueTemplate(is_mine=True)
 
+    @abstractmethod
     def __repr__(self) -> str:
         """
         当前值在展示时候的显示字符串
         :return: 显示的字符串
         """
         return "F"
-
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        """
-        返回一个可渲染对象列表
-        默认使用__repr__
-        """
-        return get_col(
-            get_dummy(height=0.175),
-            get_text(self.__repr__(), color=("#FFFF00", "#FF7F00")),
-            get_dummy(height=0.175),
-        )
-
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        """
-        返回一个可渲染对象列表
-        默认使用__repr__
-        """
-        if "compose" in type(self).__dict__:
-            return self.compose(board)
-        return Number(self.__repr__())
 
     def weaker(self, board: Board) -> AbstractValue:
         value = board.get_config(self.pos.board_key, "MINES")
@@ -87,25 +74,18 @@ class MinesTag(AbstractMinesValue):
     雷标志类
     用于暂存表示为类
     """
+    id = "F"
 
     def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos, code)
+        self.value = SingleImageValue("flag", is_mine=True)
 
     def __repr__(self) -> str:
         return "雷"
 
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        return get_image(
-            "flag",
-            cover_pos_label=False,
-        )
-
     @classmethod
-    def type(cls) -> bytes:
-        return b"F"
-
-    def code(self) -> bytes:
-        return b""
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
+        return cls(pos)
 
     def weaker(self, board: Board) -> AbstractValue:
         return self
@@ -140,24 +120,18 @@ class Rule0F(AbstractMinesClueRule):
 
 
 class ValueCircle(AbstractMinesValue):
+    id = "O"
     def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos, code)
+        self.value = SingleImageValue("circle", is_mine=True)
 
     def __repr__(self) -> str:
         return "O"
 
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        return get_image("circle", cover_pos_label=False)
-
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        return get_image("circle", cover_pos_label=False)
-
-    def code(self) -> bytes:
-        return b""
-
     @classmethod
-    def type(cls) -> bytes:
-        return b"O"
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
+        return cls(pos)
+
 
     def weaker(self, board: Board) -> AbstractValue:
         return self

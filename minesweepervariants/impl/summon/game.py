@@ -129,36 +129,24 @@ def max_disjoint_lists(data: Dict[Tuple, List[Position]]) -> List[List[Position]
 
 
 class ValueAsterisk(AbstractClueValue):
+    id = "*"
     def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
     def __repr__(self) -> str:
         return "*"
 
-    @classmethod
-    def type(cls) -> bytes:
-        return b"*"
-
-    def code(self) -> bytes:
-        return b""
-
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
 
 
 class MinesAsterisk(AbstractMinesValue):
+    id = "#"
     def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
     def __repr__(self) -> str:
         return "#"
-
-    @classmethod
-    def type(cls) -> bytes:
-        return b"F*"
-
-    def code(self) -> bytes:
-        return b""
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []

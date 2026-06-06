@@ -249,9 +249,8 @@ def get_rule(name: str) -> type:
 def get_value_type(clue_type: str) -> Optional[type[AbstractValue]]:
     for i in get_all_subclasses(AbstractValue):
         if (
-            hasattr(i, 'type')
-            and i.type() is not None
-            and i.type().decode('ascii') == clue_type
+            hasattr(i, 'id')
+            and i.id == clue_type
         ):
             return i
     return None

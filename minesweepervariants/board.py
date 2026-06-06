@@ -434,7 +434,7 @@ class Board:
                     cell["type"] = None
                     cell["data"] = None
                 else:
-                    cell["type"] = obj.type().decode("ascii")
+                    cell["type"] = obj.id
                     cell["data"] = ImmutableDict(obj.json())
                 cells.append(ImmutableDict(cell))
 
@@ -442,8 +442,8 @@ class Board:
                 "size": ImmutableDict({"cols": size.cols, "rows": size.rows}),
                 "flags": ImmutableDict(flags),
                 "mask": tuple(mask),
-                "value": ImmutableDict({"type": value.type().decode("ascii"), "data": value.json()}),
-                "mines": ImmutableDict({"type": mines.type().decode("ascii"),"data": mines.json()}),
+                "value": ImmutableDict({"type": value.id, "data": value.json()}),
+                "mines": ImmutableDict({"type": mines.id,"data": mines.json()}),
                 "labels": labels,
                 "cells": tuple(cells)
             })

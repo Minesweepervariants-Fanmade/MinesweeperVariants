@@ -10,7 +10,9 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, List, Mapping
 
 from minesweepervariants.board import Board
+from minesweepervariants.json_object import JSONObject
 from minesweepervariants.utils.image_template import get_col, get_dummy, get_image, get_text
+from minesweepervariants.utils.value_template import SingleImageValue, SingleValue
 
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
@@ -64,34 +66,6 @@ class AbstractClueValue(AbstractValue, ABC):
     线索格数字对象类
     """
 
-
-    def __repr__(self) -> str:
-        """
-        当前值在展示时候的显示字符串
-        :return: 显示的字符串
-        """
-        return "?"
-
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        """
-        返回一个可渲染对象列表
-        默认使用__repr__
-        """
-        return get_col(
-            get_dummy(height=0.3),
-            get_text(self.__repr__()),
-            get_dummy(height=0.3),
-        )
-
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        """
-        返回一个可渲染对象列表
-        默认使用__repr__
-        """
-        if "compose" in type(self).__dict__:
-            return self.compose(board)
-        return Number(self.__repr__())
-
     def weaker(self, board: Board) -> AbstractValue:
         value = board.get_config(self.pos.board_key, "VALUE")
         if isinstance(value, AbstractValue):
@@ -110,19 +84,18 @@ class ValueQuess(AbstractClueValue):
     """
     问号类(线索非雷)
     """
+    id = "?"
 
     def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos)
+        self.value = SingleValue("?")
 
     def __repr__(self) -> str:
         return "?"
 
     @classmethod
-    def type(cls) -> bytes:
-        return b"?"
-
-    def code(self) -> bytes:
-        return b""
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
+        return cls(pos)
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
@@ -138,25 +111,18 @@ class ValueCross(AbstractClueValue):
     """
     副板的叉号
     """
+    id = "X"
 
     def __init__(self, pos: 'Position', *args, **kwargs) -> None:
         super().__init__(pos)
+        self.value = SingleImageValue("cross")
 
     def __repr__(self) -> str:
         return "X"
 
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        return get_image("cross")
-
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        return get_image("cross")
-
     @classmethod
-    def type(cls) -> bytes:
-        return b"X"
-
-    def code(self) -> bytes:
-        return b""
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
+        return cls(pos)
 
     def weaker(self, board: Board) -> AbstractValue:
         return self

@@ -5,25 +5,25 @@ from ..json_object import JSONObject, JSONDirectlySerializable, deep_wrap, JSONS
 
 if TYPE_CHECKING:
     class Template(TypedDict, extra_items=JSONDirectlySerializable):
-        type: Literal["value"]
+        type: Literal["value", "minevalue"]
         data: JSONDirectlySerializable
 else:
     class Template(TypedDict):
-        type: Literal["value"]
+        type: Literal["value", "minevalue"]
         data: JSONDirectlySerializable
 
         __extra_items__ = JSONDirectlySerializable
 
 def is_value_template(data: JSONDirectlySerializable) -> TypeIs[Template]:
-    return isinstance(data, dict) and data.get("type") == "value" and "data" in data
+    return isinstance(data, dict) and data.get("type") in ["value", "minevalue"] and "data" in data
 
 class ValueTemplate:
-    def __init__(self):
-        return
+    def __init__(self, is_mine: bool = False):
+        self.is_mine = is_mine
 
     def _template(self) -> Template:
         result: Template =  {
-            "type": "value",
+            "type": "minevalue" if self.is_mine else "value",
             "data": None
         }
         return result
@@ -33,7 +33,8 @@ class ValueTemplate:
 
     @classmethod
     def try_from(cls, data: Template) -> Self | None:
-        return cls()
+        is_mine = data.get("type") == "minevalue"
+        return cls(is_mine=is_mine)
 
     def __repr__(self) -> str:
         return "?"
@@ -41,9 +42,10 @@ class ValueTemplate:
     def compose(self) -> Mapping[str, object]:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
 
+        color = ("#FFFF00", "#FF7F00") if self.is_mine else ("#FFFFFF", "#000000")
         return get_col(
             get_dummy(height=0.3),
-            get_text(self.__repr__()),
+            get_text(self.__repr__(), color=color),
             get_dummy(height=0.3),
         )
 
@@ -54,7 +56,8 @@ class ValueTemplate:
 
 
 class SingleValue(ValueTemplate):
-    def __init__(self, value: JSONScalar):
+    def __init__(self, value: JSONScalar, is_mine: bool = False):
+        super().__init__(is_mine)
         self.value = value
 
     def _template(self) -> Template:
@@ -82,18 +85,21 @@ class SingleValue(ValueTemplate):
     def compose(self) -> Mapping[str, object]:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
 
+        color = ("#FFFF00", "#FF7F00") if self.is_mine else ("#FFFFFF", "#000000")
         return get_col(
             get_dummy(height=0.3),
-            get_text(self.__repr__()),
+            get_text(self.__repr__(), color=color),
             get_dummy(height=0.3),
         )
+
 
     def web_component(self) -> Mapping[str, object]:
         from minesweepervariants.utils.web_template import Number
         return Number(self.__repr__())
 
 class SingleNumberValue(SingleValue):
-    def __init__(self, value: int | float | tuple[int, int]):
+    def __init__(self, value: int | float | tuple[int, int], is_mine: bool = False):
+        super().__init__(is_mine)
         self.value = value
 
     def _template(self) -> Template:
@@ -120,7 +126,8 @@ class SingleNumberValue(SingleValue):
 
 
 class SingleIntValue(SingleNumberValue):
-    def __init__(self, value: int):
+    def __init__(self, value: int, is_mine: bool = False):
+        super().__init__(value, is_mine)
         self.value = value
 
     def _template(self) -> Template:
@@ -144,7 +151,8 @@ class SingleIntValue(SingleNumberValue):
                 return None
 
 class MultiIntValue(ValueTemplate):
-    def __init__(self, value: Sequence[int]):
+    def __init__(self, value: Sequence[int], is_mine: bool = False):
+        super().__init__(is_mine)
         self.value = tuple(value)
 
     def _template(self) -> Template:
@@ -167,3 +175,47 @@ class MultiIntValue(ValueTemplate):
                 return cls(typed_value)
             case _:
                 return None
+
+class SingleImageValue(ValueTemplate):
+    def __init__(self, value: str, is_mine: bool = False):
+        super().__init__(is_mine)
+        self.value = value
+
+    def _template(self) -> Template:
+        result = super()._template()
+        result["_SingleImageValue"] = True
+        result["data"] = self.value
+
+        return result
+
+    @classmethod
+    def try_from(cls, data: Template) -> Self | None:
+        if not data.get("_SingleImageValue", False):
+            return None
+
+        value = data["data"]
+        match value:
+            case str():
+                return cls(value)
+            case _:
+                return None
+
+    def __repr__(self) -> str:
+        return str(self.value)
+
+    def compose(self) -> Mapping[str, object]:
+        from minesweepervariants.utils.image_template import get_image
+
+        return get_image(
+            self.value,
+            cover_pos_label=False,
+        )
+
+
+    def web_component(self) -> Mapping[str, object]:
+        from minesweepervariants.utils.image_template import get_image
+
+        return get_image(
+            self.value,
+            cover_pos_label=False,
+        )

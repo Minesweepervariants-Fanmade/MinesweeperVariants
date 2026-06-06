@@ -55,13 +55,13 @@ def decode(data: str):
             raise ValueError(f"Unknown data string: {data}")
 
 def decode_singleton(clue_type: str):
-    if clue_type == MINES_TAG.type().decode("ascii"):
+    if clue_type == MINES_TAG.id:
         return MINES_TAG
-    elif clue_type == VALUE_QUESS.type().decode("ascii"):
+    elif clue_type == VALUE_QUESS.id:
         return VALUE_QUESS
-    elif clue_type == VALUE_CIRCLE.type().decode("ascii"):
+    elif clue_type == VALUE_CIRCLE.id:
         return VALUE_CIRCLE
-    elif clue_type == VALUE_CROSS.type().decode("ascii"):
+    elif clue_type == VALUE_CROSS.id:
         return VALUE_CROSS
     else:
         return None
