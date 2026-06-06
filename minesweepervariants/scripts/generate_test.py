@@ -53,6 +53,10 @@ def main(
     while True:
         if attempt_index == attempts:
             break
+        s = Summon(
+            size=size, total=total, rules=rules, early_rules=early_rules,
+            board=board_class, mask=mask_dye, dye=dye, unseed=unseed
+        )
         attempt_index += 1
         logger.info(f"尝试第{attempt_index}次minesweepervariants..", end="\r")
         get_random(seed, new=True)
