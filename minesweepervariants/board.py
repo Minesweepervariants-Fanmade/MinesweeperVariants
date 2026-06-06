@@ -12,7 +12,7 @@ from ortools.sat.python.cp_model import IntVar
 
 from minesweepervariants.abs.dye import AbstractDye
 from minesweepervariants.impl.board.dye import get_dye
-from minesweepervariants.json_object import JSONObject, get_with_valid, jsonify, valid
+from minesweepervariants.json_object import JSONObject, get_with_valid, jsonify, valid, compress, json_dumps
 from minesweepervariants.size import Size
 from minesweepervariants.utils.tool import get_logger, get_random
 
@@ -187,7 +187,7 @@ class Board:
 
     @classmethod
     def from_str(cls, data: str) -> object:
-        from ..impl.impl_obj import decode_board
+        from minesweepervariants.impl.impl_obj import decode_board
         return decode_board(data)
 
 
