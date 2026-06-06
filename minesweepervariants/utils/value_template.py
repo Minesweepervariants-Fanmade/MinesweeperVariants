@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Literal, Mapping, Self, Sequence, TypeIs, Type
 
 from ..json_object import JSONObject, JSONDirectlySerializable, deep_wrap, JSONScalar
 
-
 if TYPE_CHECKING:
     class Template(TypedDict, extra_items=JSONDirectlySerializable):
         type: Literal["value", "minevalue"]
@@ -14,15 +13,17 @@ else:
 
         __extra_items__ = JSONDirectlySerializable
 
+
 def is_value_template(data: JSONDirectlySerializable) -> TypeIs[Template]:
     return isinstance(data, dict) and data.get("type") in ["value", "minevalue"] and "data" in data
+
 
 class ValueTemplate:
     def __init__(self, is_mine: bool = False):
         self.is_mine = is_mine
 
     def _template(self) -> Template:
-        result: Template =  {
+        result: Template = {
             "type": "minevalue" if self.is_mine else "value",
             "data": None
         }
@@ -52,7 +53,6 @@ class ValueTemplate:
     def web_component(self) -> Mapping[str, object]:
         from minesweepervariants.utils.web_template import Number
         return Number(self.__repr__())
-
 
 
 class SingleValue(ValueTemplate):
@@ -92,10 +92,10 @@ class SingleValue(ValueTemplate):
             get_dummy(height=0.3),
         )
 
-
     def web_component(self) -> Mapping[str, object]:
         from minesweepervariants.utils.web_template import Number
         return Number(self.__repr__())
+
 
 class SingleNumberValue(SingleValue):
     def __init__(self, value: int | float | tuple[int, int], is_mine: bool = False):
@@ -150,10 +150,14 @@ class SingleIntValue(SingleNumberValue):
             case _:
                 return None
 
+
 class MultiIntValue(ValueTemplate):
     def __init__(self, value: Sequence[int], is_mine: bool = False):
         super().__init__(is_mine=is_mine)
         self.value = tuple(value)
+
+    def __repr__(self) -> str:
+        return '.'.join([str(i) for i in self.value])
 
     def _template(self) -> Template:
         result = super()._template()
@@ -170,11 +174,12 @@ class MultiIntValue(ValueTemplate):
         value = data["data"]
 
         match value:
-            case tuple():
+            case tuple() | list():
                 typed_value = tuple(n for n in value if isinstance(n, int))
                 return cls(typed_value)
             case _:
                 return None
+
 
 class SingleImageValue(ValueTemplate):
     def __init__(self, value: str, is_mine: bool = False):
@@ -210,7 +215,6 @@ class SingleImageValue(ValueTemplate):
             self.value,
             cover_pos_label=False,
         )
-
 
     def web_component(self) -> Mapping[str, object]:
         from minesweepervariants.utils.image_template import get_image

@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Mapping, Protocol, Sequence, TypeIs, get_origin, overload, runtime_checkable
 from minesweepervariants.immutable_dict import ImmutableDict
 
@@ -37,11 +38,11 @@ def deep_wrap(obj: JSONDirectlySerializable) -> JSONObject:
     if isinstance(obj, dict):
         return ImmutableDict({k: deep_wrap(v) for k, v in obj.items()})
 
-    if isinstance(obj, list):
-        return tuple(deep_wrap(item) for item in obj)
-
     if isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
+
+    if isinstance(obj, Iterable):
+        return tuple(deep_wrap(item) for item in obj)
 
 
 def json_dumps(obj: JSONObject) -> JSONString:
