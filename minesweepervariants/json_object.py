@@ -1,13 +1,15 @@
 from typing import Mapping, Protocol, Sequence, TypeIs, get_origin, overload, runtime_checkable
 from minesweepervariants.immutable_dict import ImmutableDict
 
-__all__ = ["JSONObject", "JSONString", "JSONDirectlySerializable", "SerializeAble", "JSONLikeType", "json_dumps", "json_loads", "compress", "decompress", "valid", "assert_", "get_with_valid", "jsonify"]
+__all__ = ["JSONObject", "JSONString", "JSONScalar", "JSONDirectlySerializable", "SerializeAble", "JSONLikeType", "json_dumps", "json_loads", "compress", "decompress", "valid", "assert_", "get_with_valid", "jsonify", "deep_unwrap", "deep_wrap"]
 
-type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject, ...] | str | int | float | bool | None
+type JSONScalar = str | int | float | bool | None
+
+type JSONObject = ImmutableDict[str, JSONObject] | tuple[JSONObject, ...] | JSONScalar
 type JSONString = str
 
-type JSONDirectlySerializable = dict[str, JSONDirectlySerializable] | list[
-    JSONDirectlySerializable] | str | int | float | bool | None
+type JSONDirectlySerializable = Mapping[str, JSONDirectlySerializable] | Sequence[
+    JSONDirectlySerializable] | JSONScalar
 
 
 @runtime_checkable
@@ -20,23 +22,23 @@ class SerializeAble(Protocol):
 type JSONLikeType = SerializeAble | JSONObject | Sequence[JSONLikeType] | Mapping[str, JSONLikeType]
 
 
-def _deep_unwrap(obj: JSONObject) -> JSONDirectlySerializable:
+def deep_unwrap(obj: JSONObject) -> JSONDirectlySerializable:
     if isinstance(obj, ImmutableDict):
-        return {k: _deep_unwrap(v) for k, v in obj.get_data().items()}
+        return {k: deep_unwrap(v) for k, v in obj.get_data().items()}
 
     if isinstance(obj, tuple):
-        return [_deep_unwrap(item) for item in obj]
+        return [deep_unwrap(item) for item in obj]
 
     if isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
 
 
-def _deep_wrap(obj: JSONDirectlySerializable) -> JSONObject:
+def deep_wrap(obj: JSONDirectlySerializable) -> JSONObject:
     if isinstance(obj, dict):
-        return ImmutableDict({k: _deep_wrap(v) for k, v in obj.items()})
+        return ImmutableDict({k: deep_wrap(v) for k, v in obj.items()})
 
     if isinstance(obj, list):
-        return tuple(_deep_wrap(item) for item in obj)
+        return tuple(deep_wrap(item) for item in obj)
 
     if isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
@@ -45,21 +47,21 @@ def _deep_wrap(obj: JSONDirectlySerializable) -> JSONObject:
 def json_dumps(obj: JSONObject) -> JSONString:
     try:
         from orjson import dumps as orjson_dumps
-        pure_data = _deep_unwrap(obj)
+        pure_data = deep_unwrap(obj)
         return orjson_dumps(pure_data).decode('utf-8')
     except ImportError:
         from json import dumps as json_dumps_std
-        pure_data = _deep_unwrap(obj)
+        pure_data = deep_unwrap(obj)
         return json_dumps_std(pure_data, ensure_ascii=False)
 
 
 def json_loads(json_str: JSONString) -> JSONObject:
     try:
         from orjson import loads as orjson_loads
-        return _deep_wrap(orjson_loads(json_str))
+        return deep_wrap(orjson_loads(json_str))
     except ImportError:
         from json import loads as json_loads_std
-        return _deep_wrap(json_loads_std(json_str))
+        return deep_wrap(json_loads_std(json_str))
 
 
 def compress(s: str) -> str:

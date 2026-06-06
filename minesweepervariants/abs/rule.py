@@ -16,6 +16,7 @@ from collections.abc import MutableMapping
 from ortools.sat.python.cp_model import CpModel
 
 from minesweepervariants.immutable_dict import ImmutableDict
+from minesweepervariants.json_object import JSONObject
 from minesweepervariants.utils.tool import get_logger
 
 if TYPE_CHECKING:
