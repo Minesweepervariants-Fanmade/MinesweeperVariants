@@ -97,7 +97,7 @@ class Rule0R(AbstractMinesRule):
         s = switch.get(model, self)
         if self.total == -2:
             return
-        board()
+
         all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
         constraint = model.add(sum(all_variable) == self.total)
         constraint.OnlyEnforceIf(s)
