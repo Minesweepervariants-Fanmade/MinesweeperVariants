@@ -9,7 +9,7 @@ from enum import Enum, Flag
 import queue
 import threading
 import time
-from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set
+from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set, Self
 
 from ortools.sat.python import cp_model
 
@@ -133,6 +133,10 @@ class ValueAsterisk(AbstractClueValue):
     def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
+    @classmethod
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
+        return cls(pos)
+
     def __repr__(self) -> str:
         return "*"
 
@@ -144,6 +148,10 @@ class MinesAsterisk(AbstractMinesValue):
     id = "#"
     def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
+
+    @classmethod
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
+        return cls(pos)
 
     def __repr__(self) -> str:
         return "#"
