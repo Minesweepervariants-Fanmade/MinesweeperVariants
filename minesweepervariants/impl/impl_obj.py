@@ -12,8 +12,9 @@ import os
 import sys
 import importlib.util
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
+from minesweepervariants.json_object import JSONObject
 from minesweepervariants.utils.tool import get_logger
 
 from ..utils.impl_obj import POSITION_TAG, VALUE_QUESS, MINES_TAG, decode_singleton, serialize
@@ -26,6 +27,9 @@ from ..abs.Rrule import AbstractClueRule, AbstractClueValue
 
 from .board import version3
 from . import rule
+
+if TYPE_CHECKING:
+    from minesweepervariants.impl.summon.summon import Summon
 
 TOTAL = -1
 hypothesis_board = [version3]
@@ -133,23 +137,31 @@ def _resolve_rule_alias(name: str) -> str:
 
 
 def add_rule(
+    summon: Summon,
     board: Board,
     rule_id: str,
     data: str | None = None,
     add: bool = True
 ) -> AbstractRule | None:
     """
-    增量式添加单个规则及其依赖到 board.rules
+    增量式添加单个规则及其依赖到 summon.rules
 
     :param board: 目标题板对象
     :param rule: 单个规则ID字符串（可含 delimiter 分隔的 data）
     """
 
+    if summon.rules is None:
+        summon.rules = {
+            "clue_rules": [],
+            "mines_rules": [],
+            "mines_clue_rules": []
+        }
+
     # 检查是否已添加过该规则（避免重复）
     all_rules: list[AbstractRule] = (
-        board.rules.get("clue_rules", []) +
-        board.rules.get("mines_rules", []) +
-        board.rules.get("mines_clue_rules", [])
+        summon.rules.get("clue_rules", []) +
+        summon.rules.get("mines_rules", []) +
+        summon.rules.get("mines_clue_rules", [])
     )
 
     # for existing_rule in all_rules:
@@ -163,25 +175,21 @@ def add_rule(
     # 实例化规则
     rule_instance: AbstractRule = get_rule(rule_id)(board=board, data=data)
 
-    if rule_instance is None:
-        get_logger().error(f"键入了一个未知的规则: {rule_id}")
-        return None
-
     result_rule = rule_instance
 
     # 递归处理依赖
     rule_deps = rule_instance.get_deps()
     for dep in rule_deps:
-        add_rule(board, dep, data, add)
+        add_rule(summon, board, dep, data, add)
 
     if add:
         # 根据类型分类添加
         if isinstance(rule_instance, AbstractClueRule):
-            board.rules["clue_rules"].append(rule_instance)
+            summon.rules["clue_rules"].append(rule_instance)
         elif isinstance(rule_instance, AbstractMinesRule):
-            board.rules["mines_rules"].append(rule_instance)
+            summon.rules["mines_rules"].append(rule_instance)
         elif isinstance(rule_instance, AbstractMinesClueRule):
-            board.rules["mines_clue_rules"].append(rule_instance)
+            summon.rules["mines_clue_rules"].append(rule_instance)
         else:
             raise ValueError(f"Unknown Rule: {rule_id}")
 
@@ -193,16 +201,17 @@ def add_rule(
                 break
         else:  # 未被依赖
             v_rule: AbstractRule = get_rule("V''")(board=board, data=rule_id)
-            if add: board.rules["clue_rules"].append(v_rule)
+            if add:
+                summon.rules["clue_rules"].append(v_rule)
             result_rule = v_rule
 
     result_rule.onboard_init(board)
 
     if add:
         # 更新所有规则的 combine 信息
-        all_rules = (board.rules["clue_rules"] +
-                     board.rules["mines_rules"] +
-                     board.rules["mines_clue_rules"])
+        all_rules = (summon.rules["clue_rules"] +
+                     summon.rules["mines_rules"] +
+                     summon.rules["mines_clue_rules"])
         rules_info: list[tuple[AbstractRule, str | None]] = [(r, None) for r in all_rules]  # 简化版本，data 信息在规则实例中
 
         for r in all_rules:

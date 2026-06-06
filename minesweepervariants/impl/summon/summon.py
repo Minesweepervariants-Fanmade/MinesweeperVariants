@@ -389,7 +389,7 @@ class Summon:
 
         if dig_fn(self.board) is None:
             raise GenerateError
-        # for rules in self.board.rules.values():
+        # for rules in self.rules.values():
         #     for rule in rules:
         #         rule.init_board(self.board)
         self.logger.debug(board_bytes, end="\n\n")
@@ -442,7 +442,8 @@ class Summon:
 
     def _should_use_visibility_optimizer(self) -> bool:
         # 仅当规则显式声明了优化标志时，启用“求解器最优化显示变量”路径。
-        for rules in self.board.rules.values():
+        assert self.rules is not None
+        for rules in self.rules.values():
             for rule in rules:
                 if bool(getattr(rule, "dynamic_dig_use_visibility_optimizer", False)):
                     return True
@@ -853,7 +854,7 @@ class Summon:
                 "mines_rules": self._generation_mines_rules(),
                 "mines_clue_rules": [self.mines_clue_rule],
             }
-            board.rules = rules
+            self.rules = rules
 
             _board = self.fill_valid(board, total)
             if _board is not None:
