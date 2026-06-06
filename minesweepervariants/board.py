@@ -3,6 +3,7 @@
 # @Time    : 2025/06/03 01:58
 # @Author  : Wu_RH
 # @FileName: board.py
+from __future__ import annotations
 from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
 import gc
 
