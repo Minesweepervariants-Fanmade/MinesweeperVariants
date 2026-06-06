@@ -149,6 +149,9 @@ class Board:
                         return False
         return True
 
+    def __repr__(self) -> str:
+        return self.show_board()
+
     def dyed(self, name: str) -> None:
         dye = get_dye(name)
         if not isinstance(dye, AbstractDye):
