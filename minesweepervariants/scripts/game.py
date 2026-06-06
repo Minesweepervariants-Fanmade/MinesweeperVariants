@@ -16,6 +16,8 @@ from minesweepervariants.impl.impl_obj import decode_board
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, Mode, UMode, max_disjoint_lists
 from minesweepervariants.impl.summon.solver import Switch, get_solver
+from minesweepervariants.json_object import json_loads, decompress
+from minesweepervariants.size import Size
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.tool import Logger, get_logger
 

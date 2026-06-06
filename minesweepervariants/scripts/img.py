@@ -10,6 +10,7 @@ import argparse
 
 
 from minesweepervariants.impl.impl_obj import decode_board
+from minesweepervariants.json_object import json_loads, decompress
 from minesweepervariants.utils.image_create import draw_board
 
 

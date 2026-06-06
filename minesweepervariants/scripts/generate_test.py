@@ -10,6 +10,7 @@ import time
 
 
 from minesweepervariants.impl.summon import Summon
+from minesweepervariants.json_object import compress, json_dumps
 from minesweepervariants.size import Size
 from minesweepervariants.utils.image_create import draw_board
 from minesweepervariants.utils.impl_obj import get_seed

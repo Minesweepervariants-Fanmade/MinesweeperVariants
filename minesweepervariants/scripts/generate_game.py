@@ -17,6 +17,7 @@ from minesweepervariants.impl.impl_obj import ModelGenerateError
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import GameSession, PUZZLE
 from minesweepervariants.impl.summon.summon import GenerateError
+from minesweepervariants.json_object import compress, json_dumps
 from minesweepervariants.size import Size
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.image_create import draw_board
