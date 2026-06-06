@@ -57,7 +57,7 @@ class ValueTemplate:
 
 class SingleValue(ValueTemplate):
     def __init__(self, value: JSONScalar, is_mine: bool = False):
-        super().__init__(is_mine)
+        super().__init__(is_mine=is_mine)
         self.value = value
 
     def _template(self) -> Template:
@@ -99,7 +99,7 @@ class SingleValue(ValueTemplate):
 
 class SingleNumberValue(SingleValue):
     def __init__(self, value: int | float | tuple[int, int], is_mine: bool = False):
-        super().__init__(is_mine)
+        super().__init__(value, is_mine=is_mine)
         self.value = value
 
     def _template(self) -> Template:
@@ -127,7 +127,7 @@ class SingleNumberValue(SingleValue):
 
 class SingleIntValue(SingleNumberValue):
     def __init__(self, value: int, is_mine: bool = False):
-        super().__init__(value, is_mine)
+        super().__init__(value, is_mine=is_mine)
         self.value = value
 
     def _template(self) -> Template:
@@ -152,7 +152,7 @@ class SingleIntValue(SingleNumberValue):
 
 class MultiIntValue(ValueTemplate):
     def __init__(self, value: Sequence[int], is_mine: bool = False):
-        super().__init__(is_mine)
+        super().__init__(is_mine=is_mine)
         self.value = tuple(value)
 
     def _template(self) -> Template:
@@ -178,7 +178,7 @@ class MultiIntValue(ValueTemplate):
 
 class SingleImageValue(ValueTemplate):
     def __init__(self, value: str, is_mine: bool = False):
-        super().__init__(is_mine)
+        super().__init__(is_mine=is_mine)
         self.value = value
 
     def _template(self) -> Template:

@@ -48,14 +48,6 @@ class AbstractMinesValue(AbstractValue, ABC):
         self.pos = pos
         self.value = ValueTemplate(is_mine=True)
 
-    @abstractmethod
-    def __repr__(self) -> str:
-        """
-        当前值在展示时候的显示字符串
-        :return: 显示的字符串
-        """
-        return "F"
-
     def weaker(self, board: Board) -> AbstractValue:
         value = board.get_config(self.pos.board_key, "MINES")
         if isinstance(value, AbstractValue):
