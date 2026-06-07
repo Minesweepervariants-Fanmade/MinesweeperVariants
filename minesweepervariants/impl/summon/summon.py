@@ -223,7 +223,6 @@ class Summon:
             self.total = target_total
             for mines_rule in mines_rules:
                 if isinstance(mines_rule, Rule0R) and mines_rule.id == "R":
-                    mines_rule: Rule0R
                     mines_rule.total = target_total
         elif total == -2:
             # 在total为-2的情况下做不到强制真随机且不固定总雷数
