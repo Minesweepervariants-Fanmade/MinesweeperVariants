@@ -15,7 +15,7 @@ else:
 
 
 def is_value_template(data: JSONDirectlySerializable) -> TypeIs[Template]:
-    return isinstance(data, dict) and data.get("type") in ["value", "minevalue"] and "data" in data
+    return isinstance(data, Mapping) and data.get("type") in ["value", "minevalue"] and "data" in data
 
 
 class ValueTemplate:
