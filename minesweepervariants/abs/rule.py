@@ -391,7 +391,7 @@ class AbstractValue(ABC):
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
         if "code" in data:
-            return cls(pos, data["code"])
+            return cls(pos, bytes(data["code"]))
 
         return cls(pos, data)
 
@@ -399,7 +399,7 @@ class AbstractValue(ABC):
     def json(self) -> 'JSONObject':
         if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
             assert hasattr(self, 'code')
-            return ImmutableDict({"code": self.code()})
+            return ImmutableDict({"code": tuple(self.code())})
 
         return self.value.json()
 
@@ -409,7 +409,6 @@ class AbstractValue(ABC):
         :param code: 实例对象代码
         """
         self.pos = pos
-        self.value = ValueTemplate()
 
     def __repr__(self) -> str:
         return self.value.__repr__()
