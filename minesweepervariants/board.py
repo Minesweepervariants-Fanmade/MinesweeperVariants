@@ -4,7 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload, cast
+from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
 import gc
 
 from ortools.sat.python import cp_model
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
 
-__all__ = ["Board", "Config", "BoardData", "Matrix", "JSONObject", "Position", "Size"]
+__all__ = ["Board", "Config", "BoardData", "Matrix"]
 
 MASTER_BOARD_KEY = "1"
 
@@ -421,7 +421,7 @@ class Board:
                 labels = ImmutableDict({str(pos): label for pos, label in labels.items()})
             if isinstance(labels, list):
                 labels = tuple(labels)
-            flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}    # type: ignore[typeddict-item]
+            flags = {name: bool(cfg.get(name, False)) for name in self.CONFIG_FLAGS}
 
             # mask as list of booleans (row-major: cols x rows)
             mask: list[bool] = []
@@ -637,23 +637,11 @@ class Board:
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos] = dyed
 
-    def get_variable(self, pos: 'Position', special: str = '', *args, **kwargs) -> IntVar | None:
+    def get_variable(self, pos: 'Position', special: str = '') -> IntVar | None:
         special = special or self.default_special
-        # if special != 'raw':
-        #     s = "".join(traceback.format_stack())
-        #     if "V.py" not in s and "3I" not in s:
-        #         print(s)
-        #         print(f'-{special}------------------------------------------------------------------------------')
-        #         ...
-        # if special == 'raw':
-        #     s = "".join(traceback.format_stack())
-        #     if "V.py" in s or "3I" in s:
-        #         print(s)
-        #         print(f'-raw------------------------------------------------------------------------------')
-        #         pass
 
         key = pos.board_key
-        self.get_model()
+        self._model = self.get_model()
         if self.is_valid(pos):
             if special == 'raw':
                 return self.board_data[key]["variable"][pos]
@@ -666,7 +654,7 @@ class Board:
 
             if (pos.col, pos.row) not in self.board_data[key]["variable_special"][special]:
                 self.board_data[key]["variable_special"][special][(pos.col, pos.row)] = \
-                    self._model.NewIntVar(-999, 999, f"var_{special}({self.get_pos(pos.row, pos.col, key)})")
+                    self._model.new_int_var(-999, 999, f"var_{special}({self.get_pos(pos.row, pos.col, key)})")
             return self.board_data[key]["variable_special"][special][(pos.col, pos.row)]
 
     def clear_variable(self):
