@@ -12,13 +12,14 @@ from tkinter import IntVar
 from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Self, Tuple, TYPE_CHECKING, \
     TypedDict, TypeGuard, Union, get_args, ItemsView, Dict
 from collections.abc import MutableMapping
+from warnings import deprecated
 
 from ortools.sat.python.cp_model import CpModel
 
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.json_object import JSONObject
 from minesweepervariants.utils.tool import get_logger
-from minesweepervariants.utils.value_template import ValueTemplate
+from minesweepervariants.utils.value_template import SingleIntValue, ValueTemplate
 
 if TYPE_CHECKING:
     from minesweepervariants.board import Board, Position
@@ -388,11 +389,18 @@ class AbstractValue(ABC):
     value: ValueTemplate
 
     @classmethod
-    @abstractmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
-        return cls(pos)
+        if "code" in data:
+            return cls(pos, data["code"])
+
+        return cls(pos, data)
+
 
     def json(self) -> 'JSONObject':
+        if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
+            assert hasattr(self, 'code')
+            return ImmutableDict({"code": self.code()})
+
         return self.value.json()
 
     def __init__(self, pos: 'Position', *args: object, **kwargs: object) -> None:
@@ -407,9 +415,15 @@ class AbstractValue(ABC):
         return self.value.__repr__()
 
     def compose(self, board: 'Board') -> Mapping[str, object]:
+        if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
+            assert hasattr(self, 'code')
+            return SingleIntValue(self.code()[0]).compose()
         return self.value.compose()
 
     def web_component(self, board: 'Board') -> Mapping[str, object]:
+        if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
+            assert hasattr(self, 'code')
+            return SingleIntValue(self.code()[0]).web_component()
         return self.value.web_component()
 
     def invalid(self, board: 'Board') -> bool:
