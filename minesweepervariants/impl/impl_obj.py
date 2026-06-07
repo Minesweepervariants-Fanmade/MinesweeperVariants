@@ -138,7 +138,26 @@ def _resolve_rule_alias(name: str) -> str:
         current = matched_base
 
 
+@cache
+def valid_rule_ids():
+    ids = set()
+    for cls in _iter_concrete_rule_classes():
+        if hasattr(cls, 'id'):
+            assert cls.id not in ids, f"规则ID冲突: {cls.id}"
+            ids.add(cls.id)
+    return ids
+
+@cache
+def valid_value_ids():
+    ids = set()
+    for cls in get_all_subclasses(AbstractValue):
+        if hasattr(cls, 'id'):
+            assert cls.id not in ids, f"线索类型ID冲突: {cls.id}"
+            ids.add(cls.id)
+    return ids
+
 def get_rule(name: str) -> type:
+    valid_rule_ids()
     rule_name = _resolve_rule_alias(name)
     all_sub_rule = [
         i for i in get_all_subclasses(AbstractRule) if i not in [
@@ -163,6 +182,7 @@ def get_rule(name: str) -> type:
 
 
 def get_value_type(clue_type: str) -> Optional[type[AbstractValue]]:
+    valid_value_ids()
     for i in get_all_subclasses(AbstractValue):
         if (
             hasattr(i, 'id')
@@ -173,6 +193,7 @@ def get_value_type(clue_type: str) -> Optional[type[AbstractValue]]:
 
 
 def get_value(pos: Optional[Position], clue_type: str, data: JSONObject):
+    valid_value_ids()
     singleton = decode_singleton(clue_type)
     if singleton is not None:
         return singleton
