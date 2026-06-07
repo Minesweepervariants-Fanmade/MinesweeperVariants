@@ -18,9 +18,9 @@ class Position:
     row: int
     col: int
 
-    board_key: str
+    board_key: Optional[str]
 
-    def __init__(self, col: int, row: int, board_key: str) -> None:
+    def __init__(self, col: int, row: int, board_key: Optional[str] = None) -> None:
         self.col = col
         self.row = row
         self.board_key = board_key
@@ -84,7 +84,7 @@ class Position:
     def down(self, n: int = 1) -> Self:
         """
         返回一个向下n格的位置对象
-        :param n: 向上n格
+        :param n: 向下n格
         :return: 结果位置
         """
         _pos = self.clone()
@@ -94,7 +94,7 @@ class Position:
     def left(self, n: int = 1) -> Self:
         """
         返回一个向左n格的位置对象
-        :param n: 向上n格
+        :param n: 向左n格
         :return: 结果位置
         """
         _pos = self.clone()
@@ -104,7 +104,7 @@ class Position:
     def right(self, n: int = 1) -> Self:
         """
         返回一个向右n格的位置对象
-        :param n: 向上n格
+        :param n: 向右n格
         :return: 结果位置
         """
         _pos = self.clone()
@@ -112,11 +112,11 @@ class Position:
         return _pos
 
     def shift(self, col: int = 0, row: int = 0) -> Self:
-        return self.up(col).right(row)
+        return self.deviation(self.__class__(col, row, self.board_key))
 
     def __repr__(self):
         from minesweepervariants.board import MASTER_BOARD_KEY
-        return (f"{self.board_key+':' if self.board_key != MASTER_BOARD_KEY else ''}"
+        return (f"{self.board_key+':' if self.board_key is not None and self.board_key != MASTER_BOARD_KEY else ''}"
                 f"{alpha(self.col)}{self.row+1}")
 
     def _up(self, n: int = 1):
@@ -240,6 +240,9 @@ class Position:
         except Exception:
             return None
 
+    def to_board(self, key: str | None):
+        self.board_key = key
+
 
 class PositionTag(Position):
     def __init__(self) -> None:
@@ -249,10 +252,10 @@ class PositionTag(Position):
     def neighbors(self, *args: int) -> list[Position]:
         return []
 
-    def in_bounds(self, bound_pos: Self) -> bool:
+    def in_bounds(self, bound_pos: Position) -> bool:
         return False
 
-    def _deviation(self, pos: Self) -> None:
+    def _deviation(self, pos: Position) -> None:
         pass
 
     def _up(self, n: int = 1) -> None:

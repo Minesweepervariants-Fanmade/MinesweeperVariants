@@ -4,7 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
+from typing import TYPE_CHECKING, Iterable, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
 import gc
 
 from ortools.sat.python import cp_model
@@ -741,7 +741,7 @@ class Board:
                 result.append(self.get_pos(row, col, key=pos1.board_key))
         return result
 
-    def batch(self, positions: List['Position'],
+    def batch(self, positions: Iterable['Position'],
               mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
         result = []
         for pos in positions:
