@@ -5,6 +5,7 @@
 # @FileName: impl_obj.py
 
 from __future__ import annotations
+from functools import cache
 from minesweepervariants.board import Board
 
 
@@ -143,7 +144,7 @@ def valid_rule_ids():
     ids = set()
     for cls in _iter_concrete_rule_classes():
         if hasattr(cls, 'id'):
-            assert cls.id not in ids, f"规则ID冲突: {cls.id}"
+            assert cls.id not in ids, f"规则ID冲突: {cls.id}, 请检查规则类 {cls}"
             ids.add(cls.id)
     return ids
 
@@ -151,8 +152,10 @@ def valid_rule_ids():
 def valid_value_ids():
     ids = set()
     for cls in get_all_subclasses(AbstractValue):
-        if hasattr(cls, 'id'):
-            assert cls.id not in ids, f"线索类型ID冲突: {cls.id}"
+        if hasattr(cls, 'id') and not hasattr(cls, '__abstractmethods__'):
+            if not isinstance(cls.id, str):
+                raise ValueError(f"线索类型ID必须为字符串: {cls.id} in {cls}")
+            assert cls.id not in ids, f"线索类型ID冲突: {cls.id}, 请检查线索类型类 {cls}"
             ids.add(cls.id)
     return ids
 
