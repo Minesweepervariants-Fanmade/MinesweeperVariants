@@ -9,11 +9,12 @@ from enum import Enum, Flag
 import queue
 import threading
 import time
-from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set, Self
+from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set, Self, Mapping
 
 from ortools.sat.python import cp_model
 
 from minesweepervariants.immutable_dict import ImmutableDict
+from minesweepervariants.utils.image_template import get_text
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -145,12 +146,16 @@ class ValueAsterisk(AbstractClueValue):
     def __repr__(self) -> str:
         return "*"
 
+    def compose(self, board: 'Board') -> Mapping[str, object]:
+        return get_text(self.__repr__())
+
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
 
 
 class MinesAsterisk(AbstractMinesValue):
     id = "#"
+
     def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
@@ -163,6 +168,9 @@ class MinesAsterisk(AbstractMinesValue):
 
     def __repr__(self) -> str:
         return "#"
+
+    def compose(self, board: 'Board') -> Mapping[str, object]:
+        return get_text(self.__repr__())
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
