@@ -13,6 +13,7 @@ from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set, Self
 
 from ortools.sat.python import cp_model
 
+from minesweepervariants.immutable_dict import ImmutableDict
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -130,12 +131,16 @@ def max_disjoint_lists(data: Dict[Tuple, List[Position]]) -> List[List[Position]
 
 class ValueAsterisk(AbstractClueValue):
     id = "*"
-    def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
+
+    def __init__(self, pos: 'Position', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
 
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
         return cls(pos)
+
+    def json(self) -> 'JSONObject':
+        return ImmutableDict({})
 
     def __repr__(self) -> str:
         return "*"
@@ -152,6 +157,9 @@ class MinesAsterisk(AbstractMinesValue):
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
         return cls(pos)
+
+    def json(self) -> 'JSONObject':
+        return ImmutableDict({})
 
     def __repr__(self) -> str:
         return "#"
