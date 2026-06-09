@@ -62,10 +62,8 @@ def main(
         get_random(seed, new=True)
         a_time = time.time()
         _board = s.summon_board()
-        if _board is None and not unseed:
-            logger.warn("左线/总雷数异常")
-            continue
         if _board is None:
+            logger.warn("左线/总雷数异常")
             continue
         logger.info(f"<{attempt_index}>生成用时:{(time_used := time.time() - a_time)}s")
         logger.info(f"总雷数: {s.total}")
