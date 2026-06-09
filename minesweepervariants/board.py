@@ -741,8 +741,69 @@ class Board:
                 result.append(self.get_pos(row, col, key=pos1.board_key))
         return result
 
-    def batch(self, positions: Iterable['Position'],
-              mode: str, drop_none: bool = False, *args, **kwargs) -> List[Any]:
+    @overload
+    def batch(
+            self, positions: List['Position'],
+            mode: Literal["var", "variable"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[IntVar]:
+        ...
+
+    @overload
+    def batch(
+            self, positions: List['Position'],
+            mode: Literal["type"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[str]:
+        ...
+
+    @overload
+    def batch(
+            self, positions: List['Position'],
+            mode: Literal["obj", "object"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[Union[
+        'AbstractClueValue',
+        'AbstractMinesValue',
+        None,
+    ]]:
+        ...
+
+    @overload
+    def batch(
+            self, positions: List['Position'],
+            mode: Literal["dye"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[bool]:
+        ...
+
+    def batch(
+            self, positions: List['Position'],
+            mode: Literal["var", "variable", "obj", "object", "type", "dye"],
+            drop_none: bool = False,
+            *args: object, **kwargs: object
+    ) -> List[Union[
+        str, bool, None, IntVar,
+        'AbstractClueValue',
+        'AbstractMinesValue'
+    ]]:
+        """
+        批量获取指定位置上的信息。
+        :param positions: 位置列表
+        :param mode: 模式字符串，表示要获取的类型:
+            - "object"/"obj": 返回原始对象
+            - "type": 返回位置的类型
+            - "variable"/"var": 返回 OR-Tools 中与该位置关联的变量
+            - "dye": 返回染色情况
+        :param drop_none:
+            返回时是否丢弃none
+        :return:
+            与 positions 一一对应的列表，包含所请求的对象
+        """
         result = []
         for pos in positions:
             if drop_none and not self.in_bounds(pos):
