@@ -15,6 +15,7 @@ from ortools.sat.python import cp_model
 
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.utils.image_template import get_text
+from minesweepervariants.utils.web_template import Number
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -149,6 +150,9 @@ class ValueAsterisk(AbstractClueValue):
     def compose(self, board: 'Board') -> Mapping[str, object]:
         return get_text(self.__repr__())
 
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
+        return Number(self.__repr__())
+
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
 
@@ -171,6 +175,9 @@ class MinesAsterisk(AbstractMinesValue):
 
     def compose(self, board: 'Board') -> Mapping[str, object]:
         return get_text(self.__repr__())
+
+    def web_component(self, board: 'Board') -> Mapping[str, object]:
+        return Number(self.__repr__())
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
