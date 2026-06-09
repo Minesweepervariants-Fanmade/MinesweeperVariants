@@ -11,7 +11,7 @@ from typing import Callable
 
 from minesweepervariants.position import Position
 from minesweepervariants.size import Size
-from minesweepervariants.utils.image_template import get_dummy, get_text, hex_to_rgb
+from minesweepervariants.utils.image_template import get_dummy, get_text, hex_to_rgb, get_col
 
 from .tool import get_logger
 from .. import __path__ as basepath
@@ -385,7 +385,7 @@ def draw_board(
         # 处理 hint_because
         if hint_because:
             bc_color_hex = CONFIG["hint_because"]["white_bg" if background_white else "black_bg"]
-            overlay_rgb = _hex_to_rgb(bc_color_hex)
+            overlay_rgb = hex_to_rgb(bc_color_hex)
 
             for pos in hint_because:
                 if getattr(pos, 'board_key', None) != key:
@@ -412,7 +412,7 @@ def draw_board(
         # 处理 hint_deduced —— 同理
         if hint_deduced:
             dc_color_hex = CONFIG["hint_deduced"]["white_bg" if background_white else "black_bg"]
-            overlay_rgb = _hex_to_rgb(dc_color_hex)
+            overlay_rgb = hex_to_rgb(dc_color_hex)
 
             for pos in hint_deduced:
                 if getattr(pos, 'board_key', None) != key:
