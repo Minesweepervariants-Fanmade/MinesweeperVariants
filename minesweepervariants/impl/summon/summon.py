@@ -815,7 +815,7 @@ class Summon:
             for pos, var in board(mode="variable", key=key, special='raw'):
                 if solver.Value(var):
                     board[pos] = board.get_config(key, "MINES")
-                    if self.total == -2:
+                    if self.total == -2 and board.get_config(key, "interactive"):
                         mines_total += 1
                 else:
                     board[pos] = board.get_config(key, "VALUE")

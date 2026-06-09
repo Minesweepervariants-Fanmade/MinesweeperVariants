@@ -383,8 +383,8 @@ class Board:
 
         config: Config = {
             "size": size,
-            "VALUE": true_tag,
-            "MINES": false_tag,
+            "VALUE": false_tag,
+            "MINES": true_tag,
             "mask": [],
             "labels": labels,
             "row_col": False,
