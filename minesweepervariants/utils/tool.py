@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import TextIO
+from typing import TextIO, Iterable
 from random import Random
 
 from minesweepervariants.config.config import DEFAULT_CONFIG
@@ -123,12 +123,18 @@ class Logger:
                     break
         self.file = open(file_path, 'a', encoding='utf-8')
 
-    def __log(self, log_type, msg, log_lv, end="\n"):
+    def __log(self, log_type, msg, log_lv, *args, **kwargs):
         if self.print_level > log_lv:
             return
+        end = kwargs.pop('end', "\n")
+        flush = kwargs.pop('flush', True)
+        file_arg = kwargs.pop('file', self.file)
         s = f"<{self.get_time()}>" + f"[{log_type}]:" + f'{msg}{end}'
-        file_obj = self.file
-        print(s, end="", flush=True, file=file_obj)
+        if isinstance(file_arg, (list, tuple)):
+            for file_obj in file_arg:
+                print(s, *args, **kwargs, end="", flush=flush, file=file_obj)
+        else:
+            print(s, *args, **kwargs, end="", flush=flush, file=file_arg)
 
         # if (self.use_file and file_obj is not None and self.max_size != -1 and
         #         os.path.getsize(file_obj.name) > self.max_size):
@@ -141,35 +147,38 @@ class Logger:
                 self.__log("INFO", f"{self.name} log start", 4)
 
     def close(self):
-        if self.file is not None and not self.file.closed:
-            if self.log_flag:
-                self.__log("INFO", f"{self.name} log end\n", 4)
-            if self.use_file:
-                self.file.close()
+        try:
+            if self.file is not None and not self.file.closed:
+                if self.log_flag:
+                    self.__log("INFO", f"{self.name} log end\n", 4)
+                if self.use_file:
+                    self.file.close()
+        except:
+            pass
 
-    def trace(self, msg, end="\n"):
-        self.__log("TRACE", msg, log_lv=self.TRACE)
+    def trace(self, msg, *args, **kwargs):
+        self.__log("TRACE", msg=msg, log_lv=self.TRACE, *args, **kwargs)
 
-    def debug(self, msg, end="\n"):
-        self.__log("DEBUG", msg, end=end, log_lv=self.DEBUG)
+    def debug(self, msg, *args, **kwargs):
+        self.__log("DEBUG", msg=msg, log_lv=self.DEBUG, *args, **kwargs)
 
-    def info(self, msg, end="\n"):
-        self.__log("INFO", msg, end=end, log_lv=self.INFO)
+    def info(self, msg, *args, **kwargs):
+        self.__log("INFO", msg=msg, log_lv=self.INFO, *args, **kwargs)
 
-    def warning(self, msg, end="\n"):
-        self.__log("WARN", msg, end=end, log_lv=self.WARN)
+    def warning(self, msg, *args, **kwargs):
+        self.__log("WARN", msg=msg, log_lv=self.WARN, *args, **kwargs)
 
-    def warn(self, msg, end="\n"):
-        self.__log("WARN", msg, end=end, log_lv=self.WARN)
+    def warn(self, msg, *args, **kwargs):
+        self.__log("WARN", msg=msg, log_lv=self.WARN, *args, **kwargs)
 
-    def notice(self, msg, end="\n"):
-        self.__log("NOTICE", msg, end=end, log_lv=self.NOTICE)
+    def notice(self, msg, *args, **kwargs):
+        self.__log("NOTICE", msg=msg, log_lv=self.NOTICE, *args, **kwargs)
 
-    def error(self, msg, end="\n"):
-        self.__log("ERROR", msg, end=end, log_lv=self.ERROR)
+    def error(self, msg, *args, **kwargs):
+        self.__log("ERROR", msg=msg, log_lv=self.ERROR, *args, **kwargs)
 
-    def critical(self, msg, end="\n"):
-        self.__log("CRITICAL", msg, end=end, log_lv=self.CRITICAL)
+    def critical(self, msg, *args, **kwargs):
+        self.__log("CRITICAL", msg=msg, log_lv=self.CRITICAL, *args, **kwargs)
 
 
 class GetData:
