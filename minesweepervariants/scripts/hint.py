@@ -112,6 +112,15 @@ def main(
 
         # board = s.board.clone()
         answer_board = answer_board if answer_board else s.board.clone()
+        for pos, obj in s.board(mode="obj"):
+            if answer_board[pos] is None:
+                if obj:
+                    answer_board[pos] = obj
+            elif answer_board[pos].json() != obj.json():
+                raise ValueError(
+                    f"传入部分答案题板与输入题板不符: POS[{pos}] "
+                    f"({obj} != {answer_board[pos].json()})"
+                )
         answer_board.clear_variable()
         model = answer_board.get_model()
         switch = Switch()
