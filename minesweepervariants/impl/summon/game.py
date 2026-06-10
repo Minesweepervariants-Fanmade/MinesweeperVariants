@@ -15,13 +15,14 @@ from ortools.sat.python import cp_model
 
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.utils.image_template import get_text
+from minesweepervariants.utils.value_template import SingleValue
 from minesweepervariants.utils.web_template import Number
 from ...abs.Lrule import Rule0R
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ...abs.Mrule import AbstractMinesValue
 from ...abs.Rrule import AbstractClueValue
-from minesweepervariants.board import Board
+from minesweepervariants.board import Board, JSONObject
 from minesweepervariants.position import Position
 from . import Summon
 from .solver import solver_by_csp, hint_by_csp, Switch, deduced_by_csp, solver_model
@@ -136,22 +137,11 @@ class ValueAsterisk(AbstractClueValue):
 
     def __init__(self, pos: 'Position', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
+        self.value = SingleValue("*")
 
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
         return cls(pos)
-
-    def json(self) -> 'JSONObject':
-        return ImmutableDict({})
-
-    def __repr__(self) -> str:
-        return "*"
-
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        return get_text(self.__repr__())
-
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        return Number(self.__repr__())
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
@@ -162,22 +152,11 @@ class MinesAsterisk(AbstractMinesValue):
 
     def __init__(self, pos: 'Position', code: bytes = b'', *args, **kwargs):
         super().__init__(pos, *args, **kwargs)
+        self.value = SingleValue("#", is_mine=True)
 
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> Self:
         return cls(pos)
-
-    def json(self) -> 'JSONObject':
-        return ImmutableDict({})
-
-    def __repr__(self) -> str:
-        return "#"
-
-    def compose(self, board: 'Board') -> Mapping[str, object]:
-        return get_text(self.__repr__())
-
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
-        return Number(self.__repr__())
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
         return []
