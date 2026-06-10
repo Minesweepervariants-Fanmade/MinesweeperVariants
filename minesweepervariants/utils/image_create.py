@@ -542,7 +542,7 @@ def draw_board(
 
                 mini_font = load_font(int(cell_size * mini_ratio))
                 draw.text((x1_cell - cell_size * 0.02, y1_cell + cell_size * 0.05),
-                          value.tag(board).decode('utf-8', 'ignore'),
+                          value.tag(board),
                           fill=text_color, font=mini_font, anchor="rd")
 
         x_offset += pixel_sizes[key][0] + margin
