@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Literal, Mapping, Self, Sequence, TypeIs, TypedDict
 
+from .image_template import Element
 from ..json_object import JSONObject, JSONDirectlySerializable, deep_wrap, JSONScalar
 
 if TYPE_CHECKING:
@@ -40,7 +41,7 @@ class ValueTemplate:
     def __repr__(self) -> str:
         return "?"
 
-    def compose(self) -> Mapping[str, object]:
+    def compose(self) -> Element:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
 
         color = ("#FFFF00", "#FF7F00") if self.is_mine else ("#FFFFFF", "#000000")
@@ -50,7 +51,7 @@ class ValueTemplate:
             get_dummy(height=0.3),
         )
 
-    def web_component(self) -> Mapping[str, object]:
+    def web_component(self) -> Element:
         from minesweepervariants.utils.web_template import Number
         return Number(self.__repr__())
 
@@ -82,7 +83,7 @@ class SingleValue(ValueTemplate):
     def __repr__(self) -> str:
         return str(self.value)
 
-    def compose(self) -> Mapping[str, object]:
+    def compose(self) -> Element:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
 
         color = ("#FFFF00", "#FF7F00") if self.is_mine else ("#FFFFFF", "#000000")
@@ -92,7 +93,7 @@ class SingleValue(ValueTemplate):
             get_dummy(height=0.3),
         )
 
-    def web_component(self) -> Mapping[str, object]:
+    def web_component(self) -> Element:
         from minesweepervariants.utils.web_template import Number
         return Number(self.__repr__())
 

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
 
-__all__ = ["Board", "Config", "BoardData", "Matrix"]
+__all__ = ["Board", "Config", "BoardData", "Matrix", "Position"]
 
 MASTER_BOARD_KEY = "1"
 

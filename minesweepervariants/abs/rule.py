@@ -9,22 +9,21 @@ from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
 import locale
 from tkinter import IntVar
-from typing import Callable, Iterator, List, Literal, Mapping, NoReturn, Optional, Protocol, Self, Tuple, TYPE_CHECKING, \
+from typing import Callable, Iterator, List, Literal, NoReturn, Optional, Protocol, Self, Tuple, TYPE_CHECKING, \
     TypedDict, TypeGuard, Union, get_args, ItemsView, Dict
 from collections.abc import MutableMapping
-from warnings import deprecated
 
 from ortools.sat.python.cp_model import CpModel
 
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.json_object import JSONObject
+from minesweepervariants.utils.image_template import Element
 from minesweepervariants.utils.tool import get_logger
 from minesweepervariants.utils.value_template import SingleIntValue, ValueTemplate
 
 if TYPE_CHECKING:
     from minesweepervariants.board import Board, Position
     from minesweepervariants.impl.summon.solver import Switch
-
 
 
 class RuleInfo(TypedDict):
@@ -35,6 +34,7 @@ class RuleInfo(TypedDict):
     tags: list["Tag"]
     creation_time: str
     lib_only: bool
+
 
 class I18n(MutableMapping[str, str]):
     """Runtime I18n mapping that preserves the original attribute-style API.
@@ -100,18 +100,20 @@ class I18n(MutableMapping[str, str]):
         return self._data.items()
 
 
-
 class I18nAutoDict(dict[str, object]):
     from typing import overload, Literal
 
     @overload
-    def __getitem__(self, key: Literal["name"]) -> I18n: ...
+    def __getitem__(self, key: Literal["name"]) -> I18n:
+        ...
 
     @overload
-    def __getitem__(self, key: Literal["doc"]) -> I18n: ...
+    def __getitem__(self, key: Literal["doc"]) -> I18n:
+        ...
 
     @overload
-    def __getitem__(self, key: str) -> object: ...
+    def __getitem__(self, key: str) -> object:
+        ...
 
     def __getitem__(self, key: str) -> object:
         if key in ("name", "doc"):
@@ -121,13 +123,16 @@ class I18nAutoDict(dict[str, object]):
         return super().__getitem__(key)
 
     @overload
-    def __setitem__(self, key: Literal["name"], value: I18n | str) -> None: ...
+    def __setitem__(self, key: Literal["name"], value: I18n | str) -> None:
+        ...
 
     @overload
-    def __setitem__(self, key: Literal["doc"], value: I18n | str) -> None: ...
+    def __setitem__(self, key: Literal["doc"], value: I18n | str) -> None:
+        ...
 
     @overload
-    def __setitem__(self, key: str, value: object) -> None: ...
+    def __setitem__(self, key: str, value: object) -> None:
+        ...
 
     def __setitem__(self, key: str, value: object) -> None:
         if key in ('name', 'doc'):
@@ -160,17 +165,25 @@ class I18nLike(Protocol):
     explicitly declare the minimal mapping methods used by callers.
     """
     default: str
+
     def __getitem__(self, key: str) -> str: ...
+
     def __iter__(self) -> Iterator[str]: ...
+
     def __len__(self) -> int: ...
+
     def items(self) -> ItemsView[str, str]: ...
+
     def __str__(self) -> str: ...
+
     def __repr__(self) -> str: ...
+
 
 class I18nMeta(ABCMeta):
     @classmethod
     def __prepare__(mcs, name: str, bases: tuple[type, ...], **kwargs: object) -> dict[str, object]:
         return I18nAutoDict()
+
     def __new__(mcs, name: str, bases: tuple[type, ...], namespace: dict[str, object], **kwargs: object):
         cls = super().__new__(mcs, name, bases, namespace, **kwargs)
         try:
@@ -197,16 +210,21 @@ class SuggestionInfo(TypedDict):
     soft_fn: Callable[[int, int], None]
     soft_conds: List[int | float]
 
-_Tag = Literal['Original', 'Variant', 'Creative', 'Global', 'Local',
-                   'Strict R', 'Strict Shape', 'Strong', 'Weak',
-                   'Anti-Construction', 'Connectivity', 'Construction',
-                   'Extensive Trial', 'Cryptic', 'Mine-Counting', 'Mine-Value',
-                   'Mine-Position', 'Dyed', 'Fun', 'Number Clue',
-                   'Arrow Clue', 'Multi-Board', 'Aux Board',
-                   'Vanilla Variant', 'Light', 'Heavy',
-                   'WIP', 'Parameter', 'Meta', 'Untagged']
+
+_Tag = Literal[
+    'Original', 'Variant', 'Creative', 'Global', 'Local',
+    'Strict R', 'Strict Shape', 'Strong', 'Weak',
+    'Anti-Construction', 'Connectivity', 'Construction',
+    'Extensive Trial', 'Cryptic', 'Mine-Counting', 'Mine-Value',
+    'Mine-Position', 'Dyed', 'Fun', 'Number Clue',
+    'Arrow Clue', 'Multi-Board', 'Aux Board',
+    'Vanilla Variant', 'Light', 'Heavy',
+    'WIP', 'Parameter', 'Meta', 'Untagged'
+]
 type Tag = _Tag
 VALID_TAGS: set[Tag] = set(get_args(_Tag))
+
+
 class AbstractRule(ABC, metaclass=I18nMeta):
     # 规则名称
     id: str
@@ -246,9 +264,12 @@ class AbstractRule(ABC, metaclass=I18nMeta):
             logger = get_logger()
             if hasattr(logger, "warning"):
                 logger.warning(
-                    f"{cls.__name__}.get_info: field '{field_name}' expected {expected}, got {type(value).__name__}: {value!r}"
+                    f"{cls.__name__}.get_info: field '{field_name}' expected {expected}, "
+                    f"got {type(value).__name__}: {value!r}"
                 )
-            raise TypeError(f"{cls.__name__}.get_info: field '{field_name}' expected {expected}, got {type(value).__name__}: {value!r}")
+            raise TypeError(
+                f"{cls.__name__}.get_info: field '{field_name}' expected {expected}, "
+                f"got {type(value).__name__}: {value!r}")
 
         def _is_str(value: object) -> TypeGuard[str]:
             return isinstance(value, str)
@@ -257,9 +278,9 @@ class AbstractRule(ABC, metaclass=I18nMeta):
             if not isinstance(value, tuple):
                 return False
             return (
-                len(value) == 2
-                and isinstance(value[0], str)
-                and isinstance(value[1], (int, str))
+                    len(value) == 2
+                    and isinstance(value[0], str)
+                    and isinstance(value[1], (int, str))
             )
 
         def _is_valid_tags(value: object) -> TypeGuard[list[Tag]]:
@@ -379,10 +400,12 @@ class AbstractRule(ABC, metaclass=I18nMeta):
     def json(self) -> 'JSONObject':
         return self.id
 
+
 class AbstractValue(ABC):
     @property
     @abstractmethod
-    def id(self) -> str: ...  # pyright: ignore[reportRedeclaration]
+    def id(self) -> str:
+        ...  # pyright: ignore[reportRedeclaration]
 
     id: str
 
@@ -395,11 +418,10 @@ class AbstractValue(ABC):
 
         return cls(pos, data)
 
-
     def json(self) -> 'JSONObject':
         if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
             assert hasattr(self, 'code')
-            return ImmutableDict({"code": tuple(self.code())})
+            return ImmutableDict({"code": tuple(getattr(self, 'code')())})
 
         return self.value.json()
 
@@ -413,16 +435,16 @@ class AbstractValue(ABC):
     def __repr__(self) -> str:
         return self.value.__repr__()
 
-    def compose(self, board: 'Board') -> Mapping[str, object]:
+    def compose(self, board: 'Board') -> Element:
         if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
             assert hasattr(self, 'code')
-            return SingleIntValue(self.code()[0]).compose()
+            return SingleIntValue(getattr(self, 'code')()[0]).compose()
         return self.value.compose()
 
-    def web_component(self, board: 'Board') -> Mapping[str, object]:
+    def web_component(self, board: 'Board') -> Element:
         if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
             assert hasattr(self, 'code')
-            return SingleIntValue(self.code()[0]).web_component()
+            return SingleIntValue(getattr(self, 'code')()[0]).web_component()
         return self.value.web_component()
 
     def invalid(self, board: 'Board') -> bool:
