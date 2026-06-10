@@ -532,6 +532,11 @@ def _hint_by_csp(
     pos=None
 ):
     logger = get_logger()
+    _model = model.clone()
+    _model.add_bool_and(assumptions)
+    if timer(get_solver(True).Solve)(_model) in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        logger.trace(f"传入了有解的模型")
+        return None
     logger.trace(f"pos {pos} assumptions: {assumptions}\n", end="")
     logger.trace(f"pos {pos} off {offset}: start\n", end="")
     future_to_param = {}
@@ -549,16 +554,16 @@ def _hint_by_csp(
     for fut in as_completed(future_to_param):
         try:
             var = future_to_param[fut]
-            logger.trace(f"pos {pos} off {offset} wait: {var}")
+            logger.trace(f"pos {pos} off {offset} wait: {var}\n", end="")
             status = fut.result()
-            logger.trace(f"pos {pos} off {offset} end wait: {status}")
+            logger.trace(f"pos {pos} off {offset} end wait: {status}\n", end="")
             if status in (cp_model.FEASIBLE, cp_model.OPTIMAL):
                 _results.append(var)
         except Exception as e:
-            logger.trace(e)
+            logger.trace(str(e) + "\n", end="")
             continue
 
-    logger.trace(f"pos {pos} off {offset} end AND [{_results}]")
+    logger.trace(f"pos {pos} off {offset} end AND [{_results}]\n", end="")
 
     if upper_bound is not None and len(_results) - 2 > (upper_bound[0] - offset):
         logger.trace(f"pos {pos}, off {offset}: fail (len>ub)\n", end="")
@@ -569,9 +574,9 @@ def _hint_by_csp(
     _model = model.clone()
     _model.add(sum([v for v in assumptions if v not in _results]) == 0)
     solver = get_solver(False)
-    logger.trace(f"pos {pos} off {offset} verification and start")
+    logger.trace(f"pos {pos} off {offset} verification and start\n", end="")
     status = timer(solver.Solve)(_model)
-    logger.trace(f"pos {pos} off {offset} verification and end {status}")
+    logger.trace(f"pos {pos} off {offset} verification and end {status}\n", end="")
     if status == cp_model.INFEASIBLE:
         # 无解说明已经是包含所有的约束了 是当前层的MUS
         if upper_bound is not None:
