@@ -121,7 +121,7 @@ def main(
                 obj.id not in [
                     answer_board.get_config(
                         pos.board_key, value_type
-                    ) for value_type in [
+                    ).id for value_type in [
                         "MINES", "VALUE"
                     ]
                 ] and
