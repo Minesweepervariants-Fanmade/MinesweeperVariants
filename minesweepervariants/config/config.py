@@ -31,6 +31,8 @@ DEFAULT_CONFIG = {
     # 动态删线索模式(默认关闭)
     "dynamic_dig_rounds": 0,     # >0 时启用动态删线索迭代轮数
     "dynamic_dig_max_batch": 8,  # 每轮最大改动格数，随后会逐渐衰减
+    "mus_min_size": False,           # 如果启用 那么他在走dig_with_hint时会强行找到最小的显示线索数量
+    "with_mus": False,           # 如果启用 那么它会被允许前往dig_with_hint分支并使用最小冲突集
 
     "game_mode": "PUZZLE",      # hint的时候 game的游戏模式
     "hint_file": "",        # hint的保存的图片文件名

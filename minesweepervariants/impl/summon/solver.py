@@ -243,15 +243,16 @@ def board_create_constraints(
     switch = Switch()
 
     # 2.获取所有规则约束
-    board.set_type_flag()
+    flag = False
     for rule in rules:
         if rule is None:
             continue
         if drop_r and isinstance(rule, Rule0R):
             continue
         rule: AbstractRule
+        board.set_type_flag()
         rule.create_constraints(board, switch)
-    flag = board.get_type_flag()
+        flag |= board.get_type_flag()
 
     for key in board.get_board_keys():
         for pos, obj in board(key=key, mode="obj"):
@@ -515,7 +516,7 @@ def hint_by_csp(
     get_logger().trace(f"pos {pos}: start\n", end="")
     results = _hint_by_csp(
         model, assumptions, executor,
-        upper_bound, 0, pos,
+        upper_bound, 0, pos, False
     )
     get_logger().trace(f"pos {pos}: {results}\n", end="")
     if results is None:
@@ -529,7 +530,8 @@ def _hint_by_csp(
     executor: ThreadPoolExecutor,
     upper_bound=None,
     offset=0,
-    pos=None
+    pos=None,
+    early_quit=False
 ):
     logger = get_logger()
     _model = model.clone()
@@ -537,6 +539,11 @@ def _hint_by_csp(
     if timer(get_solver(True).Solve)(_model) in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         logger.trace(f"传入了有解的模型")
         return None
+    _model = model.clone()
+    _model.add_bool_and([var.Not() for var in assumptions])
+    if timer(get_solver(True).Solve)(_model) == cp_model.INFEASIBLE:
+        logger.trace(f"pos {pos} off {offset}: model INFEASIBLE")
+        return []
     logger.trace(f"pos {pos} assumptions: {assumptions}\n", end="")
     logger.trace(f"pos {pos} off {offset}: start\n", end="")
     future_to_param = {}
@@ -569,7 +576,8 @@ def _hint_by_csp(
         logger.trace(f"pos {pos}, off {offset}: fail (len>ub)\n", end="")
         return None
     # 将与的状态保留至model
-    model.add_bool_and(_results)
+    if _results:
+        model.add_bool_and(_results)
     # 将其他约束加入进行测试是否无解(可推)
     _model = model.clone()
     _model.add(sum([v for v in assumptions if v not in _results]) == 0)
@@ -622,6 +630,9 @@ def _hint_by_csp(
     _mcs = [i for i in mcs if solver.Value(i) == 0]
     logger.trace(f"pos {pos} off {offset} ORlever: {_mcs} status {status}\n", end="")
     results = []
+    if early_quit:
+        from minesweepervariants.utils.tool import get_random
+        _mcs = [get_random().choice(_mcs)]
 
     for var in _mcs:
         _model = model.clone()
@@ -636,12 +647,15 @@ def _hint_by_csp(
             executor=executor,
             upper_bound=upper_bound,
             offset=offset + len(_results) + len(_mcs),
-            pos=pos
+            pos=f"{pos},{var}",
+            early_quit=early_quit
         )
         if result is None:
             # 该节点求解失败或者出现错误或者提前步出
             continue
         results.append(result + [var] + _results)
+        if early_quit:
+            break
 
     if not results:
         logger.trace(f"pos {pos} off {offset}: fail (OR)\n", end="")

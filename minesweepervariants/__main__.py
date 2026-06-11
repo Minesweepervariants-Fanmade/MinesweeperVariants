@@ -107,6 +107,10 @@ parser.add_argument("-D", "--dynamic-dig-rounds", type=int, default=None,
                     help=_("CLI_DYNAMIC_DIG_ROUNDS"))
 parser.add_argument("-M", "--dynamic-dig-max-batch", type=int, default=defaults.get("dynamic_dig_max_batch"),
                     help=_("CLI_DYNAMIC_DIG_MAX_BATCH"))
+parser.add_argument("--mus-min-size", action="store_true", default=False,
+                    help="如果启用的话 那么表示必须找到最少亮起线索数量的题板(仅在线索实现合法且启用with-mus参数时生效)")
+parser.add_argument("--with-mus", action="store_true", default=False,
+                    help="如果启用的话 那么表示使用最小冲突集来寻找题板怎么摆放线索(仅在线索实现合法时生效)")
 
 parser.add_argument("--output-path", default=None,
                     help=_("CLI_OUTPUT_PATH"))
@@ -256,6 +260,15 @@ def main():
         # 重新初始化 logger 以使用新路径
         tool.LOGGER = None
         get_logger()
+
+    if args.with_mus:
+        DEFAULT_CONFIG["with_mus"] = True
+
+    if args.mus_min_size:
+        if args.with_mus:
+            DEFAULT_CONFIG["mus_min_size"] = True
+        else:
+            get_logger().warning("未启用--with-mus参数 mus_min_size不生效")
 
     if args.output_path:
         output_path = Path(args.output_path).expanduser().absolute()

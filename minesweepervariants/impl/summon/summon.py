@@ -5,6 +5,7 @@
 # @FileName: summon.py
 import threading
 import time
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Literal, Union, Optional, TypedDict
 
@@ -20,7 +21,7 @@ from ...impl.rule.sharpRule import AbstractClueSharp
 from ...abs.Mrule import AbstractMinesClueRule
 from ...abs.Rrule import AbstractClueRule
 from ...abs.rule import AbstractRule, SuggestionInfo
-from .solver import solver_by_csp, solver_model, Switch, board_create_constraints, hint_by_csp
+from .solver import solver_by_csp, solver_model, Switch, board_create_constraints, hint_by_csp, _hint_by_csp
 from ...utils.tool import get_random, get_logger
 
 from ...abs.Lrule import MinesRules, AbstractMinesRule, Rule0R
@@ -430,7 +431,7 @@ class Summon:
         self.answer_board_str = "\n" + _board.show_board()
         self.answer_board_code = _board.json()
         self.answer_board = _board.clone()
-        self.logger.debug("题板生成完毕:\n" + _board.show_board())
+        self.logger.info(f"题板生成完毕:\n{_board.show_board()}")
         self.logger.debug("题板生成完毕:\n" + self.answer_board.show_board())
         self.logger.debug(_board.json())
         self.answer_board = _board
@@ -819,7 +820,6 @@ class Summon:
                         mines_total += 1
                 else:
                     board[pos] = board.get_config(key, "VALUE")
-        self.logger.info(f"答案题板:\n{board}")
         print(f"随机放雷完毕 共尝试了{__count}次 ", end="\n", flush=True)
         if self.total == -2:
             self.total = mines_total
@@ -887,7 +887,10 @@ class Summon:
         board = board.clone()
 
         model, switch, flag = board_create_constraints(
-            board, [rule for rules in self.rules.values() for rule in rules],
+            board, [
+                rule for rules in self.rules.values()
+                for rule in rules if rule not in self.early_mines_rules
+            ],
             drop_r=self.drop_r,
         )
         _model = model.clone()
@@ -912,8 +915,11 @@ class Summon:
             self.logger.warn("warn board:\n" + board.show_board())
             return None
 
-        # if not flag:
-        #     return self.dig_with_dichotomy(model, board, switch)
+        if DEFAULT_CONFIG["with_mus"]:
+            if flag:
+                self.logger.warn("当前规则实现不满足启用--with-mus的条件, 继续使用正常出题器流程")
+            else:
+                return self.unique_with_hint(model, board, switch)
         model.add_bool_and(switch.get_all_vars())
 
         phases = max([value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None] + [0]) + 1
@@ -1049,23 +1055,34 @@ class Summon:
         # self.logger.info("\n" + board.show_board())  # 清空残留
         return board
 
-    def dig_with_dichotomy(
+    def unique_with_hint(
             self, model: CpModel,
             board: Board, switch: Switch
     ):
-        value_switchs = []
+        # 开启所有规则的开关
+        model.add_bool_and([
+            var for var in switch.get_all_vars()
+            if switch.get_obj_and_index_by_var(
+                var)[0].startswith("RULE")
+        ])
+
+        value_switchs = {}
         for pos, var in board("CF", mode="var"):
             value_type = board.get_type(pos)
             if value_type in "CF":
-                var_switch = model.new_bool_var(f"{pos} var switch")
+                var_switch = model.new_bool_var(f"{pos}var")
                 model.add(var == (1 if value_type == "F" else 0)).only_enforce_if(var_switch)
             else:
                 continue
-            value_switchs.append(var_switch)
+            value_switchs[var_switch] = (pos, 0)
             pos_switchs = switch.get_switches_by_obj(pos)
-            if len(pos_switchs) == 1:
-                model.add(pos_switchs[0][1] == 0).only_enforce_if(var_switch.Not())
-                value_switchs.append(pos_switchs[0][1])
+            if len(pos_switchs) > 0:
+                pos_switch = model.new_bool_var(f"{pos}switch")
+                cond_switch = pos_switchs[0][1]
+                model.add(cond_switch == 0).only_enforce_if(var_switch.Not())
+                model.add(cond_switch == 0).only_enforce_if(pos_switch.Not())
+                model.add(cond_switch == 1).only_enforce_if(pos_switch, var_switch)
+                value_switchs[pos_switch] = (pos, 1)
 
         boolor_switchs = []
         for pos, t in self.answer_board(mode='type'):
@@ -1076,3 +1093,47 @@ class Summon:
                 )
             ).only_enforce_if(bool_switch)
             boolor_switchs.append(bool_switch)
+        # model.add(sum(boolor_switchs) > 0)
+        model.add_bool_or(boolor_switchs)
+
+        upper_bound = [float("inf"), threading.Lock()]
+        with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
+            self.logger.info("START HINT")
+            a_time = time.time()
+            result_switch = _hint_by_csp(
+                model,
+                list(value_switchs.keys()),
+                executor,
+                upper_bound=upper_bound,
+                offset=0,
+                pos="[ALL]",
+                early_quit=not DEFAULT_CONFIG["mus_min_size"],     # 如果为False 表示必须找到这个题板的最小亮线索的
+            )
+            b_time = time.time()
+
+        _model = model.clone()
+        _model.add_bool_and(result_switch)
+        status = solver_model(_model)
+
+        grouped = defaultdict(list)
+        for var in result_switch:
+            if var in value_switchs:  # 确保变量存在于字典中
+                pos, val = value_switchs[var]
+                grouped[pos].append(val)
+
+        self.logger.info(f"{[value_switchs[var] for var in result_switch]}")
+        self.logger.info(f"{grouped}")
+        self.logger.info(f"status: {status}")
+        self.logger.info(f"upper_bound: {upper_bound}")
+        self.logger.info(f"used_time: {b_time - a_time}")
+        for pos, t in board(mode="type"):
+            if t == "N":
+                continue
+            pos_result = grouped[pos]
+            if 0 not in pos_result:
+                board[pos] = None
+            if 0 in pos_result and 1 not in pos_result:
+                board[pos] = board.get_config(
+                    pos.board_key, "VALUE" if t == "C" else "MINES"
+                )
+        return board
