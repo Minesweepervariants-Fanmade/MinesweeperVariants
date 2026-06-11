@@ -441,10 +441,10 @@ class AbstractValue(ABC):
         from minesweepervariants.abs.Rrule import AbstractClueValue
         from minesweepervariants.abs.Mrule import AbstractMinesValue
 
-        if not isinstance(self.value, SingleValue):
-            if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
-                assert hasattr(self, 'code')
-                return SingleIntValue(getattr(self, 'code')()[0]).compose()
+        if hasattr(self, 'value') and not isinstance(self.value, SingleValue):
+            # if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
+            #     assert hasattr(self, 'code')
+            #     return SingleIntValue(getattr(self, 'code')()[0]).compose()
             return self.value.compose()
 
         if isinstance(self, AbstractClueValue):
