@@ -116,7 +116,17 @@ def main(
             if answer_board[pos] is None:
                 if obj:
                     answer_board[pos] = obj
-            elif obj is not None and answer_board[pos].json() != obj.json():
+            elif (
+                obj is not None and 
+                obj.id not in [
+                    answer_board.get_config(
+                        pos.board_key, value_type
+                    ) for value_type in [
+                        "MINES", "VALUE"
+                    ]
+                ] and
+                answer_board[pos].json() != obj.json()
+            ):
                 raise ValueError(
                     f"传入部分答案题板与输入题板不符: POS[{pos}] "
                     f"({obj} != {answer_board[pos].json()})"
