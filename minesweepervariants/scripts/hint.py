@@ -103,7 +103,7 @@ def main(
     else:
         answer_board = None
 
-    if answer_board is None or None in [obj for _, obj in answer_board(mode="obj")]:
+    if answer_board is None or None in [obj for key in answer_board.get_board_keys() for _, obj in answer_board(mode="obj", key=key)]:
         from ortools.sat.python import cp_model
 
         from minesweepervariants.impl.summon.solver import Switch, get_solver
