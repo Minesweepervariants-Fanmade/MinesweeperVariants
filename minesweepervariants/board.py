@@ -666,7 +666,7 @@ class Board:
         self._model = None
         gc.collect()
 
-    def get_config(self, board_key, config_name):
+    def get_config(self, board_key, config_name) -> object | None:
         if board_key not in self.board_data:
             return None
         return self.board_data[board_key]["config"][config_name]
