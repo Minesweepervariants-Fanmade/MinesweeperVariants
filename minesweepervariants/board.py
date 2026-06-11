@@ -4,7 +4,7 @@
 # @Author  : Wu_RH
 # @FileName: board.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, Iterable, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
+from typing import TYPE_CHECKING, List, Literal, Optional, Self, TypedDict, Union, Tuple, Any, Generator, overload
 import gc
 
 from ortools.sat.python import cp_model
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
 
-__all__ = ["Board", "Config", "BoardData", "Matrix", "Position"]
+__all__ = ["Board", "Config", "BoardData", "Matrix", "Position", "Size"]
 
 MASTER_BOARD_KEY = "1"
 
