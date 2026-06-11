@@ -436,10 +436,25 @@ class AbstractValue(ABC):
         return self.value.__repr__()
 
     def compose(self, board: 'Board') -> Element:
-        if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
-            assert hasattr(self, 'code')
-            return SingleIntValue(getattr(self, 'code')()[0]).compose()
-        return self.value.compose()
+        from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
+        from minesweepervariants.abs.Rrule import AbstractClueValue
+        from minesweepervariants.abs.Mrule import AbstractMinesValue
+        if isinstance(self, AbstractClueValue):
+            color = ("#FFFFFF", "#000000")
+        elif isinstance(self, AbstractMinesValue):
+            color = ("#FFFF00", "#FF7F00")
+        else:
+            color = ("#FFFFFF", "#000000")
+
+        return get_col(
+            get_dummy(height=0.3),
+            get_text(self.__repr__(), color=color),
+            get_dummy(height=0.3),
+        )
+        # if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
+        #     assert hasattr(self, 'code')
+        #     return SingleIntValue(getattr(self, 'code')()[0]).compose()
+        # return self.value.compose()
 
     def web_component(self, board: 'Board') -> Element:
         if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
