@@ -379,7 +379,7 @@ class Board:
             raise ValueError("size Undefined")
 
         if labels is None:
-            labels = {}
+            labels = [str(i) for i in range(size.rows)]
 
         config: Config = {
             "size": size,
