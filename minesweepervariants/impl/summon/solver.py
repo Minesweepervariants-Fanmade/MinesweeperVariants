@@ -92,7 +92,7 @@ class Switch:
     @staticmethod
     def to_str(obj: Union[AbstractRule, AbstractValue, Position, str]) -> str:
         if isinstance(obj, AbstractRule):
-            name = f"RULE|{obj.get_name()}"
+            name = f"RULE|{obj.id}"
         elif (
             isinstance(obj, Position) or
             isinstance(obj, AbstractValue)
@@ -143,7 +143,7 @@ class Switch:
             return self.var_registry[key]
 
         # 创建新变量
-        var = model.NewBoolVar(f"{obj_str}_{index_str}")
+        var = model.new_bool_var(f"{obj_str}_{index_str}")
 
         # 存储变量
         self.var_registry[key] = var
