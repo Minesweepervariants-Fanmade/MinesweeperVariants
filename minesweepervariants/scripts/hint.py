@@ -103,7 +103,7 @@ def main(
     else:
         answer_board = None
 
-    if answer_board is None or (answer_board.has("N")):
+    if answer_board is None or None in [obj for key in answer_board.get_board_keys() for _, obj in answer_board(mode="obj", key=key)]:
         from ortools.sat.python import cp_model
 
         from minesweepervariants.impl.summon.solver import Switch, get_solver
@@ -116,7 +116,17 @@ def main(
             if answer_board[pos] is None:
                 if obj:
                     answer_board[pos] = obj
-            elif answer_board[pos].json() != obj.json():
+            elif (
+                obj is not None and 
+                obj.id not in [
+                    answer_board.get_config(
+                        pos.board_key, value_type
+                    ).id for value_type in [
+                        "MINES", "VALUE"
+                    ]
+                ] and
+                answer_board[pos].json() != obj.json()
+            ):
                 raise ValueError(
                     f"传入部分答案题板与输入题板不符: POS[{pos}] "
                     f"({obj} != {answer_board[pos].json()})"
