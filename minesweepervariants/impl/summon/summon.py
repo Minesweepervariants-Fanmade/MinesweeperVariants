@@ -1135,7 +1135,8 @@ class Summon:
             if 0 not in pos_result:
                 board[pos] = None
             if 0 in pos_result and 1 not in pos_result:
-                board[pos] = board.get_config(
-                    pos.board_key, "VALUE" if t == "C" else "MINES"
-                )
+                if t == "C":
+                    board[pos] = board.get_config(pos.board_key, "VALUE")
+                elif t == "F":
+                    board[pos] = board.get_config(pos.board_key, "MINES")
         return board

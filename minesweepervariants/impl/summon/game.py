@@ -350,41 +350,50 @@ class GameSession:
         # 初始化部分问号
         _board = board.clone()
         _model = _board.get_model()
-        switch = Switch()
-        for rule in all_rules:
-            # if isinstance(rule, Rule0R):
-            #     continue
-            rule.create_constraints(_board, switch)
-        _model.add_bool_and(switch.get_all_vars())
-        switch = Switch()
-        value_switchs = {}
-        for pos, obj in _board(mode="obj"):
-            if not isinstance(obj, AbstractValue):
-                continue
-            obj.create_constraints(_board, switch)
-            pos_switchs = switch.get_switches_by_obj(pos)
-            if len(pos_switchs) > 0:
-                cond_switch = pos_switchs[0][1]
-                value_switchs[cond_switch] = pos
         bool_switchs = []
         for pos, t in self.answer_board(mode="type"):
-            bool_switch = _model.new_bool_var("")
-            _model.add(_board.get_variable(pos) == (t == "C")).OnlyEnforceIf(bool_switch)
-            bool_switchs.append(bool_switch)
-        _model.add_bool_or(bool_switchs)
-        from minesweepervariants.impl.summon.solver import _hint_by_csp
-        with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
-            result = _hint_by_csp(
-                _model, switch.get_all_vars(), executor,
-                [float("inf"), threading.Lock()], early_quit=True
-            )
-        if result is None:
-            return None
-
-        for var in value_switchs:
-            if var in result:
+            pos_var = _board.get_variable(pos)
+            if _board[pos] is not None:
+                _model.add(pos_var == (t == "F"))
                 continue
-            pos = value_switchs[var]
+            bool_switch = _model.new_bool_var(f"{pos} != {t}")
+            _model.add(pos_var == (t == "C")).OnlyEnforceIf(bool_switch)
+            bool_switchs.append(bool_switch)
+        positiones = []
+        if bool_switchs:
+            switch = Switch()
+            for rule in all_rules:
+                if isinstance(rule, Rule0R):
+                    continue
+                rule.create_constraints(_board, switch)
+            _model.add_bool_and(switch.get_all_vars())
+            switch = Switch()
+            value_switchs = {}
+            for pos, obj in _board(mode="obj"):
+                if not isinstance(obj, AbstractValue):
+                    continue
+                obj.create_constraints(_board, switch)
+                pos_switchs = switch.get_switches_by_obj(pos)
+                if len(pos_switchs) > 0:
+                    cond_switch = pos_switchs[0][1]
+                    value_switchs[cond_switch] = pos
+            _model.add_bool_or(bool_switchs)
+            from minesweepervariants.impl.summon.solver import _hint_by_csp
+            with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
+                result = _hint_by_csp(
+                    _model, list(value_switchs.keys()), executor,
+                    [float("inf"), threading.Lock()], early_quit=True
+                )
+            if result is None:
+                return None
+            for var in value_switchs:
+                if var in result:
+                    continue
+                positiones.append(value_switchs[var])
+        else:
+            RANDOM = get_random()
+
+        for pos in positiones:
             pos_type = board.get_type(pos)
             pos_obj = None
             if pos_type == "C":
