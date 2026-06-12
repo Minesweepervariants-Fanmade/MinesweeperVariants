@@ -13,6 +13,7 @@ from typing import Any, Union, Callable, List, Tuple, Optional, Dict, Set, Self,
 
 from ortools.sat.python import cp_model
 
+from minesweepervariants.abs.rule import AbstractValue
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.utils.image_template import get_text
 from minesweepervariants.utils.value_template import SingleValue
@@ -228,7 +229,7 @@ class GameSession:
         self.create_schedule_data = [0, time.time()]
 
     @property
-    def answer_board(self):
+    def answer_board(self) -> Optional[Board]:
         result = self.__dict__["answer_board"]
         if result is None:
             raise AttributeError("answer_board未初始化")
@@ -239,7 +240,7 @@ class GameSession:
         self.__dict__["answer_board"] = value
 
     @property
-    def board(self):
+    def board(self) -> Optional[Board]:
         result = self.__dict__["board"]
         if result is None:
             raise AttributeError("board未初始化")
@@ -335,92 +336,62 @@ class GameSession:
         total = elapsed / schedule if schedule > 0 else float('inf')
         return schedule, elapsed, total
 
-    def _create_board(self) -> Optional["Board"]:
-        board = self.answer_board.clone()
-        random = get_random()
-        board: Board
-        model = board.get_model()
-
-        for rule in self.summon.mines_rules.rules + [
-            self.summon.clue_rule, self.summon.mines_clue_rule
-        ]:
-            rule.init_clear(board)
-
-        # 尝试直接初始化所有未使用类型检查的规则
-        used_type_rule = []     # 使用了类型检查的规则
-        board.used_type()
-        for rule in self.summon.mines_rules.rules + [
-            self.summon.clue_rule, self.summon.mines_clue_rule
-        ]:
-            if isinstance(rule, Rule0R):
-                continue
-            switch = Switch()
-            rule.create_constraints(board, switch)
-            if board.used_type():
-                used_type_rule.append((rule, switch.get_all_vars()))
-            else:
-                # 直接强制实现所有左线
-                model.add_bool_and(switch.get_all_vars())
-
-        # 尝试直接初始化所有未使用类型检查的线索
-        used_type_pos = []      # 使用了类型检查的对象
-        pos_switchs = {}
-        for key in board.get_board_keys():
-            for pos, obj in board(key=key, mode="obj"):
-                if obj is None:
-                    continue
-                switch = Switch()
-                obj.create_constraints(board, switch)
-                pos_switch = model.new_bool_var(f"{pos}:{obj}(switch)")
-                model.add_bool_and(
-                    switch.get_all_vars()
-                ).OnlyEnforceIf(pos_switch)
-                model.add_bool_and(
-                    [v.Not() for v in switch.get_all_vars()]
-                ).OnlyEnforceIf(pos_switch.Not())
-                if board.used_type():
-                    used_type_pos.append((pos, pos_switch))
-                pos_switchs[pos] = pos_switch
-
-        # if not used_type_pos + used_type_rule:
-        #     # 如果全部没有使用过type检查 就走untype生成
-        #     return self.create_board_by_untype()
-
-        positions = [pos for pos, _ in board()]
-        random.shuffle(positions)
-
-        while positions:
-            pos = positions.pop()
-            if pos in pos_switchs:
-                # 如果在里面代表未使用类型检查
-                ...
-
-        self.board = board
-        return board
-
-    def create_board_by_untype(
-            self
-    ) -> Union["Board", None]:
-        """
-        未使用任何type检查的生成题板
-        """
-
     def create_board(self) -> Union["Board", None]:
         """
-        一层具象
-        终极模式的规则是 直到推无可推再给下一步线索 如果倒过来想呢
-        倒过来就是删无可删 再重头删一遍
-
-        具体操作
-        初始化: 将所有雷设置为None
-        第一步: 将整个版面的线索都替换为雷试下能不能无解 如果无解代表矛盾
-        第二步: 现在整个题板都遍历完了一遍 看起来已经是删无可删了 那么就
+        生成题目
         """
         board = self.answer_board.clone()
-        for rule in (self.summon.mines_rules.rules
+        all_rules = (self.summon.mines_rules.rules
                      + [self.summon.clue_rule,
-                        self.summon.mines_clue_rule]):
+                        self.summon.mines_clue_rule])
+        for rule in all_rules:
             rule.init_clear(board)
+
+        # 初始化部分问号
+        _board = board.clone()
+        _model = _board.get_model()
+        switch = Switch()
+        for rule in all_rules:
+            # if isinstance(rule, Rule0R):
+            #     continue
+            rule.create_constraints(_board, switch)
+        _model.add_bool_and(switch.get_all_vars())
+        switch = Switch()
+        value_switchs = {}
+        for pos, obj in _board(mode="obj"):
+            if not isinstance(obj, AbstractValue):
+                continue
+            obj.create_constraints(_board, switch)
+            pos_switchs = switch.get_switches_by_obj(pos)
+            if len(pos_switchs) > 0:
+                cond_switch = pos_switchs[0][1]
+                value_switchs[cond_switch] = pos
+        bool_switchs = []
+        for pos, t in self.answer_board(mode="type"):
+            bool_switch = _model.new_bool_var("")
+            _model.add(_board.get_variable(pos) == (t == "C")).OnlyEnforceIf(bool_switch)
+            bool_switchs.append(bool_switch)
+        _model.add_bool_or(bool_switchs)
+        from minesweepervariants.impl.summon.solver import _hint_by_csp
+        with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
+            result = _hint_by_csp(
+                _model, switch.get_all_vars(), executor,
+                [float("inf"), threading.Lock()], early_quit=True
+            )
+
+        for var in value_switchs:
+            if var in result:
+                continue
+            pos = value_switchs[var]
+            if board.get_type(pos) == "C":
+                board[pos] = board.get_config(
+                    pos.board_key, "VALUE"
+                )
+            if board.get_type(pos) == "F":
+                board[pos] = board.get_config(
+                    pos.board_key, "MINES"
+                )
+
         clues = [i for i in board("CF", mode="obj")]
         all_schedule = len(clues)
         self.create_schedule_data = [0.0, time.time()]
@@ -437,18 +408,16 @@ class GameSession:
                 elif board.get_type(pos, special='raw') == "F":
                     board.set_value(pos, self.clue_tag)
                 if solver_by_csp(
-                        self.summon.mines_rules,
-                        self.summon.clue_rule,
-                        self.summon.mines_clue_rule,
-                        board.clone(), drop_r=False) == 0:
+                    all_rules=all_rules,
+                    board=board.clone(),
+                    drop_r=False
+                ) == 0:
                     board.set_value(pos, None)
                     break
                 board.set_value(pos, clue)
         if solver_by_csp(
-            self.summon.mines_rules,
-            self.summon.clue_rule,
-            self.summon.mines_clue_rule,
-            board.clone(),
+            board=board.clone(),
+            all_rules=all_rules,
             answer_board=self.answer_board,
             hint_board=self.answer_board,
             drop_r=True

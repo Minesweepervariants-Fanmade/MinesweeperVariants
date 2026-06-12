@@ -45,9 +45,9 @@ def get_solver(b: bool):
 
 
 def add_board_solution_hints(
-        model: cp_model.CpModel,
-        board: Board,
-        solver: cp_model.CpSolver
+    model: cp_model.CpModel,
+    board: Board,
+    solver: cp_model.CpSolver
 ):
     """将上一轮可行解作为 hint 提供给后续相近模型。"""
     for key in board.get_interactive_keys():
@@ -57,9 +57,9 @@ def add_board_solution_hints(
 
 
 def add_board_assignment_hints(
-        model: cp_model.CpModel,
-        board: Board,
-        assignment_board: Board
+    model: cp_model.CpModel,
+    board: Board,
+    assignment_board: Board
 ):
     """将指定题板上的当前赋值作为 hint 提供给模型。"""
     for key in board.get_interactive_keys():
@@ -94,8 +94,8 @@ class Switch:
         if isinstance(obj, AbstractRule):
             name = f"RULE|{obj.get_name()}"
         elif (
-                isinstance(obj, Position) or
-                isinstance(obj, AbstractValue)
+            isinstance(obj, Position) or
+            isinstance(obj, AbstractValue)
         ):
             if isinstance(obj, AbstractValue):
                 pos = obj.pos
@@ -112,10 +112,10 @@ class Switch:
         return name
 
     def get(
-            self,
-            model: cp_model.CpModel,
-            obj: Union[AbstractRule, AbstractValue, Position, str],
-            index_str: Optional[str] = None
+        self,
+        model: cp_model.CpModel,
+        obj: Union[AbstractRule, AbstractValue, Position, str],
+        index_str: Optional[str] = None
     ) -> cp_model.IntVar:
         """
         创建或获取一个开关变量
@@ -162,8 +162,8 @@ class Switch:
         return var
 
     def get_switches_by_obj(
-            self,
-            obj: Union[AbstractRule, AbstractValue, Position, str]
+        self,
+        obj: Union[AbstractRule, AbstractValue, Position, str]
     ) -> List[Tuple[str, cp_model.IntVar]]:
         """
         获取指定对象的所有开关
@@ -178,7 +178,7 @@ class Switch:
         return self.obj_switches.get(obj_str, [])
 
     def get_all_switches(
-            self
+        self
     ) -> Dict[str, List[Tuple[str, cp_model.IntVar]]]:
         """
         获取所有对象及其开关
@@ -198,8 +198,8 @@ class Switch:
         return self.all_vars
 
     def get_obj_and_index_by_var(
-            self,
-            var: cp_model.IntVar
+        self,
+        var: cp_model.IntVar
     ) -> Tuple[str, Optional[str]]:
         """
         根据开关变量获取对应的对象字符串和索引字符串
@@ -276,21 +276,29 @@ def board_create_constraints(
 
 
 def solver_by_csp(
-        mines_rules: Optional[MinesRules],
-        clue_rule: Union[AbstractClueRule, None],
-        mines_clue_rule: Union[AbstractMinesClueRule, None],
-        board: Board,
-        drop_r=False,
-        bool_mode=False,
-        answer_board=None,
-        model=None,
-        hint_board: Board = None
+    mines_rules: Optional[MinesRules] = None,
+    clue_rule: Optional[AbstractClueRule] = None,
+    mines_clue_rule: Optional[AbstractMinesClueRule] = None,
+    board: Board = None,
+    drop_r=False,
+    bool_mode=False,
+    answer_board=None,
+    model=None,
+    hint_board: Board = None,
+    all_rules: Optional[List[AbstractRule]] = None,
 ) -> int:
     """
     返回int 0表示无解 1表示唯一解 2表示多解
     """
     # -*- csp推导 -*- #
     logger = get_logger()
+    all_rules = all_rules or []
+    if mines_clue_rule is not None:
+        all_rules.append(mines_clue_rule)
+    if mines_rules is not None:
+        all_rules.extend(mines_rules.rules)
+    if clue_rule is not None:
+        all_rules.append(clue_rule)
 
     if model is None:
         logger.trace("求解器输入:\n" + board.show_board())
@@ -301,10 +309,7 @@ def solver_by_csp(
         switch = Switch()
 
         # 2.获取所有规则约束
-        for rule in (
-                mines_rules.rules +
-                [clue_rule, mines_clue_rule]
-        ):
+        for rule in all_rules:
             if rule is None:
                 continue
             if drop_r and isinstance(rule, Rule0R):
@@ -426,7 +431,8 @@ def solver_by_csp(
 
         for key in board.get_board_keys():
             logger.trace(f"board key: {key}")
-            logger.trace("varlist:{}".format([(var.index, var) for _, var in board(mode="variable", key=key, special='raw')]))
+            logger.trace(
+                "varlist:{}".format([(var.index, var) for _, var in board(mode="variable", key=key, special='raw')]))
             logger.trace("obj:{}".format([var for _, var in board(mode="object", key=key)]))
             logger.trace("type:{}".format([var for _, var in board(mode="type", key=key, special='raw')]))
             logger.trace("dye:{}".format([var for _, var in board(mode="dye", key=key)]))
@@ -469,9 +475,9 @@ def solver_by_csp(
 
 
 def deduced_by_csp(
-        board: Board,
-        answer_board: Board,
-        pos: Position,
+    board: Board,
+    answer_board: Board,
+    pos: Position,
 ):
     """
     检查是否无解
@@ -625,7 +631,8 @@ def _hint_by_csp(
             R = mid
             mid = (L - R) // 2 + R
             if R == mid: break
-        else: return None
+        else:
+            return None
 
     _mcs = [i for i in mcs if solver.Value(i) == 0]
     logger.trace(f"pos {pos} off {offset} ORlever: {_mcs} status {status}\n", end="")
