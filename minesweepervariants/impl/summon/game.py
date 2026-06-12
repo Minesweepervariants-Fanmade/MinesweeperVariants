@@ -378,6 +378,8 @@ class GameSession:
                 _model, switch.get_all_vars(), executor,
                 [float("inf"), threading.Lock()], early_quit=True
             )
+        if result is None:
+            return None
 
         for var in value_switchs:
             if var in result:
