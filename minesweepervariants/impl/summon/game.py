@@ -383,14 +383,20 @@ class GameSession:
             if var in result:
                 continue
             pos = value_switchs[var]
-            if board.get_type(pos) == "C":
-                board[pos] = board.get_config(
+            pos_type = board.get_type(pos)
+            pos_obj = None
+            if pos_type == "C":
+                pos_obj = board.get_config(
                     pos.board_key, "VALUE"
                 )
-            if board.get_type(pos) == "F":
-                board[pos] = board.get_config(
+            if pos_type == "F":
+                pos_obj = board.get_config(
                     pos.board_key, "MINES"
                 )
+            if pos_obj is None:
+                continue
+            self.answer_board[pos] = pos_obj
+            board[pos] = pos_obj
 
         clues = [i for i in board("CF", mode="obj")]
         all_schedule = len(clues)
