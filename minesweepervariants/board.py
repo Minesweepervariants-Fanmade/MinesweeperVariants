@@ -16,7 +16,6 @@ from minesweepervariants.json_object import JSONObject, get_with_valid, jsonify,
 from minesweepervariants.size import Size
 from minesweepervariants.utils.tool import get_logger, get_random
 
-
 from minesweepervariants.position import Position
 from minesweepervariants.immutable_dict import ImmutableDict
 
@@ -25,10 +24,10 @@ if TYPE_CHECKING:
     from minesweepervariants.abs.Rrule import AbstractClueValue
     from minesweepervariants.abs.Mrule import AbstractMinesValue
 
-
 __all__ = ["Board", "Config", "BoardData", "Matrix", "Position", "Size"]
 
 MASTER_BOARD_KEY = "1"
+
 
 def encode_int_7bit(n: int) -> bytes:
     # 编码主体：每7位 -> 1字节（bit6~bit0，bit7=0）
@@ -82,16 +81,18 @@ class Matrix[T]:
     def __setitem__(self, pos: Position, value: T) -> None:
         self.set(pos, value)
 
+
 class Config(TypedDict):
     size: Size
-    VALUE: AbstractValue
-    MINES: AbstractValue
+    VALUE: AbstractClueValue
+    MINES: AbstractClueValue
     mask: List[Position]
     labels: Union[List[str], dict[Position, str]]
     row_col: bool
     interactive: bool
     by_mini: bool
     pos_label: bool
+
 
 class BoardData(TypedDict):
     config: Config
@@ -120,8 +121,10 @@ class Board:
     def __getitem__(self, pos: 'Position') -> Union['AbstractClueValue', 'AbstractMinesValue', None]:
         return self.get_value(pos)
 
-    def __setitem__(self, pos: 'Position',
-                    value: Union['AbstractClueValue', 'AbstractMinesValue', None]) -> None:
+    def __setitem__(
+        self, pos: 'Position',
+        value: Union['AbstractClueValue', 'AbstractMinesValue', None]
+    ) -> None:
         return self.set_value(pos, value)
 
     def __contains__(self, item: object) -> bool:
@@ -205,51 +208,51 @@ class Board:
 
     @overload
     def __call__(
-            self, target: str = "always",
-            *args: object,
-            mode: Literal["object", "obj"] = "object",
-            key: Optional[str] = None,
-             **kwargs: object
+        self, target: str = "always",
+        *args: object,
+        mode: Literal["object", "obj"] = "object",
+        key: Optional[str] = None,
+        **kwargs: object
     ) -> Generator[Tuple[Position, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
         ...
 
     @overload
     def __call__(
-            self, target: str = "always",
-            *args: object,
-            mode: Literal["type"],
-            key: Optional[str] = None,
-            **kwargs: object
+        self, target: str = "always",
+        *args: object,
+        mode: Literal["type"],
+        key: Optional[str] = None,
+        **kwargs: object
     ) -> Generator[Tuple[Position, str], None, None]:
         ...
 
     @overload
     def __call__(
-            self, target: str = "always",
-            *args: object,
-            mode: Literal["variable", "var"],
-            key: Optional[str] = None,
-            **kwargs: object
+        self, target: str = "always",
+        *args: object,
+        mode: Literal["variable", "var"],
+        key: Optional[str] = None,
+        **kwargs: object
     ) -> Generator[Tuple[Position, IntVar], None, None]:
         ...
 
     @overload
     def __call__(
-            self, target: str = "always",
-            *args: object,
-            mode: Literal["dye"],
-            key: Optional[str] = None,
-            **kwargs: object
+        self, target: str = "always",
+        *args: object,
+        mode: Literal["dye"],
+        key: Optional[str] = None,
+        **kwargs: object
     ) -> Generator[Tuple[Position, bool], None, None]:
         ...
 
     @overload
     def __call__(
-            self, target: str = "always",
-            *args: object,
-            mode: Literal["none"],
-            key: Optional[str] = None,
-            **kwargs: object
+        self, target: str = "always",
+        *args: object,
+        mode: Literal["none"],
+        key: Optional[str] = None,
+        **kwargs: object
     ) -> Generator[
         Tuple[Position, None],
         None, None
@@ -257,11 +260,11 @@ class Board:
         ...
 
     def __call__(
-            self, target: str = "always",
-            mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "none",
-            key: Optional[str] = None,
-            *args: object,
-            **kwargs: object
+        self, target: str = "always",
+        mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "none",
+        key: Optional[str] = None,
+        *args: object,
+        **kwargs: object
     ) -> Generator[
         Tuple[
             Position,
@@ -291,15 +294,15 @@ class Board:
         if key is None:
             for key in self.get_interactive_keys():
                 if mode == "object" or mode == "obj":
-                    yield from self(target=target, mode="obj", key=key, *args, **kwargs)   # 匹配重载1
+                    yield from self(target=target, mode="obj", key=key, *args, **kwargs)  # 匹配重载1
                 elif mode == "type":
-                    yield from self(target=target, mode="type", key=key, *args, **kwargs)   # 匹配重载2
+                    yield from self(target=target, mode="type", key=key, *args, **kwargs)  # 匹配重载2
                 elif mode == "variable" or mode == "var":
-                    yield from self(target=target, mode="var", key=key, *args, **kwargs)   # 匹配重载3
+                    yield from self(target=target, mode="var", key=key, *args, **kwargs)  # 匹配重载3
                 elif mode == "dye":
-                    yield from self(target=target, mode="dye", key=key, *args, **kwargs)   # 匹配重载4
+                    yield from self(target=target, mode="dye", key=key, *args, **kwargs)  # 匹配重载4
                 elif mode == "none":
-                    yield from self(target=target, mode="none", key=key, *args, **kwargs)   # 匹配重载5
+                    yield from self(target=target, mode="none", key=key, *args, **kwargs)  # 匹配重载5
                 else:
                     raise ValueError(f"Unexpected key: {key}")
         else:
@@ -454,7 +457,7 @@ class Board:
                 "flags": ImmutableDict(flags),
                 "mask": tuple(mask),
                 "value": ImmutableDict({"type": value.id, "data": value.json()}),
-                "mines": ImmutableDict({"type": mines.id,"data": mines.json()}),
+                "mines": ImmutableDict({"type": mines.id, "data": mines.json()}),
                 "labels": labels,
                 "cells": tuple(cells)
             })
@@ -526,7 +529,6 @@ class Board:
                 type_ = get_with_valid(m, "type", str)
                 data_ = get_with_valid(m, "data", ImmutableDict[str, JSONObject])
                 self.board_data[board_key]["config"]["MINES"] = get_value(POSITION_TAG, type_, data_)
-
 
             # cells
             for cell in get_with_valid(cfg, "cells", tuple[JSONObject, ...]):
@@ -606,7 +608,7 @@ class Board:
                 return self.board_data[key]["type"][pos]
 
             if "type_special" not in self.board_data[key] or \
-                    special not in self.board_data[key]["type_special"]:
+                special not in self.board_data[key]["type_special"]:
                 raise ValueError(f"unknown special type: {special}")
 
             self.type_flag = True
@@ -666,12 +668,97 @@ class Board:
         self._model = None
         gc.collect()
 
-    def get_config(self, board_key, config_name) -> object | None:
+    @overload
+    def get_config(self, board_key: str, config_name: Literal["size"]) -> Size:
+        ...
+
+    @overload
+    def get_config(self, board_key: str, config_name: Literal["MINES"]) -> AbstractMinesValue:
+        ...
+
+    @overload
+    def get_config(self, board_key: str, config_name: Literal["VALUE"]) -> AbstractClueValue:
+        ...
+
+    @overload
+    def get_config(self, board_key: str, config_name: Literal["mask"]) -> List[Position]:
+        ...
+
+    @overload
+    def get_config(self, board_key: str, config_name: Literal["labels"]) -> Union[List[str], dict[Position, str]]:
+        ...
+
+    @overload
+    def get_config(
+        self, board_key: str, config_name: Literal["row_col", "interactive", "by_mini", "pos_label"]
+    ) -> bool:
+        ...
+
+    def get_config(
+        self, board_key: str, config_name: Literal[
+            "size", "VALUE", "MINES", "mask", "labels",
+            "row_col", "interactive", "by_mini", "pos_label"
+        ]
+    ) -> Union[
+        Size, AbstractMinesValue, AbstractClueValue,
+        None, List[Position], List[str], dict[Position, str], bool
+    ]:
         if board_key not in self.board_data:
             return None
         return self.board_data[board_key]["config"][config_name]
 
-    def set_config(self, board_key, config_name, value: bool):
+    @overload
+    def set_config(
+        self, board_key: str, config_name: Literal["size"],
+        value: Size
+    ) -> None:
+        ...
+
+    @overload
+    def set_config(
+        self, board_key: str, config_name: Literal["MINES"],
+        value: AbstractMinesValue
+    ) -> None:
+        ...
+
+    @overload
+    def set_config(
+        self, board_key: str, config_name: Literal["VALUE"],
+        value: AbstractClueValue
+    ) -> None:
+        ...
+
+    @overload
+    def set_config(
+        self, board_key: str, config_name: Literal["mask"],
+        value: List[Position]
+    ) -> None:
+        ...
+
+    @overload
+    def set_config(
+        self, board_key: str, config_name: Literal["labels"],
+        value: Union[List[str], dict[Position, str]]
+    ) -> None:
+        ...
+
+    @overload
+    def set_config(
+        self, board_key: str, config_name: Literal[
+            "row_col", "interactive", "by_mini", "pos_label"
+        ], value: bool
+    ) -> None:
+        ...
+
+    def set_config(
+        self, board_key: str, config_name: Literal[
+            "size", "VALUE", "MINES", "mask", "labels",
+            "row_col", "interactive", "by_mini", "pos_label"
+        ], value: Union[
+            Size, AbstractMinesValue, AbstractClueValue,
+            List[Position], Union[List[str], dict[Position, str]], bool
+        ]
+    ) -> None:
         if board_key not in self.board_data:
             return None
         self.board_data[board_key]["config"][config_name] = value
@@ -743,28 +830,28 @@ class Board:
 
     @overload
     def batch(
-            self, positions: List['Position'],
-            mode: Literal["var", "variable"],
-            drop_none: bool = False,
-            *args: object, **kwargs: object
+        self, positions: List['Position'],
+        mode: Literal["var", "variable"],
+        drop_none: bool = False,
+        *args: object, **kwargs: object
     ) -> List[IntVar]:
         ...
 
     @overload
     def batch(
-            self, positions: List['Position'],
-            mode: Literal["type"],
-            drop_none: bool = False,
-            *args: object, **kwargs: object
+        self, positions: List['Position'],
+        mode: Literal["type"],
+        drop_none: bool = False,
+        *args: object, **kwargs: object
     ) -> List[str]:
         ...
 
     @overload
     def batch(
-            self, positions: List['Position'],
-            mode: Literal["obj", "object"],
-            drop_none: bool = False,
-            *args: object, **kwargs: object
+        self, positions: List['Position'],
+        mode: Literal["obj", "object"],
+        drop_none: bool = False,
+        *args: object, **kwargs: object
     ) -> List[Union[
         'AbstractClueValue',
         'AbstractMinesValue',
@@ -774,18 +861,18 @@ class Board:
 
     @overload
     def batch(
-            self, positions: List['Position'],
-            mode: Literal["dye"],
-            drop_none: bool = False,
-            *args: object, **kwargs: object
+        self, positions: List['Position'],
+        mode: Literal["dye"],
+        drop_none: bool = False,
+        *args: object, **kwargs: object
     ) -> List[bool]:
         ...
 
     def batch(
-            self, positions: List['Position'],
-            mode: Literal["var", "variable", "obj", "object", "type", "dye"],
-            drop_none: bool = False,
-            *args: object, **kwargs: object
+        self, positions: List['Position'],
+        mode: Literal["var", "variable", "obj", "object", "type", "dye"],
+        drop_none: bool = False,
+        *args: object, **kwargs: object
     ) -> List[Union[
         str, bool, None, IntVar,
         'AbstractClueValue',
