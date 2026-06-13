@@ -462,10 +462,17 @@ class AbstractValue(ABC):
         )
 
     def web_component(self, board: 'Board') -> Element:
-        if not hasattr(self, 'value') or not isinstance(self.value, ValueTemplate):
-            assert hasattr(self, 'code')
-            return SingleIntValue(getattr(self, 'code')()[0]).web_component()
-        return self.value.web_component()
+        from minesweepervariants.utils.web_template import Number
+        from minesweepervariants.utils.value_template import SingleValue
+
+        if hasattr(self, 'value') and not isinstance(self.value, SingleValue):
+            if isinstance(self.value, ValueTemplate):
+                return self.value.web_component()
+            # else:
+            #     assert hasattr(self, 'code')
+            #     return SingleIntValue(getattr(self, 'code')()[0]).compose()
+
+        return Number(self.__repr__())
 
     def invalid(self, board: 'Board') -> bool:
         high_light = self.high_light(board)
