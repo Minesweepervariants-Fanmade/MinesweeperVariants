@@ -336,9 +336,12 @@ class GameSession:
         total = elapsed / schedule if schedule > 0 else float('inf')
         return schedule, elapsed, total
 
-    def create_board(self) -> Union["Board", None]:
+    def create_board(self, ratio: float = 0) -> Union["Board", None]:
         """
         生成题目
+        :param ratio:
+        初始化部分问号时 相较于整个题板的总格数的比值(0~1)
+        填入0.5表示尽可能达到一般的问号占比
         """
         board = self.answer_board.clone()
         all_rules = (self.summon.mines_rules.rules
@@ -391,8 +394,13 @@ class GameSession:
                     continue
                 positiones.append(value_switchs[var])
         else:
-            RANDOM = get_random()
+            positiones = [pos for pos, obj in _board(mode="obj")]
 
+        positiones = get_random().sample(
+            positiones, k=int(min([
+                len(positiones), ratio * len([None for _ in _board()])
+            ]))
+        )
         for pos in positiones:
             pos_type = board.get_type(pos)
             pos_obj = None
