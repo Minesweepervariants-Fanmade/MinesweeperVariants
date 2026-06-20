@@ -43,7 +43,7 @@ def main(
     if isinstance(size, tuple):
         size = Size(size[0], size[1])
     s = Summon(
-        size=size, total=total, rules=rules, early_rules=early_rules,
+        size=size, total=total, rules=rules[:], early_rules=early_rules,
         board=board_class, mask=mask_dye, dye=dye, unseed=unseed
     )
     unseed = s.unseed
@@ -54,7 +54,7 @@ def main(
         if attempt_index == attempts:
             break
         s = Summon(
-            size=size, total=total, rules=rules, early_rules=early_rules,
+            size=size, total=total, rules=rules[:], early_rules=early_rules,
             board=board_class, mask=mask_dye, dye=dye, unseed=unseed
         )
         attempt_index += 1
