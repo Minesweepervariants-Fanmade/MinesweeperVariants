@@ -8,6 +8,7 @@ from typing import Optional
 
 from minesweepervariants.abs.rule import AbstractValue
 from minesweepervariants.board import Board
+from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import get_value
 from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import VALUE_TAG
@@ -87,7 +88,9 @@ def main(
     img_path: str,
     rules_id: list[str],
     log_lv: str,
+    file_name: str,
 ):
+    DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     pos_cell = ocr_board(img_path)
