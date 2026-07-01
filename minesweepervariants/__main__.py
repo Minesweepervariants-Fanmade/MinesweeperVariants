@@ -22,7 +22,7 @@ from minesweepervariants import test
 from minesweepervariants import hint
 from minesweepervariants import img
 from minesweepervariants import game
-
+from minesweepervariants import ocr
 
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.size import Size
@@ -49,6 +49,8 @@ parser_list = subparsers.add_parser('list', help=_('CLI_LIST_RULE_DOCS'))
 parser_hint = subparsers.add_parser("hint", help="根据输入的内容进行逐步提示操作")
 
 parser_img = subparsers.add_parser("img", help="根据输入的内容进行逐步提示操作")
+
+parser_ocr = subparsers.add_parser("ocr", help="根据输入的图片路径使用ocr将其转为内置的board模板")
 
 parser_img.add_argument("-c", "--code", type=str,
                         help="题板字节码")  # 字符串类型
@@ -171,6 +173,14 @@ parser_game.add_argument("-F", "--file-name", default=defaults.get("hint_file"),
                          help="图片文件名前缀")
 parser_game.add_argument("-W", "--workes-number", type=int, default=defaults.get("workes_number"),
                          help="多线程数量")
+
+parser_ocr.add_argument("-p", "-i", "--img-path", type=str, help="图片的路径参数")
+
+parser_ocr.add_argument("-c", "--clue-rule", nargs="+", default=[],
+                        help="右线的规则参数, 用以匹配ocr(不支持#等多右)")
+
+parser_ocr.add_argument("-L", "--log-lv", default=defaults.get("log_lv"),
+                        help="日志输出目录路径，日志将保存到此目录（默认使用配置中的路径）")
 
 parser_list.add_argument("--json", action="store_true", default=False)
 
@@ -325,6 +335,14 @@ def main():
             drop_r=not args.used_r,
             game_mode=args.game_mode,
             total=args.total,
+        )
+        return
+
+    if args.command == "ocr":
+        ocr(
+            img_path=args.img_path,
+            rules_id=args.clue_rule,
+            log_lv=args.log_lv,
         )
         return
 

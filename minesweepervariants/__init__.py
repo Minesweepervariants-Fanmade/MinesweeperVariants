@@ -7,6 +7,7 @@ __all__ = [
     "hint",
     "img",
     "game",
+    "ocr",
     "tuple_version",
     "__version__",
 ]
@@ -37,3 +38,10 @@ from .scripts.hint import main as hint
 from .scripts.img import main as img
 
 from .scripts.game import main as game
+
+try:
+    from .scripts.ocr import main as ocr
+except ImportError:
+    from minesweepervariants.utils.tool import LOGGER
+    LOGGER.warning("can not import ocr module, please install \"rapidocr-onnxruntime\", \"opencv-python\"")
+    ocr = None

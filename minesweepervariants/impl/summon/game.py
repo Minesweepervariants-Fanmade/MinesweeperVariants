@@ -163,8 +163,8 @@ class MinesAsterisk(AbstractMinesValue):
         return []
 
 
-# VALUE_TAG = ValueAsterisk(POSITION_TAG)
-# VALUE_MINES = MinesAsterisk(POSITION_TAG)
+VALUE_TAG = ValueAsterisk(POSITION_TAG)
+VALUE_MINES = MinesAsterisk(POSITION_TAG)
 
 
 class Manger:
