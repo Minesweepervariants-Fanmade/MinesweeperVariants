@@ -170,6 +170,7 @@ def main(
         status = solver.solve(model)
         if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
             logger.error("键入题板无解")
+            logger.error("\n" + str(mask_board))
             raise ValueError("input board is not feasible")
 
         for key in answer_board.get_board_keys():
