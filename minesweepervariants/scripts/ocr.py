@@ -95,6 +95,8 @@ def main(
     logger = get_logger(log_lv=log_lv)
     pos_cell = ocr_board(img_path)
     cell_data = pos_cell.get("cell_data", {})
+    if not cell_data:
+        raise ValueError("未找到有效网格")
     summon = Summon(
         size=pos_cell.get("size_data", (0, 0)),
         total=-2, rules=rules_id
