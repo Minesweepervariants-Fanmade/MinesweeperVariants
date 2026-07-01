@@ -119,7 +119,10 @@ def main(
             continue
         is_mines = pos_data.get("is_mines")
         clue_board = board_tmp_mines if is_mines else board_tmp_value
-        board[pos] = get_clue_value(pos, clue_board, **pos_data)
+        try:
+            board[pos] = get_clue_value(pos, clue_board, **pos_data)
+        except:
+            pass
 
     logger.info("\n" + str(board))
     logger.info(f"|[BOARD]: {compress(json_dumps(board.json()))}|")
