@@ -14,6 +14,7 @@ from minesweepervariants.impl.summon import Summon
 from minesweepervariants.impl.summon.game import VALUE_TAG
 from minesweepervariants.json_object import deep_wrap, json_dumps, compress
 from minesweepervariants.position import Position
+from minesweepervariants.size import Size
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.impl_obj import VALUE_QUESS, MINES_TAG
 from minesweepervariants.utils.ocr.ocr import ocr_board
@@ -98,7 +99,7 @@ def main(
     if not cell_data:
         raise ValueError("未找到有效网格")
     summon = Summon(
-        size=pos_cell.get("size_data", (0, 0)),
+        size=pos_cell.get("size_data", Size(0, 0)),
         total=-2, rules=rules_id
     )
     mines_clue = summon.mines_clue_rule
@@ -112,7 +113,7 @@ def main(
     board_tmp_value = value_clue.fill(board_tmp_value)
 
     for pos_key, pos_data in cell_data.items():
-        pos = board.get_pos(pos_key[1], pos_key[0])
+        pos = board.get_pos(pos_key[0], pos_key[1])
         map_value = mapning_cell(**pos_data)
         if map_value:
             board[pos] = map_value

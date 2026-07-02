@@ -6,6 +6,8 @@
 # @FileName: ocr.py
 
 import os
+import threading
+import time
 from typing import TypedDict, Dict, Tuple
 
 import cv2
@@ -15,7 +17,7 @@ from rapidocr_onnxruntime import RapidOCR
 
 from minesweepervariants.position import Position
 from minesweepervariants.size import Size
-from minesweepervariants.utils.ocr.detect import detect_and_crop_grid
+from minesweepervariants.utils.ocr.detect import detect_grid_cells
 from minesweepervariants.utils.ocr.ocr_assets import TemplateMatcher
 from minesweepervariants.utils.tool import get_logger
 
@@ -58,13 +60,51 @@ class OCRResult(TypedDict):
     size_data: Size
 
 
-def ocr_board(img_path: str) -> OCRResult:
+def progress(global_map):
+    def format_time(seconds):
+        seconds = int(round(seconds))  # 四舍五入取整
+        days, seconds = divmod(seconds, 86400)  # 1天=86400秒
+        hours, seconds = divmod(seconds, 3600)  # 1小时=3600秒
+        minutes, seconds = divmod(seconds, 60)  # 1分钟=60秒
+
+        parts = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0 or days > 0:  # 如果有天，即使小时=0也要显示
+            parts.append(f"{hours:02d}")
+        if minutes > 0 or hours > 0 or days > 0:  # 如果有更高单位，分钟必须显示
+            parts.append(f"{minutes:02d}")
+        if (days + hours + minutes) > 0:
+            parts.append(f"{seconds:02d}")  # 秒始终显示
+        else:
+            parts.append(f"{seconds}s")
+
+        return ":".join(parts)
+
+    start_time = time.time()
+    total = global_map['all']
+
+    while True:
+        done = global_map['index']
+        if done >= total:
+            break
+        elapsed = time.time() - start_time
+        avg_time = (elapsed / done) if done > 0 else 0
+        predicted_total = avg_time * total if avg_time > 0 else 0
+        remaining = predicted_total - elapsed if predicted_total > elapsed else 0
+        print(
+            f"识别进度: {done}/{total}  "
+            f"用时:{format_time(elapsed)}"
+            f"<{format_time(predicted_total)}"
+            f"~{format_time(remaining)}      ",
+            end="\r", flush=True
+        )
+        time.sleep(0.2)
+
+
+def ocr_board(img: np.ndarray) -> OCRResult:
     logger = get_logger()
-    if not os.path.exists(img_path):
-        logger.error(f"不存在的文件: {img_path}")
-        raise FileNotFoundError(img_path)
-    img = cv2.imread(img_path)
-    pos_cell, size = detect_and_crop_grid(img)
+    pos_cell, size = detect_grid_cells(img)
     ocr = RapidOCR(
         box_thresh=0.3,      # 默认约0.6，调低此值让检测模型更“敏感”，更容易检出小文字[reference:6][reference:7]
         text_score=0.2,  # 默认约0.5，调低此值放宽识别结果的置信度要求[reference:8][reference:9]
@@ -72,7 +112,11 @@ def ocr_board(img_path: str) -> OCRResult:
     )
     tmpl = TemplateMatcher()
     pos_ocr_result = {}
-    for pos_key, cell_img in pos_cell.items():
+    global_map = {"index": 0, "all": len(pos_cell)}
+    progress_thread = threading.Thread(target=progress, args=(global_map,), daemon=True)
+    progress_thread.start()
+
+    for index, (pos_key, cell_img) in enumerate(pos_cell.items()):
         cell_img = cell_img
         is_flag = get_color(cell_img)
 
@@ -88,6 +132,9 @@ def ocr_board(img_path: str) -> OCRResult:
                 imgs=[img_result[0]] if img_result[0] else [],
                 is_mines=is_flag,
             )
+        global_map["index"] = index
 
+    global_map["index"] = global_map["all"]
+    progress_thread.join()
     logger.debug(pos_ocr_result)
     return OCRResult(cell_data=pos_ocr_result, size_data=size)
