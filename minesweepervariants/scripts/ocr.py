@@ -6,6 +6,8 @@
 # @FileName: ocr.py
 from typing import Optional
 
+import cv2
+
 from minesweepervariants.abs.rule import AbstractValue
 from minesweepervariants.board import Board
 from minesweepervariants.config.config import DEFAULT_CONFIG
@@ -94,7 +96,10 @@ def main(
     DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
-    pos_cell = ocr_board(img_path)
+    img = cv2.imread(img_path)
+    if img is None:
+        raise FileNotFoundError(f"无法读取: {img_path}")
+    pos_cell = ocr_board(img)
     cell_data = pos_cell.get("cell_data", {})
     if not cell_data:
         raise ValueError("未找到有效网格")
