@@ -12,6 +12,12 @@ import numpy as np
 from minesweepervariants.size import Size
 from minesweepervariants.utils.tool import get_logger
 
+
+def show(img: np.ndarray):
+    cv2.imshow('img', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 def detect_grid_cells(img_path) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
     logger = get_logger()
 
@@ -28,17 +34,15 @@ def detect_grid_cells(img_path) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size
     orig_h, orig_w = img.shape[:2]
 
     # ---------- 2. 二值化 ----------
-    # binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-    #                                cv2.THRESH_BINARY_INV, 15, 2)
-    # kernel = np.ones((3, 3), np.uint8)
-    # binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=2)
+    binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                   cv2.THRESH_BINARY_INV, 15, 2)
+    kernel = np.ones((3, 3), np.uint8)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-    # binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-    #                                cv2.THRESH_BINARY_INV, 51, -2)
-    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    if np.sum(binary == 255) > binary.size * 0.5:
-        binary = cv2.bitwise_not(binary)
-    # show(binary)
+    # _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    # if np.sum(binary == 255) > binary.size * 0.5:
+    #     binary = cv2.bitwise_not(binary)
+    show(binary)
 
     # ---------- 3. 投影 ----------
     row_sum = np.sum(binary == 255, axis=1).astype(np.float32)
