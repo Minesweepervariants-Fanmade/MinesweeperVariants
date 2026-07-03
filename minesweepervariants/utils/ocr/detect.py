@@ -271,6 +271,5 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
 
     logger.info(f"检测到步长: {step:.2f} 像素")
     logger.info(f"列数: {len(v_lines) - 1}, 行数: {len(h_lines) - 1}")
-    exit(1)
 
     return cells, Size(len(v_lines) - 1, len(h_lines) - 1)
