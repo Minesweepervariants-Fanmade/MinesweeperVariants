@@ -42,7 +42,7 @@ def detect_grid_cells(img_path) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size
     # _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     # if np.sum(binary == 255) > binary.size * 0.5:
     #     binary = cv2.bitwise_not(binary)
-    show(binary)
+    # show(binary)
 
     # ---------- 3. 投影 ----------
     row_sum = np.sum(binary == 255, axis=1).astype(np.float32)
