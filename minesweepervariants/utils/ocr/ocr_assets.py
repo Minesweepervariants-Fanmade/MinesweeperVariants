@@ -29,7 +29,8 @@ class TemplateMatcher:
 
     def ocr_img(self, img):
         # 1. 转灰度，大津法二值化
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img_big = cv2.resize(img, (0, 0), fx=2, fy=2, interpolation=cv2.INTER_NEAREST)
+        gray = cv2.cvtColor(img_big, cv2.COLOR_BGR2GRAY)
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return binary
 
@@ -81,6 +82,8 @@ class TemplateMatcher:
 
     def match(self, cell_img, threshold=0.7):
         cell_cropped = self.crop_foreground(cell_img)
+        if 1 in cell_cropped.shape:
+            return None, -1
         best_char = None
         best_score = -1
         for char, tmpl_cropped in self.templates.items():
