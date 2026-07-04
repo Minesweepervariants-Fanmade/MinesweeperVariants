@@ -8,7 +8,7 @@
 import os
 import threading
 import time
-from typing import TypedDict, Dict, Tuple
+from typing import TypedDict, Dict, Tuple, Optional
 
 import cv2
 import numpy as np
@@ -102,14 +102,16 @@ def progress(global_map):
         time.sleep(0.2)
 
 
-def ocr_board(img: np.ndarray) -> OCRResult:
+def ocr_board(img: np.ndarray, ocr: Optional[RapidOCR]=None) -> OCRResult:
     logger = get_logger()
     pos_cell, size = detect_grid_cells(img)
-    ocr = RapidOCR(
-        box_thresh=0.3,    # 默认约0.6，调低此值让检测模型更“敏感”，更容易检出小文字[reference:6][reference:7]
-        text_score=0.2,    # 默认约0.5，调低此值放宽识别结果的置信度要求[reference:8][reference:9]
-        unclip_ratio=2.0,  # 默认约1.5，调大此值可适当扩大检测框，有助于完整包含小文字[reference:10][reference:11]
-    )
+    if ocr is None:
+        ocr = RapidOCR(
+            text_score=0.2,    # 默认约0.5，调低此值放宽识别结果的置信度要求[reference:8][reference:9]
+            det_box_thresh=0.3,    # 默认约0.6，调低此值让检测模型更“敏感”，更容易检出小文字[reference:6][reference:7]
+            det_unclip_ratio=2.0,  # 默认约1.5，调大此值可适当扩大检测框，有助于完整包含小文字[reference:10][reference:11]
+            det_model_path="",          # 加这一行，避免KeyError
+        )
     tmpl = TemplateMatcher()
     pos_ocr_result = {}
     global_map = {"index": 0, "all": len(pos_cell)}
