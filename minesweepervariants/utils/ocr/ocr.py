@@ -113,8 +113,10 @@ def ocr_board(img: np.ndarray) -> OCRResult:
     tmpl = TemplateMatcher()
     pos_ocr_result = {}
     global_map = {"index": 0, "all": len(pos_cell)}
-    progress_thread = threading.Thread(target=progress, args=(global_map,), daemon=True)
-    progress_thread.start()
+    progress_thread: threading.Thread = threading.Thread()
+    if logger.print_level > logger.DEBUG:
+        progress_thread = threading.Thread(target=progress, args=(global_map,), daemon=True)
+        progress_thread.start()
 
     for index, (pos_key, cell_img) in enumerate(pos_cell.items()):
         cell_img = cell_img
@@ -135,6 +137,7 @@ def ocr_board(img: np.ndarray) -> OCRResult:
         global_map["index"] = index
 
     global_map["index"] = global_map["all"]
-    progress_thread.join()
+    if logger.print_level > logger.DEBUG:
+        progress_thread.join()
     logger.debug(pos_ocr_result)
     return OCRResult(cell_data=pos_ocr_result, size_data=size)

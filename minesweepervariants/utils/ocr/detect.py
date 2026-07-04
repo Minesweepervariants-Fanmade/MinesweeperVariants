@@ -4,7 +4,7 @@
 # @Time    : 2026/07/01 10:33
 # @Author  : Wu_RH
 # @FileName: detect.py
-from typing import Tuple, List, Dict
+from typing import Tuple, Dict
 
 import cv2
 import numpy as np
@@ -17,6 +17,7 @@ def show(img: np.ndarray):
     cv2.imshow('img', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
     logger = get_logger()
@@ -67,9 +68,9 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
     col_centered = col_sum - np.mean(col_sum)
 
     # ---------- 4. 自相关 ----------
-    def autocorr(x):
-        n = len(x)
-        corr = np.correlate(x, x, mode='full')
+    def autocorr(_x):
+        n = len(_x)
+        corr = np.correlate(_x, _x, mode='full')
         corr = corr[n - 1:]  # 从0 lag开始
         corr = corr / corr[0]
         return corr
@@ -94,7 +95,7 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
             peaks.append((i, combined[i]))  # i 是 lag-1 的索引
 
     # 按强度降序，取前10个
-    peaks.sort(key=lambda x: -x[1])
+    peaks.sort(key=lambda _x: -_x[1])
     top_peaks = peaks[:10]
     candidate_periods = [idx + 1 for idx, val in top_peaks]  # 转回实际lag
 
@@ -115,9 +116,7 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
     step = float(candidate_periods[0])  # 临时取第一个，您可以改成任意候选
 
     # ---------- 6. 定位网格线 ----------
-    def locate_lines(projection, step):
-        import numpy as np
-
+    def locate_lines(projection, _step):
         raw = np.array(projection, dtype=np.float32)
         diff = np.diff(raw)
         diff_sum = np.concatenate((np.convolve(diff, [1, 1], mode='valid'), np.zeros(1)))
@@ -151,10 +150,10 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
 
         # ===== 计算 score_positive =====
         score_positive = []
-        for i in range(len(diff_line) - step - 2):
+        for i in range(len(diff_line) - _step - 2):
             score_positive.append([])
             for real_step in range(-2, 3):
-                real_step += step
+                real_step += _step
                 line_diff = abs(diff_line[i] - diff_line[i + real_step])
                 line_min = np.minimum(diff_line[i], diff_line[i + real_step])
                 s = line_min - line_diff
@@ -170,7 +169,7 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
         # score_positive = score_positive / score_positive.max()
 
         # ===== 定义 show，包含 5 个子图 =====
-        def show():
+        def show_lines():
             from matplotlib import pyplot as plt
             fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 9))
             ax1.plot(raw, label='Raw Projection')
@@ -194,11 +193,11 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
             plt.tight_layout()
             plt.show()
 
-        # show()
+        # show_lines()
 
         final = []
         _tmp_final = []
-        for i in range(score_positive_cut.shape[0] - step - 2):
+        for k in range(score_positive_cut.shape[0] - _step - 2):
             while True:
                 def check(__pos_i):
                     if __pos_i + 1 >= score_positive_cut.shape[0]:
@@ -211,21 +210,21 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
                         return False
                     return True
                 flag = False
-                j = i
+                j = k
                 for j in range(-5, 6):
-                    j += i
+                    j += k
                     if check(j):
                         flag = True
                         break
                 if flag:
-                    i = j
+                    k = j
                     shift = 1
-                    if not any(i + j + shift in _tmp_final for j in range(-5, 6)):
-                        _tmp_final.append(i + shift)
-                    i += step
-                    if i + shift < raw.shape[0]:
-                        _tmp_final.append(i + shift)
-                    if i >= score_positive.shape[0]:
+                    if not any(k + j + shift in _tmp_final for j in range(-5, 6)):
+                        _tmp_final.append(k + shift)
+                    k += _step
+                    if k + shift < raw.shape[0]:
+                        _tmp_final.append(k + shift)
+                    if k >= score_positive.shape[0]:
                         break
                     continue
                 break
@@ -252,13 +251,30 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
 
     # ---------- 8. 裁剪格子 ----------
     cells = {}
-    for i in range(len(h_lines) - 1):
-        for j in range(len(v_lines) - 1):
-            x1, y1 = v_lines[j], h_lines[i]
-            x2, y2 = v_lines[j + 1], h_lines[i + 1]
+    row_sum = np.sum(gray, axis=1).astype(np.int64)
+    col_sum = np.sum(gray, axis=0).astype(np.int64)
+    diff_row = np.diff(row_sum)
+    diff_col = np.diff(col_sum)
+    allow_error = 10
+    for row_pos in range(len(h_lines) - 1):
+        for col_pos in range(len(v_lines) - 1):
+            x1_line = v_lines[col_pos]
+            y1_line = h_lines[row_pos]
+            x2_line = v_lines[col_pos + 1]
+            y2_line = h_lines[row_pos + 1]
+            x1_frist = np.argmin(diff_col[x1_line: x1_line + allow_error]) + x1_line + 1
+            y1_frist = np.argmin(diff_row[y1_line: y1_line + allow_error]) + y1_line + 1
+            x2_frist = x2_line - np.argmax(diff_col[x2_line - allow_error + 1: x2_line + 1][::-1])
+            y2_frist = y2_line - np.argmax(diff_row[y2_line - allow_error + 1: y2_line + 1][::-1])
+            x1 = x1_frist + (1 if diff_col[x1_frist] < 0 else 0)
+            y1 = y1_frist + (1 if diff_row[y1_frist] < 0 else 0)
+            x2 = x2_frist
+            y2 = y2_frist
             if x2 > x1 and y2 > y1:
                 cell = img_processed[y1:y2, x1:x2]
-                cells[(i, j)] = cell
+                cells[(row_pos, col_pos)] = cell
+            else:
+                logger.warning(f"POS:[{(row_pos, col_pos)}] cant get a cell ({x1},{y1}):({x2},{y2})")
 
     # ---------- 9. 可视化 ----------
     vis = img_processed.copy()
