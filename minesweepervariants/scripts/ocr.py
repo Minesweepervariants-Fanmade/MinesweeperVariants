@@ -101,10 +101,11 @@ def main(
         raise FileNotFoundError(f"无法读取: {img_path}")
     pos_cell = ocr_board(img)
     cell_data = pos_cell.get("cell_data", {})
-    if not cell_data:
+    size_data = pos_cell.get("size_data", Size(0, 0))
+    if size_data.rows == 0 or size_data.cols == 0:
         raise ValueError("未找到有效网格")
     summon = Summon(
-        size=pos_cell.get("size_data", Size(0, 0)),
+        size=size_data,
         total=-2, rules=rules_id
     )
     mines_clue = summon.mines_clue_rule

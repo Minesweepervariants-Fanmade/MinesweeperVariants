@@ -106,9 +106,9 @@ def ocr_board(img: np.ndarray) -> OCRResult:
     logger = get_logger()
     pos_cell, size = detect_grid_cells(img)
     ocr = RapidOCR(
-        box_thresh=0.3,      # 默认约0.6，调低此值让检测模型更“敏感”，更容易检出小文字[reference:6][reference:7]
-        text_score=0.2,  # 默认约0.5，调低此值放宽识别结果的置信度要求[reference:8][reference:9]
-        unclip_ratio=2.0  # 默认约1.5，调大此值可适当扩大检测框，有助于完整包含小文字[reference:10][reference:11]
+        box_thresh=0.3,    # 默认约0.6，调低此值让检测模型更“敏感”，更容易检出小文字[reference:6][reference:7]
+        text_score=0.2,    # 默认约0.5，调低此值放宽识别结果的置信度要求[reference:8][reference:9]
+        unclip_ratio=2.0,  # 默认约1.5，调大此值可适当扩大检测框，有助于完整包含小文字[reference:10][reference:11]
     )
     tmpl = TemplateMatcher()
     pos_ocr_result = {}
@@ -121,19 +121,20 @@ def ocr_board(img: np.ndarray) -> OCRResult:
     for index, (pos_key, cell_img) in enumerate(pos_cell.items()):
         cell_img = cell_img
         is_flag = get_color(cell_img)
-
-        ocr_result, _ = ocr(cell_img)
-        img_result = tmpl.match(cell_img[4:-4, 4:-4])
+        ocr_img = tmpl.ocr_img(cell_img)
+        # show(ocr_img)
+        ocr_result, _ = ocr(ocr_img)
+        img_result = tmpl.match(cell_img)
 
         logger.debug(f"POS[{pos_key}]: OCR:[{ocr_result}] img:[{img_result}]")
         # show(cell_img)
         if not (img_result[0] or ocr_result or is_flag):
             continue
         pos_ocr_result[pos_key] = CellData(
-                texts=[r[1] for r in ocr_result] if ocr_result else [],
-                imgs=[img_result[0]] if img_result[0] else [],
-                is_mines=is_flag,
-            )
+            texts=[r[1] for r in ocr_result] if ocr_result else [],
+            imgs=[img_result[0]] if img_result[0] else [],
+            is_mines=is_flag,
+        )
         global_map["index"] = index
 
     global_map["index"] = global_map["all"]

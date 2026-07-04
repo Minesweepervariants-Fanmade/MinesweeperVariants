@@ -12,6 +12,15 @@ import numpy as np
 from minesweepervariants.size import Size
 from minesweepervariants.utils.tool import get_logger
 
+# 对线的中心位置进行检测时候的容忍程度 越大容忍越高
+TOLERANCE = 7
+# 自适应阈值邻域尺寸（奇数）
+BLOCK_SIZE = 7
+# 是否输出调试窗口
+DEBUG_MODE = False
+# 分数容差（越大越易检出线条，越小越严格）(>0)
+ALLOW_SCORE_ERROR = 20
+
 
 def show(img: np.ndarray):
     cv2.imshow('img', img)
@@ -52,14 +61,15 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
 
     # ---------- 2. 二值化 ----------
     binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                   cv2.THRESH_BINARY_INV, 15, 2)
+                                   cv2.THRESH_BINARY_INV, BLOCK_SIZE, 2)
     kernel = np.ones((3, 3), np.uint8)
     binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=2)
 
     # _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     # if np.sum(binary == 255) > binary.size * 0.5:
     #     binary = cv2.bitwise_not(binary)
-    # show(binary)
+    if DEBUG_MODE:
+        show(binary)
 
     # ---------- 3. 投影 ----------
     row_sum = np.sum(binary == 255, axis=1).astype(np.float32)
@@ -109,11 +119,7 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
     #     plt.axvline(x=p, color='r', linestyle='--', alpha=0.5)
     # plt.title('Combined Autocorrelation (Row + Col)')
     # plt.show()
-
-    # 注意：这里仅输出候选，不自动选择最佳，后续需手动指定 step
-    # 您可从此处选择其中一个作为 step，继续执行
-    # 例如：step = float(candidate_periods[0])  # 取最强的一个
-    step = float(candidate_periods[0])  # 临时取第一个，您可以改成任意候选
+    step = 0
 
     # ---------- 6. 定位网格线 ----------
     def locate_lines(projection, _step):
@@ -126,7 +132,7 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
         diff_tmp[np.concatenate(([0], diff_mask[:-1])).astype(np.bool)] = 0
         diff = diff_tmp
         diff_line = np.zeros(diff.shape, dtype=np.int64)
-        for kernel_length in range(2, 22):
+        for kernel_length in range(2, BLOCK_SIZE * 2 + 1):
             kernel_add = np.zeros(kernel_length)
             kernel_add[0] = 1
             kernel_add[-1] = 1
@@ -140,7 +146,7 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
                 log_arg = 1 + (diff_line_sub ** 2) / 2.0
                 ln_val = np.log(log_arg)
                 # 计算分母，注意 ln_val 可能为 0，导致 diff_add/ln_val 为 inf
-                denominator = 1 + (diff_line_add / (3 * ln_val))
+                denominator = 1 + (diff_line_add / (TOLERANCE * ln_val))
                 diff_line_tmp = diff_line_sub / denominator
                 diff_line_tmp = np.nan_to_num(diff_line_tmp, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -193,7 +199,8 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
             plt.tight_layout()
             plt.show()
 
-        # show_lines()
+        if DEBUG_MODE:
+            show_lines()
 
         final = []
         _tmp_final = []
@@ -204,9 +211,9 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
                         return False
                     if score_positive_cut[__pos_i + 1] <= score_min:
                         return False
-                    if score_positive_cut[__pos_i] > score_min + 10:
+                    if score_positive_cut[__pos_i] > score_min + ALLOW_SCORE_ERROR:
                         return False
-                    if score_positive_cut[__pos_i + 2] > score_min + 10:
+                    if score_positive_cut[__pos_i + 2] > score_min + ALLOW_SCORE_ERROR:
                         return False
                     return True
                 flag = False
@@ -277,13 +284,14 @@ def detect_grid_cells(img) -> Tuple[Dict[Tuple[int, int], np.ndarray], Size]:
                 logger.warning(f"POS:[{(row_pos, col_pos)}] cant get a cell ({x1},{y1}):({x2},{y2})")
 
     # ---------- 9. 可视化 ----------
-    vis = img_processed.copy()
-    from minesweepervariants.config.config import DEFAULT_CONFIG
-    for x in v_lines:
-        cv2.line(vis, (x, 0), (x, orig_h), (0, 255, 0), 2)
-    for y in h_lines:
-        cv2.line(vis, (0, y), (orig_w, y), (0, 255, 0), 2)
-    cv2.imwrite(DEFAULT_CONFIG["output_path"] + "/debug_grid_lines.png", vis)
+    if DEBUG_MODE:
+        vis = img_processed.copy()
+        from minesweepervariants.config.config import DEFAULT_CONFIG
+        for x in v_lines:
+            cv2.line(vis, (x, 0), (x, orig_h), (0, 255, 0), 2)
+        for y in h_lines:
+            cv2.line(vis, (0, y), (orig_w, y), (0, 255, 0), 2)
+        cv2.imwrite(DEFAULT_CONFIG["output_path"] + "/debug_grid_lines.png", vis)
 
     logger.info(f"检测到步长: {step:.2f} 像素")
     logger.info(f"列数: {len(v_lines) - 1}, 行数: {len(h_lines) - 1}")
