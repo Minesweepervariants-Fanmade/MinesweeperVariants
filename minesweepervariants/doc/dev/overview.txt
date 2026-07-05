@@ -1,0 +1,229 @@
+## MinesweeperVariants 框架 API 与接口概览
+
+本项目是一个基于 **OR-Tools CP-SAT** 求解器的扫雷变体生成与求解框架。它提供了一套完整的抽象接口，允许开发者灵活地定义新规则、新线索类型、新染色方式，并集成到统一的生成、求解与交互流程中。
+
+### 1. 核心数据模型
+
+#### 1.1 `Position`
+- **包路径**: `minesweepervariants.position`
+- **职责**: 表示题板上的一个格子的坐标与所属题板标识。
+- **关键属性**:
+  - `row: int` – 行索引
+  - `col: int` – 列索引
+  - `board_key: str` – 所属题板名称
+- **关键方法**:
+  - `clone() -> Position` – 复制自身
+  - `up(n=1)`, `down(n=1)`, `left(n=1)`, `right(n=1)` – 返回偏移后的新位置
+  - `deviation(pos: Position) -> Position` – 按给定位置偏移
+  - `neighbors(*args) -> list[Position]` – 返回指定欧氏距离范围内的邻格列表（支持单参数或范围参数）
+  - `in_bounds(bound_pos: Position) -> bool` – 判断是否在给定边界内
+- **扩展点**: 可继承以添加自定义坐标变换。
+
+#### 1.2 `Board`
+- **包路径**: `minesweepervariants.board`
+- **职责**: 管理多个子题板（`board_key`），存储每个格子的对象、类型、染色状态、CP-SAT变量以及配置。
+- **关键属性**:
+  - `CONFIG_FLAGS: list[str]` – 预定义的配置项名称（`by_mini`, `pos_label`, `row_col`, `interactive`）
+- **关键方法**:
+  - **数据访问**:
+    - `get_value(pos)`, `set_value(pos, value)` – 获取/设置格子对象（线索或雷）
+    - `get_type(pos, special='')` – 获取格子类型（'C'线索, 'F'雷, 'N'未定义），支持特殊类型映射
+    - `get_dyed(pos)`, `set_dyed(pos, bool)` – 染色状态
+    - `get_variable(pos, special='')` – 获取对应的 CP-SAT 变量，支持特殊变量注册
+  - **遍历与批量操作**:
+    - `__call__(target='always', mode='obj', key=None)` – 生成器，遍历符合条件的格子，可返回对象、类型、变量或染色状态
+    - `batch(positions, mode, drop_none=False)` – 批量获取指定位置的信息
+  - **题板管理**:
+    - `generate_board(board_key, size, labels, true_tag, false_tag)` – 新建子题板
+    - `get_board_keys()`, `get_interactive_keys()` – 获取所有题板/可交互题板列表
+    - `get_config(board_key, config_name)`, `set_config(...)` – 配置读写（尺寸、标签、标志等）
+    - `boundary(key) -> Position` – 返回题板边界位置
+    - `is_valid(pos)`, `in_bounds(pos)` – 判断位置是否有效（含掩码处理）
+  - **特殊类型注册**:
+    - `register_type_special(name, func)` – 注册自定义类型获取函数，用于 `get_type` 的 `special` 参数
+  - **序列化**:
+    - `json() -> JSONObject`, `from_json(data) -> Board` – 与 JSON 的互转，支持压缩编码
+- **扩展点**: 可重写 `get_type` / `get_variable` 逻辑，或通过 `register_type_special` 动态注入行为。
+
+---
+
+### 2. 规则系统（Rule System）
+
+所有规则类均继承自 `minesweepervariants.abs.rule.AbstractRule`，并细分为三个子抽象类。
+
+#### 2.1 `AbstractRule`
+- **包路径**: `minesweepervariants.abs.rule`
+- **关键属性**（类属性）:
+  - `id: str` – 规则唯一标识
+  - `name: I18n | str` – 规则名称（支持国际化）
+  - `doc: I18n | str` – 规则描述
+  - `author: tuple[str, int]` – 作者信息
+  - `tags: list[Tag]` – 标签列表
+  - `creation_time: str` – 创建时间
+  - `lib_only: bool` – 是否为仅库内部使用的规则
+- **关键方法**:
+  - `create_constraints(board: Board, switch: Switch)` – **核心方法**：向 CP-SAT 模型添加约束，通过 `switch.get(model, obj)` 获取激活变量。
+  - `suggest_total(info: SuggestionInfo)` – 向生成器建议总雷数范围及硬/软约束。
+  - `init_board(board: Board)`, `init_clear(board: Board)` – 在生成不同阶段对题板进行初始化或清理。
+  - `combine(rules: list[tuple[AbstractRule, str | None]])` – 规则组合优化，允许规则间相互感知并调整行为。
+  - `get_deps() -> list[str]` – 返回依赖的其他规则 ID 列表。
+- **扩展点**: 实现 `create_constraints` 是必须的，其他方法可选重写。
+
+#### 2.2 左线规则（`AbstractMinesRule`）
+- 继承自 `AbstractRule`，位于 `minesweepervariants.abs.Lrule`
+- **职责**: 定义地雷的全局布局约束。
+- **扩展**: 直接实现 `create_constraints` 即可。
+
+#### 2.3 右线规则（`AbstractClueRule`）
+- 继承自 `AbstractRule`，位于 `minesweepervariants.abs.Rrule`
+- **职责**: 定义数字线索的生成与约束。
+- **特有方法**:
+  - `fill(board: Board) -> Board` – **核心方法**：遍历所有未定义格，为其设置线索对象。
+  - **动态删线索支持**:
+    - `dynamic_dig_enabled: bool` – 是否支持动态删线索模式。
+    - `dynamic_dig_use_visibility_optimizer: bool` – 是否使用优化路径。
+    - `dynamic_init_visibility(board, visibility_state)` – 初始化可见性状态。
+    - `dynamic_on_visibility_changed(board, visibility_state, changed_positions)` – 可见性变化回调。
+- **扩展**: 至少实现 `fill` 和 `create_constraints`（通常在线索值对象中实现）。
+
+#### 2.4 中线规则（`AbstractMinesClueRule`）
+- 继承自 `AbstractRule`，位于 `minesweepervariants.abs.Mrule`
+- **职责**: 定义地雷上的线索（雷线索）的生成与约束。
+- **特有方法**:
+  - `fill(board: Board) -> Board` – 与右线类似，但作用对象是雷格。
+- **扩展**: 实现 `fill` 即可，`create_constraints` 通常在雷线索值对象中实现。
+
+#### 2.5 线索值对象（`AbstractValue`）
+- 包路径: `minesweepervariants.abs.rule`
+- **职责**: 表示单个线索或雷的值对象，负责渲染、约束创建和逻辑推理。
+- **关键方法**:
+  - `create_constraints(board: Board, switch: Switch)` – 为当前线索添加约束。
+  - `compose(board) -> Element` – 生成用于图像渲染的元素结构。
+  - `web_component(board) -> Element` – 生成用于 Web 渲染的元素结构。
+  - `high_light(board) -> list[Position] | None` – 返回该线索影响的高亮区域。
+  - `invalid(board) -> bool` – 判断当前线索是否已经失效（如周围已无未知格）。
+  - `deduce_cells(board) -> bool | None` – 尝试进行局部推理并直接修改题板。
+  - `tag(board) -> str` – 返回用于角标的标签字符串。
+  - `weaker(board) -> AbstractValue` – 返回一个更弱的版本（用于动态删线索）。
+  - `weaker_times() -> int` – 可被弱化的次数。
+- **扩展**: 必须实现 `create_constraints`，其他方法按需覆盖。
+
+---
+
+### 3. 求解与生成引擎
+
+#### 3.1 `Summon` 类
+- **包路径**: `minesweepervariants.impl.summon.summon`
+- **职责**: 整个系统的“指挥中心”，负责参数解析、规则加载、总雷数计算、调用求解器生成答案板，以及生成最终谜题。
+- **关键构造参数**:
+  - `size: tuple[int, int]` – 题板尺寸
+  - `total: int` – 总雷数（-1 自动计算，-2 表示随机）
+  - `rules: list[str]` – 右线规则名称列表
+  - `early_rules: list[str]` – 仅初始阶段生效的左线规则
+  - `dye`, `mask` – 染色/异形规则
+  - `drop_r: bool` – 是否禁用 R（总雷数）规则
+  - `dynamic_dig_rounds`, `dynamic_dig_max_batch` – 动态删线索参数
+- **关键方法**:
+  - `summon_board() -> Board | None` – 生成满足所有左线规则的答案板。
+  - `create_puzzle() -> Board | None` – 从答案板生成一个唯一解的谜题。
+  - `add_rule(board, rule_id, data, add)` – 动态添加规则，并自动处理依赖。
+  - `init_total()` – 根据规则建议初始化总雷数。
+- **内部使用** `solver.py` 中的函数与 `Switch` 类协作。
+
+#### 3.2 `Switch` 类
+- **包路径**: `minesweepervariants.impl.summon.solver`
+- **职责**: 管理规则和线索的激活布尔变量，支持对同一对象多次获取不同索引的开关。
+- **关键方法**:
+  - `get(model, obj, index=None) -> IntVar` – 获取或创建一个与 `obj`（规则、位置或值对象）关联的布尔变量。
+  - `get_all_vars() -> list[IntVar]` – 返回所有已创建的变量。
+  - `get_switches_by_obj(obj)` – 获取某个对象的所有开关。
+- **扩展**: 一般无需修改，仅需在 `create_constraints` 中正确调用 `switch.get`。
+
+#### 3.3 核心求解函数（`solver.py`）
+- `solver_by_csp(...) -> int` – 检查题板是否为唯一解（0 无解，1 唯一，2 多解）。
+- `board_create_constraints(board, rules, drop_r, hint_board)` – 构建 CP-SAT 模型并返回模型、开关和标志。
+- `deduced_by_csp(board, answer_board, pos)` – 判断某个位置是否必然为雷或非雷。
+- `hint_by_csp(board, answer_board, switch, pos, executor, upper_bound)` – 生成关于某个位置的推理依据（最小冲突集）。
+- `solver_model(model, back_solver)` – 简单求解并返回状态。
+
+---
+
+### 4. 游戏交互层（`GameSession`）
+
+- **包路径**: `minesweepervariants.impl.summon.game`
+- **职责**: 管理一个交互式游戏会话，集成求解器以支持各种模式。
+- **关键属性**:
+  - `board: Board` – 当前玩家可见的题板
+  - `answer_board: Board` – 完整答案
+  - `mode: Mode` – 游戏模式（NORMAL, EXPERT, ULTIMATE, PUZZLE）
+  - `ultimate_mode: UMode` – 终极模式下的细粒度选项
+  - `drop_r: bool` – 是否隐藏总雷数规则
+- **关键方法**:
+  - `click(pos)`, `mark(pos)` – 左键翻开/右键标雷，返回新题板或 `None`（触发地雷）。
+  - `deduced(thread=True) -> list[Position]` – 计算当前盘面所有必然推出的格子。
+  - `hint(thread=False) -> dict[tuple, list[Position]]` – 生成一组推理提示，键为推理依据，值为可推出的位置列表。
+  - `chord_clue(pos) -> list[Position]` – 当点击数字线索时，执行连锁展开（类似标准扫雷的 chord）。
+  - `unbelievable(pos, action) -> list[Position]` – 当玩家犯错时，返回所有错误操作导致的不可能位置。
+  - `check_difficulty(diff=None) -> dict[int, int]` – 评估谜题难度（各线索数出现的频次）。
+- **序列化**: `serialize()` / `from_dict()` 支持保存和加载游戏状态。
+
+---
+
+### 5. 图像渲染（`image_create.py`）
+
+- **职责**: 将 `Board` 对象绘制为 PNG 图像。
+- **主要函数**:
+  - `draw_board(board, background_white, bottom_text, cell_size, output, hint_because, hint_deduced) -> bytes` – 返回图像字节并保存文件。
+- **渲染元素**（`image_template.py`）:
+  - `get_text`, `get_image`, `get_row`, `get_col`, `get_dummy` – 构建层次化渲染元素。
+- **扩展**: 可通过修改 `IMAGE_CONFIG` 全局配置调整颜色、字体、边距等。
+
+---
+
+### 6. 工具与辅助模块
+
+#### 6.1 国际化（`i18n.py`）
+- 支持 `.po` / `.mo` 文件，通过 `init_gettext` 初始化，规则名称和文档可自动翻译。
+
+#### 6.2 序列化与压缩（`json_object.py`）
+- `JSONObject` 类型系统，支持 `ImmutableDict` 和递归序列化。
+- `compress` / `decompress` 使用 zstd 压缩，生成紧凑的 URL-safe 字符串。
+
+#### 6.3 值模板（`value_template.py`）
+- `ValueTemplate` 及其子类（`SingleValue`, `SingleIntValue`, `MultiIntValue`, `SingleImageValue`）提供了标准化的数值/图像表示，便于渲染和序列化。
+
+#### 6.4 日志与随机（`tool.py`）
+- `get_logger` – 获取分级日志记录器。
+- `get_random(seed)` – 获取全局随机数生成器，支持固定种子。
+
+---
+
+### 7. 扩展开发指南
+
+若要新增自定义规则或线索类型，请遵循以下步骤：
+
+1. **左线规则**:
+   - 在 `impl/rule/Lrule/` 下创建新文件，类名建议为 `RuleXXX`。
+   - 继承 `AbstractMinesRule`，实现 `create_constraints` 方法。
+   - 设置类属性 `id`, `name`, `doc`, `author`, `tags` 等。
+   - 如有需要，重写 `suggest_total`。
+
+2. **右线规则**:
+   - 在 `impl/rule/Rrule/` 下创建新文件，规则类继承 `AbstractClueRule`，线索值类继承 `AbstractClueValue`。
+   - 实现 `fill` 方法，遍历 `board("N")` 并设置 `ValueXXX` 实例。
+   - 在 `ValueXXX` 中实现 `create_constraints` 以及可选的 `compose`, `high_light`, `deduce_cells` 等。
+
+3. **中线规则**:
+   - 类似右线，但继承 `AbstractMinesClueRule`，值类继承 `AbstractMinesValue`，通常作用于雷格。
+
+4. **染色规则**:
+   - 在 `impl/board/dye/` 下创建新文件，继承 `AbstractDye`，实现 `dye(self, board)` 方法，通过 `board.set_dyed(pos, bool)` 设置染色状态。
+
+5. **注册与加载**:
+   - 所有规则和染色实现均会被 `__init__.py` 中的递归导入自动发现，无需手动注册。
+
+---
+
+### 8. 总结
+
+MinesweeperVariants 框架提供了一个结构清晰、高度解耦的 API，涵盖了从底层数据模型、约束建模、求解生成到前端交互的完整链路。开发者可以通过继承抽象基类轻松扩展新规则、新线索类型和新渲染方式，而无需修改核心引擎。框架的灵活性使其不仅适用于扫雷变体的快速原型，也可作为约束编程在教育、游戏设计等领域的一个示范性应用。
