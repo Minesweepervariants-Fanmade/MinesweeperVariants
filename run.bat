@@ -1,1 +1,0 @@
-D:/python3.13t/python.exe -m minesweepervariants %*
