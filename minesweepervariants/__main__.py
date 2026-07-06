@@ -428,6 +428,7 @@ def main():
                 unseed=not args.onseed,
                 image=not args.no_image,
                 attempts=args.attempts,
+                file_name=args.file_name,
             )
         elif not args.query:
             if not args.no_image and find_spec("PIL") is None:

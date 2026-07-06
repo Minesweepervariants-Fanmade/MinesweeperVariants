@@ -34,8 +34,9 @@ def main(
         unseed: bool,   # 是否不启用种子
         image: bool,     # 是否生成图片
         attempts: int = -1,     # 最大尝试次数
+        file_name: str = "",   # 文件已什么开头
 ):
-    DEFAULT_CONFIG["log_file_name"] = ""
+    DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger(log_lv=log_lv)
     get_random(seed, new=True)
