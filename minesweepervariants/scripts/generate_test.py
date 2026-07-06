@@ -97,7 +97,7 @@ def main(
         if image:
             def d():
                 draw_board(
-                    board=_board, cell_size=100, output="answer",
+                    board=_board, cell_size=100, output=file_name + "answer",
                     bottom_text=rule_text + f"-R{s.total}-{get_seed()}\n"
                 )
             if attempt_index != attempts:
