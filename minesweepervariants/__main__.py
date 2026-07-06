@@ -184,6 +184,7 @@ parser_ocr.add_argument("-f", "--file-name", default="",
                         help="图片文件名前缀")
 
 parser_list.add_argument("--json", action="store_true", default=False)
+parser_list.add_argument("-F", "--file-path", type=str, default="")
 
 args, unknown = parser.parse_known_args()
 if args.command != "ocr":
@@ -193,7 +194,7 @@ if args.command != "ocr":
 # ==== 调用生成 ====
 
 
-def print_with_indent(text, indent="\t"):
+def print_with_indent(text, file_stream, indent="\t"):
     width = shutil.get_terminal_size(fallback=(80, 24)).columns // 2
     # 减去缩进长度，避免超宽
     effective_width = width - len(indent.expandtabs())
@@ -202,8 +203,8 @@ def print_with_indent(text, indent="\t"):
         wrapped = textwrap.fill(line, width=effective_width,
                                 initial_indent=indent,
                                 subsequent_indent=indent)
-        print(wrapped, flush=True)
-    print()
+        print(wrapped, flush=True, file=file_stream)
+    print(file=file_stream)
 
 
 def _build_list_display(rule_info, rule_key):
@@ -245,24 +246,38 @@ def _build_list_display(rule_info, rule_key):
     return f"[{rule_id}]{display_name}{author_part}{image_part}: {doc_text}"
 
 
-def handle_list_text_output(rule_list):
+def handle_list_text_output(rule_list, file=None):
     rule_line_name_map = {
         "L": "\n\n" + _("OUT_LEFT_RULES"),
         "M": "\n\n" + _("OUT_MIDDLE_RULES"),
         "R": "\n\n" + _("OUT_RIGHT_RULES"),
     }
+    if type(file) is str:
+        file: str
+        file_stream = open(file, "w", encoding="utf-8")
+    elif file is None:
+        file_stream = sys.stdout
+    else:
+        file_stream = file
 
     for rule_line in ["L", "M", "R"]:
         if rule_list.get(rule_line):
-            print(rule_line_name_map[rule_line], flush=True)
+            print(rule_line_name_map[rule_line], flush=True, file=file_stream)
         for rule_info in rule_list.get(rule_line, []):
             rule_id = rule_info.get("id", "")
             display = _build_list_display(rule_info, rule_id)
-            print_with_indent(display)
+            print_with_indent(display, file_stream=file_stream)
 
 
-def handle_list_json_output(rule_list):
-    print(json.dumps(rule_list, ensure_ascii=False), end="", flush=True)
+def handle_list_json_output(rule_list, file=None):
+    if type(file) is str:
+        file: str
+        file_stream = open(file, "w", encoding="utf-8")
+    elif file is None:
+        file_stream = sys.stdout
+    else:
+        file_stream = file
+    print(json.dumps(rule_list, ensure_ascii=False), end="", flush=True, file=file_stream)
 
 
 def main():
@@ -293,9 +308,9 @@ def main():
         rule_list = rule.get_all_rules()
 
         if args.json:
-            handle_list_json_output(rule_list)
+            handle_list_json_output(rule_list, file=args.file_path or None)
         else:
-            handle_list_text_output(rule_list)
+            handle_list_text_output(rule_list, file=args.file_path or None)
 
         return
     DEFAULT_CONFIG["workes_number"] = args.workes_number
