@@ -369,8 +369,9 @@ class GameSession:
                 if isinstance(rule, Rule0R) and self.drop_r:
                     continue
                 rule.create_constraints(_board, switch)
-            _model.add_bool_and(switch.get_all_vars())
-            switch = Switch()
+                switchs = switch.get_switches_by_obj(rule)
+                if switchs:
+                    _model.add_bool_and(switchs)
             value_switchs = {}
             for pos, obj in _board(mode="obj"):
                 if not isinstance(obj, AbstractValue):
