@@ -900,9 +900,9 @@ class Summon:
 
         state = solver_by_csp(
             model=_model,
-            mines_rules=None,
-            clue_rule=None,
-            mines_clue_rule=None,
+            mines_rules=self.mines_rules,
+            clue_rule=self.clue_rule,
+            mines_clue_rule=self.mines_clue_rule,
             board=board,
             drop_r=self.drop_r,
             answer_board=self.answer_board,
