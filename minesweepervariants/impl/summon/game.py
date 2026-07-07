@@ -424,7 +424,6 @@ class GameSession:
         clues = [i for i in board("CF", mode="obj")]
         all_schedule = len(clues)
         self.create_schedule_data = [0.0, time.time()]
-        print("game init:", board.show_board(), clues)
         get_random().shuffle(clues)
         print("game init:\n", board.show_board(), "\n", clues)
         while clues:
