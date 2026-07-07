@@ -366,7 +366,7 @@ class GameSession:
         if bool_switchs:
             switch = Switch()
             for rule in all_rules:
-                if isinstance(rule, Rule0R):
+                if isinstance(rule, Rule0R) and self.drop_r:
                     continue
                 rule.create_constraints(_board, switch)
             _model.add_bool_and(switch.get_all_vars())
@@ -439,12 +439,12 @@ class GameSession:
                 if solver_by_csp(
                     all_rules=all_rules,
                     board=board.clone(),
-                    drop_r=False
+                    drop_r=self.drop_r
                 ) == 0:
                     board.set_value(pos, None)
                     break
                 board.set_value(pos, clue)
-        if solver_by_csp(
+        if self.drop_r and solver_by_csp(
             board=board.clone(),
             all_rules=all_rules,
             answer_board=self.answer_board,
