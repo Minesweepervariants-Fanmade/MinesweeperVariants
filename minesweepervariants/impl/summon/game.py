@@ -382,11 +382,14 @@ class GameSession:
                     value_switchs[cond_switch] = pos
             _model.add_bool_or(bool_switchs)
             from minesweepervariants.impl.summon.solver import _hint_by_csp
+            workes_number_back = CONFIG["workes_number"]
+            CONFIG["workes_number"] = 1
             with ThreadPoolExecutor(max_workers=CONFIG["workes_number"]) as executor:
                 result = _hint_by_csp(
                     _model, list(value_switchs.keys()), executor,
                     [float("inf"), threading.Lock()], early_quit=True
                 )
+            CONFIG["workes_number"] = workes_number_back
             if result is None:
                 return None
             for var in value_switchs:
@@ -396,7 +399,8 @@ class GameSession:
         else:
             positiones = [pos for pos, obj in _board(mode="obj")]
 
-        positiones = get_random().sample(
+        random = get_random()
+        positiones = random.sample(
             positiones, k=int(min([
                 len(positiones), ratio * len([None for _ in _board()])
             ]))
@@ -422,6 +426,7 @@ class GameSession:
         self.create_schedule_data = [0.0, time.time()]
         print("game init:", board.show_board(), clues)
         get_random().shuffle(clues)
+        print("game init:\n", board.show_board(), "\n", clues)
         while clues:
             while True:
                 self.create_schedule_data[0] = (all_schedule - len(clues)) / all_schedule
