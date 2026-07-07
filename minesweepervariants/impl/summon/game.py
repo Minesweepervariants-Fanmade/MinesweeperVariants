@@ -145,7 +145,7 @@ class ValueAsterisk(AbstractClueValue):
         return cls(pos)
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
-        return []
+        return [self.pos]
 
 
 class MinesAsterisk(AbstractMinesValue):
@@ -160,7 +160,7 @@ class MinesAsterisk(AbstractMinesValue):
         return cls(pos)
 
     def high_light(self, board: 'Board') -> List['Position'] | None:
-        return []
+        return [self.pos]
 
 
 VALUE_TAG = ValueAsterisk(POSITION_TAG)

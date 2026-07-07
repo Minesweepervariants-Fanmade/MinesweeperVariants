@@ -124,6 +124,9 @@ class ValueCross(AbstractClueValue):
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
         return cls(pos)
 
+    def high_light(self, board: 'Board') -> list['Position']:
+        return [self.pos]
+
     def weaker(self, board: Board) -> AbstractValue:
         return self
 
