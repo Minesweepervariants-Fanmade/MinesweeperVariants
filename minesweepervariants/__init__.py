@@ -38,11 +38,3 @@ from .scripts.hint import main as hint
 from .scripts.img import main as img
 
 from .scripts.game import main as game
-
-try:
-    from .scripts.ocr import main as ocr
-except ImportError as e:
-    from minesweepervariants.utils.tool import LOGGER
-    LOGGER.warning("can not import ocr module, please install \"rapidocr-onnxruntime\", \"opencv-python\"")
-    LOGGER.warning(e)
-    ocr = None
