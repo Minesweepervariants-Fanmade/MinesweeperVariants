@@ -29,31 +29,6 @@ __all__ = ["Board", "Config", "BoardData", "Matrix", "Position", "Size"]
 MASTER_BOARD_KEY = "1"
 
 
-def encode_int_7bit(n: int) -> bytes:
-    # 编码主体：每7位 -> 1字节（bit6~bit0，bit7=0）
-    if n == 0:
-        return b'\x00'
-    payload = []
-
-    while n > 0:
-        payload.append(n & 0x7f)
-        n >>= 7
-
-    return bytes(payload)
-
-
-def decode_bytes_7bit(data: bytes) -> int:
-    if len(data) == 0:
-        return 0
-
-    result = 0
-    for i in data[::-1]:
-        result <<= 7
-        result |= i
-
-    return result
-
-
 class Matrix[T]:
     def __init__(self, size: Size, default: T = None):
         self.size = size
