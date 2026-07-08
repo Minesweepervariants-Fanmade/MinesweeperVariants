@@ -22,7 +22,6 @@ from minesweepervariants import test
 from minesweepervariants import hint
 from minesweepervariants import img
 from minesweepervariants import game
-from minesweepervariants import ocr
 
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.size import Size
@@ -357,6 +356,14 @@ def main():
         return
 
     if args.command == "ocr":
+        try:
+            from .scripts.ocr import main as ocr
+        except ImportError as e:
+            from minesweepervariants.utils.tool import LOGGER
+            LOGGER.warning("can not import ocr module, please install \"rapidocr-onnxruntime\", \"opencv-python\"")
+            LOGGER.warning(e)
+            ocr = None
+
         ocr(
             img_path=args.img_path,
             rules_id=args.clue_rule,
