@@ -13,6 +13,7 @@ from ortools.sat.python.cp_model import IntVar
 from minesweepervariants.abs.dye import AbstractDye
 from minesweepervariants.impl.board.dye import get_dye
 from minesweepervariants.json_object import JSONObject, get_with_valid, jsonify, valid, compress, json_dumps
+from minesweepervariants.position_set import PositionSet
 from minesweepervariants.size import Size
 from minesweepervariants.utils.tool import get_logger, get_random
 
@@ -816,7 +817,7 @@ class Board:
 
     @overload
     def batch(
-        self, positions: List['Position'],
+        self, positions: List['Position'] | PositionSet,
         mode: Literal["var", "variable"],
         drop_none: bool = False,
         *args: object, **kwargs: object
@@ -825,7 +826,7 @@ class Board:
 
     @overload
     def batch(
-        self, positions: List['Position'],
+        self, positions: List['Position'] | PositionSet,
         mode: Literal["type"],
         drop_none: bool = False,
         *args: object, **kwargs: object
@@ -834,7 +835,7 @@ class Board:
 
     @overload
     def batch(
-        self, positions: List['Position'],
+        self, positions: List['Position'] | PositionSet,
         mode: Literal["obj", "object"],
         drop_none: bool = False,
         *args: object, **kwargs: object
@@ -847,7 +848,7 @@ class Board:
 
     @overload
     def batch(
-        self, positions: List['Position'],
+        self, positions: List['Position'] | PositionSet,
         mode: Literal["dye"],
         drop_none: bool = False,
         *args: object, **kwargs: object
@@ -855,7 +856,7 @@ class Board:
         ...
 
     def batch(
-        self, positions: List['Position'],
+        self, positions: List['Position'] | PositionSet,
         mode: Literal["var", "variable", "obj", "object", "type", "dye"],
         drop_none: bool = False,
         *args: object, **kwargs: object
