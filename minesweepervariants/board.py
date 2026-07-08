@@ -592,6 +592,17 @@ class Board:
 
             self.board_data[key]["type_special"][name] = func
 
+    def register_variable_special(self, name: str, pos: Position, var: IntVar):
+        for key in self.board_data:
+            if "variable_special" not in self.board_data[key]:
+                self.board_data[key]["variable_special"] = dict()
+
+            if name not in self.board_data[key]["variable_special"]:
+                self.board_data[key]["variable_special"][name] = dict()
+
+            pos_key = (pos.col, pos.row)
+            self.board_data[key]["variable_special"][name][pos_key] = var
+
     def has_type_special(self, name: str) -> bool:
         for key in self.board_data:
             if "type_special" in self.board_data[key] and name in self.board_data[key]["type_special"]:
