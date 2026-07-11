@@ -886,50 +886,50 @@ class GameSession:
         future_to_param = {}
         # upper_bound = None
         upper_bound = [float("inf"), threading.Lock()]
+        with ThreadPoolExecutor(max_workers=(CONFIG["workes_number"])) as csp_exector:
+            with ThreadPoolExecutor(max_workers=(CONFIG["workes_number"])) as executor:
+                # 提交任务
+                for pos in deduced:
+                    fut = executor.submit(
+                        hint_by_csp, board,
+                        self.answer_board,
+                        switch, pos,
+                        csp_exector, upper_bound
+                    )
+                    future_to_param[fut] = pos  # 记录参数以便出错追踪
 
-        with ThreadPoolExecutor(max_workers=(CONFIG["workes_number"] + len(deduced))) as executor:
-            # 提交任务
-            for pos in deduced:
-                fut = executor.submit(
-                    hint_by_csp, board,
-                    self.answer_board,
-                    switch, pos,
-                    executor, upper_bound
-                )
-                future_to_param[fut] = pos  # 记录参数以便出错追踪
-
-            # 收集结果
-            for fut in as_completed(future_to_param):
-                pos = future_to_param[fut]
-                try:
-                    self.logger.trace(f"pos[{pos}]: start")
-                    _result = fut.result()
-                    self.logger.trace(f"pos[{pos}]: {_result}")
-                    if _result is None:
-                        continue
-                    self.logger.trace(deduced)
-                    _result.sort()
-                    _result = list(tuple(set(_result)))
-                    result = set()
-                    for k in _result:
-                        bes_type = k[0].split("|", 1)[0]
-                        name = k[0].split("|", 1)[1]
-                        if bes_type == "RULE":
-                            result.add((name, k[1]))
-                        elif bes_type == "POS":
-                            info = name.split("|", 2)
-                            result.add(
-                                board.get_pos(
-                                    int(info[1]),
-                                    int(info[0]),
-                                    info[2]
-                                ))
-                    result = tuple(result)
-                    if result not in results:
-                        results[result] = []
-                    results[result].append(pos)
-                except Exception as exc:
-                    raise exc
+                # 收集结果
+                for fut in as_completed(future_to_param):
+                    pos = future_to_param[fut]
+                    try:
+                        self.logger.trace(f"pos[{pos}]: start")
+                        _result = fut.result()
+                        self.logger.trace(f"pos[{pos}]: {_result}")
+                        if _result is None:
+                            continue
+                        self.logger.trace(deduced)
+                        _result.sort()
+                        _result = list(tuple(set(_result)))
+                        result = set()
+                        for k in _result:
+                            bes_type = k[0].split("|", 1)[0]
+                            name = k[0].split("|", 1)[1]
+                            if bes_type == "RULE":
+                                result.add((name, k[1]))
+                            elif bes_type == "POS":
+                                info = name.split("|", 2)
+                                result.add(
+                                    board.get_pos(
+                                        int(info[1]),
+                                        int(info[0]),
+                                        info[2]
+                                    ))
+                        result = tuple(result)
+                        if result not in results:
+                            results[result] = []
+                        results[result].append(pos)
+                    except Exception as exc:
+                        raise exc
 
         min_size = min([len(k) for k in results])
         min_deduced = set(item for k, v in results.items() if len(k) == min_size for item in v)
