@@ -585,6 +585,12 @@ class Board:
                 return True
         return False
 
+    def has_variable_special(self, name: str) -> bool:
+        for key in self.board_data:
+            if "variable_special" in self.board_data[key] and name in self.board_data[key]["variable_special"]:
+                return True
+        return False
+
     def get_type(self, pos: 'Position', special: str = '', *args, **kwargs) -> str:
         special = special or self.default_special
 
