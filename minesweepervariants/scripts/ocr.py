@@ -113,6 +113,11 @@ def main(
     board = summon.board
     board_tmp_mines = board.clone()
     board_tmp_value = board.clone()
+    for mines_rule in summon.mines_rules.rules + [
+        mines_clue, value_clue
+    ]:
+        mines_rule.onboard_init(board_tmp_mines)
+        mines_rule.onboard_init(board_tmp_value)
     for pos, _ in board_tmp_mines():
         board_tmp_mines[pos] = MINES_TAG
     board_tmp_mines = mines_clue.fill(board_tmp_mines)
