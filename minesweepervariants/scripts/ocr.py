@@ -4,6 +4,7 @@
 # @Time    : 2026/06/30 16:41
 # @Author  : Wu_RH
 # @FileName: ocr.py
+import traceback
 from typing import Optional
 
 import cv2
@@ -77,9 +78,10 @@ def get_clue_value(
         else:
             obj_data["data"] = texts
     if type(tmp_obj_data) is int:
-        if not texts[0].isdigit():
+        try:
+            obj_data["data"] = int(texts[0])
+        except:
             return None
-        obj_data["data"] = int(texts[0])
     else:
         obj_data["data"] = texts[0]
     clue_type = tmp_obj.id
@@ -133,8 +135,11 @@ def main(
         clue_board = board_tmp_mines if is_mines else board_tmp_value
         try:
             board[pos] = get_clue_value(pos, clue_board, **pos_data)
-        except:
-            pass
+        except Exception:
+            logger.warning(f"pos[{pos}] get cule obj error: ")
+            error_str = traceback.format_exc()
+            for error_line in error_str.split("\n"):
+                logger.warning(error_line)
 
     logger.info("\n" + str(board))
     logger.info(f"|[BOARD]: {compress(json_dumps(board.json()))}|")
