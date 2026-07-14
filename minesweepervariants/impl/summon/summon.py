@@ -266,6 +266,7 @@ class Summon:
 
         # 实例化规则
         rule_instance: AbstractRule = get_rule(rule_id)(board=board, data=data)
+        rule_id = rule_instance.id
 
         if rule_instance is None:
             self.logger.error(f"键入了一个未知的规则: {rule_id}")
