@@ -400,6 +400,14 @@ class AbstractRule(ABC, metaclass=I18nMeta):
     def json(self) -> 'JSONObject':
         return self.id
 
+    def companion_id(self) -> str:
+        """
+        返回与本规则配对的线索规则 ID。
+        当规则标记为 lib_only 且未被其他规则依赖时，出题器会自动调用此方法，
+        获取该 ID 并以当前规则的 ID（即 self.id）作为 data 参数实例化该线索规则。
+        """
+        return "V'"
+
 
 class AbstractValue(ABC):
     @property

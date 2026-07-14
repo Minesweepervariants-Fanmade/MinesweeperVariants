@@ -295,8 +295,12 @@ class Summon:
             for existing_rule in all_rules:
                 if rule_id in existing_rule.get_deps():
                     break
-            else: # 未被依赖
-                v_rule: AbstractRule = get_rule("V'")(board=board, data=rule_id)
+            else:   # 未被依赖
+                v_rule_id = rule_instance.companion_id()
+                v_rule = get_rule(v_rule_id)(board=board, data=rule_id)
+                if not isinstance(v_rule, AbstractClueRule):
+                    ValueError(f"传入了一个非右线规则{v_rule_id}")
+                v_rule: AbstractClueRule
                 if add: self.rules["clue_rules"].append(v_rule)
                 result_rule = v_rule
 
