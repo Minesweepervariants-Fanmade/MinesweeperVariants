@@ -296,7 +296,7 @@ class Summon:
                 if rule_id in existing_rule.get_deps():
                     break
             else: # 未被依赖
-                v_rule: AbstractRule = get_rule("V''")(board=board, data=rule_id)
+                v_rule: AbstractRule = get_rule("V'")(board=board, data=rule_id)
                 if add: self.rules["clue_rules"].append(v_rule)
                 result_rule = v_rule
 
