@@ -30,7 +30,10 @@ from minesweepervariants.config.config import DEFAULT_CONFIG
 CONFIG = DEFAULT_CONFIG
 
 
-def get_solver(b: bool):
+def get_solver(b: bool = False):
+    """
+    b: 是否允许超时
+    """
     solver = cp_model.CpSolver()
     solver.parameters.random_seed = 42  # 启发式多样性
     solver.parameters.num_search_workers = CONFIG["workes_number"]  # 多线程并行搜索
