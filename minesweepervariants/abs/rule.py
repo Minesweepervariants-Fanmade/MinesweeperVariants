@@ -445,10 +445,11 @@ class AbstractValue(ABC):
 
     def compose(self, board: 'Board') -> Element:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
+        from minesweepervariants.utils.value_template import SingleValue
         from minesweepervariants.abs.Rrule import AbstractClueValue
         from minesweepervariants.abs.Mrule import AbstractMinesValue
 
-        if hasattr(self, 'value') and not isinstance(self.value, ValueTemplate):
+        if hasattr(self, 'value') and not isinstance(self.value, SingleValue):
             if isinstance(self.value, ValueTemplate):
                 return self.value.compose()
             # else:
@@ -470,8 +471,9 @@ class AbstractValue(ABC):
 
     def web_component(self, board: 'Board') -> Element:
         from minesweepervariants.utils.web_template import Number
+        from minesweepervariants.utils.value_template import SingleValue
 
-        if hasattr(self, 'value') and not isinstance(self.value, ValueTemplate):
+        if hasattr(self, 'value') and not isinstance(self.value, SingleValue):
             if isinstance(self.value, ValueTemplate):
                 return self.value.web_component()
             # else:
