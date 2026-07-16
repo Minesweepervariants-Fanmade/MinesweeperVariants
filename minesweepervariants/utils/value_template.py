@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, Literal, Mapping, Self, Sequence, TypeIs, TypedDict
+from typing import TYPE_CHECKING, Literal, Mapping, Self, Sequence, TypeIs, TypedDict, Dict
 
-from .image_template import Element
+from .image_template import Element, get_col, get_dummy, get_text, get_row
+from .web_template import MultiNumber
 from ..json_object import JSONObject, JSONDirectlySerializable, deep_wrap, JSONScalar
 
 if TYPE_CHECKING:
@@ -180,6 +181,63 @@ class MultiIntValue(ValueTemplate):
                 return cls(typed_value)
             case _:
                 return None
+
+    def compose(self) -> Dict:
+        if len(self.value) <= 1:
+            value = 0
+            if len(self.value) == 1:
+                value = self.value[0]
+            return get_col(
+                get_dummy(height=0.175),
+                get_text(str(value)),
+                get_dummy(height=0.175),
+            )
+        if len(self.value) == 2:
+            text_a = get_text(str(self.value[0]))
+            text_b = get_text(str(self.value[1]))
+            return get_col(
+                get_dummy(height=0.175),
+                get_row(
+                    text_a,
+                    text_b
+                ),
+                get_dummy(height=0.175),
+            )
+        elif len(self.value) == 3:
+            text_a = get_text(str(self.value[0]))
+            text_b = get_text(str(self.value[1]))
+            text_c = get_text(str(self.value[2]))
+            return get_col(
+                get_row(
+                    text_a,
+                    text_b,
+                    # spacing=0
+                ),
+                text_c,
+            )
+        elif len(self.value) == 4:
+            text_a = get_text(str(self.value[0]))
+            text_b = get_text(str(self.value[1]))
+            text_c = get_text(str(self.value[2]))
+            text_d = get_text(str(self.value[3]))
+            return get_col(
+                get_row(
+                    text_a,
+                    text_b,
+                ),
+                get_row(
+                    text_c,
+                    text_d
+                )
+            )
+        else:
+            # 我也不知道为什么会出现>5个数字的情况
+            return get_text("")
+
+    def web_component(self) -> Dict:
+        if not self.value:
+            return MultiNumber([""])
+        return MultiNumber([str(i) for i in self.value])
 
 
 class SingleImageValue(ValueTemplate):
