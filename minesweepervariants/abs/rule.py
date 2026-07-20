@@ -8,12 +8,11 @@
 from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
 import locale
-from tkinter import IntVar
 from typing import Callable, Iterator, List, Literal, NoReturn, Optional, Protocol, Self, Tuple, TYPE_CHECKING, \
     TypedDict, TypeGuard, Union, get_args, ItemsView, Dict
 from collections.abc import MutableMapping
 
-from ortools.sat.python.cp_model import CpModel
+from ortools.sat.python.cp_model import CpModel, IntVar
 
 from minesweepervariants.immutable_dict import ImmutableDict
 from minesweepervariants.json_object import JSONObject
