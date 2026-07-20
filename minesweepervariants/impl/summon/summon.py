@@ -800,22 +800,23 @@ class Summon:
         if not solver_model(model):
             return None
 
+        _model = None
         while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)\r", end="", flush=True)
             _model = model.clone()
-            model.AddBoolAnd(random.sample(var_list, random_total))
+            _model.AddBoolAnd(random.sample(var_list, random_total))
             status, solver = solver_model(model, True)
             print(f"第{__count}次求解完毕 status: {status}\r", end="", flush=True)
             if status:
                 break
             if random_total <= 0:
                 return None
-            del model
-            model = _model
+            del _model
+            _model = model
             random_total = int(0.5 * random_total)
         else:
-            status, solver = solver_model(model, True)
+            status, solver = solver_model(_model, True)
         if not status:
             return None
         mines_total = 0
