@@ -120,7 +120,7 @@ class Logger:
                     continue
                 else:
                     break
-        self.file = open(file_path, 'a', encoding='utf-8')
+        self.file = [open(file_path, 'a', encoding='utf-8'), sys.stdout]
 
     def __log(self, log_type, msg, log_lv, *args, **kwargs):
         if self.print_level > log_lv:
