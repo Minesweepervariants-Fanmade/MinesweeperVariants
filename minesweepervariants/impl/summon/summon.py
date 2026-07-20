@@ -800,7 +800,7 @@ class Summon:
         if not solver_model(model):
             return None
 
-        _model = None
+        _model = model.clone()
         while random_total > 0:
             __count += 1
             print(f"正在随机放雷 正在尝试第{__count}次 (随机放置{random_total}颗雷)\r", end="", flush=True)
