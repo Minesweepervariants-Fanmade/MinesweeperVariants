@@ -769,7 +769,8 @@ class Summon:
         if self.total == -2:
             _, total_info = self.init_total()
             all_variable = [board.get_variable(pos, special='raw') for pos, _ in board()]
-            total_var = sum(all_variable)
+            total_var: IntVar = model.new_int_var(0, len(all_variable), "total_var")
+            model.add(sum(all_variable) == total_var)
             # 添加所有的硬性约束
             hard_fns = total_info["hard_fns"]
             for hard_fn in hard_fns:
@@ -833,9 +834,10 @@ class Summon:
             self.total = mines_total
         return board
 
-    def fill_valid(self, board: 'Board', total: int, model=None) -> Union[Board, None]:
+    def fill_valid(self, board: 'Board', total: int, model=None, switch=None) -> Union[Board, None]:
+        from minesweepervariants.immutable_dict import ImmutableDict
         random = get_random()
-        history: list[tuple] = []
+        history: list[ImmutableDict] = []
         if model is None:
             switch = Switch()
             model = board.get_model()
@@ -858,33 +860,35 @@ class Summon:
                   f"  总剩余位置: {index}/{len(positions)}   ",
                   end="\r", flush=True)
             pos = positions[index]
-            _model = model.clone()
-            _model.Add(board.get_variable(pos, special='raw') == 0)
-            code = board.json()
             board[pos] = board.get_config(pos.board_key, "MINES")
-            model.Add(board.get_variable(pos, special='raw') == 1)
-            if len(self._generation_mines_rules()) == 1:
+            if len(switch.get_all_vars()) == 1:
                 total -= 1
-            elif solver_model(model):
-                history.append((code, _model))
+                continue
+            _model = model.clone()
+            code = board.json()
+            for _pos, var in board(mode="var", special='raw'):
+                pos_type = board.get_type(_pos, special='raw')
+                if pos_type == "F":
+                    _model.Add(var == 1)
+                if pos_type == "C":
+                    _model.Add(var == 0)
+            if solver_model(_model):
+                history.append(code)
                 total -= 1
             else:
-                board = type(board).from_json(code)
                 board[pos] = board.get_config(pos.board_key, "VALUE")
-                del model
-                model = _model
         result = self.random_fill(board, 0)
         if result:
             return result
         while history:
-            code, model = history.pop()
+            code = history.pop()
             board = type(board).from_json(code)
             rules: RuleListDict = {
                 "clue_rules": [self.clue_rule],
                 "mines_rules": self._generation_mines_rules(),
                 "mines_clue_rules": [self.mines_clue_rule],
             }
-            self.rules = rules
+            self.rules: RuleListDict = rules
 
             _board = self.fill_valid(board, total)
             if _board is not None:
