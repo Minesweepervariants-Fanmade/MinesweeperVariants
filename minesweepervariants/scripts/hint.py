@@ -5,10 +5,12 @@
 # @Author  : Wu_RH
 # @FileName: hint.py
 
+import os
+import re
 import threading
 import time
 
-from minesweepervariants.json_object import json_loads, decompress
+from minesweepervariants.json_object import json_loads, decompress, json_dumps
 from minesweepervariants.position import Position
 from minesweepervariants.config.config import DEFAULT_CONFIG
 from minesweepervariants.impl.impl_obj import decode_board
@@ -79,8 +81,35 @@ def main(
     DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger("hint", log_lv)
+
     if not board_code:
-        raise ValueError("未输入待提示的题板")
+        log_path = os.path.join(DEFAULT_CONFIG.get("output_path", "output"), "demo.txt")
+        if not os.path.isfile(log_path):
+            raise ValueError("未找到上次生成的题板文件，请先使用生成命令或提供 -b 参数")
+        with open(log_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        entries = content.split("=" * 100)
+        last_entry = entries[-1] if entries else ""
+        m = re.search(r"题板:\s*img\s+-c\s+([a-zA-Z0-9\-_=]+)", last_entry)
+        if m:
+            board_code = m.group(1)
+        else:
+            raise ValueError("在 demo.txt 中未找到题板代码")
+        m = re.search(r"题板代码:\s*\n(.*)$", last_entry, re.MULTILINE)
+        if m and not rules:
+            line = m.group(1).strip()
+            # 格式: {answer_json}:{hex_mask}:{b64_rule1}:{b64_rule2}:...
+            # 找到最后一个 `}` 标记 JSON 结尾，其后是 :hex:b64rule...
+            idx = line.rfind("}")
+            if idx >= 0:
+                remaining = line[idx + 1:]
+                m2 = re.match(r":([\da-f]+):(.+)", remaining)
+                if m2:
+                    from base64 import urlsafe_b64decode
+                    rules = [
+                        urlsafe_b64decode(p.encode()).decode()
+                        for p in m2.group(2).split(":") if p
+                    ]
     match game_mode:
         case "expert" | "EXPERT" | "专家":
             game_session_mode = Mode.EXPERT
