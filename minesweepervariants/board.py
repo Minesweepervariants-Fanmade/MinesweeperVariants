@@ -186,7 +186,17 @@ class Board:
     def __call__(
         self, target: str = "always",
         *args: object,
-        mode: Literal["object", "obj"] = "object",
+        mode: Literal["position", "pos"],
+        key: Optional[str] = None,
+        **kwargs: object
+    ) -> Generator[Position, None, None]:
+        ...
+
+    @overload
+    def __call__(
+        self, target: str = "always",
+        *args: object,
+        mode: Literal["object", "obj"],
         key: Optional[str] = None,
         **kwargs: object
     ) -> Generator[Tuple[Position, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
@@ -237,15 +247,15 @@ class Board:
 
     def __call__(
         self, target: str = "always",
-        mode: Literal["object", "obj", "type", "variable", "var", "dye", "none"] = "none",
+        mode: Literal["object", "obj", "type", "variable", "var", "dye", "none", "position", "pos"] = "none",
         key: Optional[str] = None,
         *args: object,
         **kwargs: object
     ) -> Generator[
-        Tuple[
+        Union[Tuple[
             Position,
             Union["AbstractClueValue", "AbstractMinesValue", str, IntVar, bool, None]
-        ],
+        ], Position],
         None, None
     ]:
         """
@@ -279,6 +289,8 @@ class Board:
                     yield from self(target=target, mode="dye", key=key, *args, **kwargs)  # 匹配重载4
                 elif mode == "none":
                     yield from self(target=target, mode="none", key=key, *args, **kwargs)  # 匹配重载5
+                elif mode == "pos" or mode == "position":
+                    yield from self(target=target, mode="pos", key=key, *args, **kwargs)  # 匹配重载5
                 else:
                     raise ValueError(f"Unexpected key: {key}")
         else:
@@ -302,6 +314,8 @@ class Board:
                             yield pos, self.get_dyed(pos, *args, **kwargs)
                         elif mode == "none":
                             yield pos, None
+                        elif mode == "pos" or mode == "position":
+                            yield pos
 
     def has(self, target: str, key: Optional[str] = None) -> bool:
         if key not in self.get_board_keys() + [None]:
