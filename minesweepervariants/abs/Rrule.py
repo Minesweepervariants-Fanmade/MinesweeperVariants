@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Dict, List, Mapping
 
 from minesweepervariants.board import Board
 from minesweepervariants.json_object import JSONObject
-from minesweepervariants.utils.image_template import get_col, get_dummy, get_image, get_text
+from minesweepervariants.utils.image_template import get_col, get_dummy, get_image, get_text, Element
 from minesweepervariants.utils.value_template import SingleImageValue, SingleValue
 
 from .rule import AbstractRule, AbstractValue
@@ -76,7 +76,6 @@ class AbstractClueValue(AbstractValue, ABC):
         return 1
 
 
-
 # --------实例类-------- #
 
 
@@ -114,11 +113,17 @@ class ValueCross(AbstractClueValue):
     id = "X"
 
     def __init__(self, pos: 'Position', *args, **kwargs) -> None:
-        super().__init__(pos)
+        super().__init__(pos, *args, **kwargs)
         self.value = SingleImageValue("cross")
 
     def __repr__(self) -> str:
         return "X"
+
+    def compose(self, board: 'Board') -> Element:
+        return self.value.compose()
+
+    def web_component(self, board: 'Board') -> Element:
+        return self.value.web_component()
 
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':

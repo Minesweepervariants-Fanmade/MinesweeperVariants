@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Mapping
 
 from minesweepervariants.board import Board
 from minesweepervariants.json_object import JSONObject
-from minesweepervariants.utils.image_template import get_col, get_image, get_text, get_dummy
+from minesweepervariants.utils.image_template import get_col, get_image, get_text, get_dummy, Element
 from minesweepervariants.utils.value_template import SingleImageValue, SingleValue, ValueTemplate
 from .rule import AbstractRule, AbstractValue
 from ..utils.web_template import Number
@@ -45,6 +45,7 @@ class AbstractMinesValue(AbstractValue, ABC):
         获取code并初始化 输入值为code函数的返回值
         :param code: 实例对象代码
         """
+        super().__init__(pos, *args, **kwargs)
         self.pos = pos
         self.value = ValueTemplate(is_mine=True)
 
@@ -74,6 +75,12 @@ class MinesTag(AbstractMinesValue):
 
     def __repr__(self) -> str:
         return "雷"
+
+    def compose(self, board: 'Board') -> Element:
+        return self.value.compose()
+
+    def web_component(self, board: 'Board') -> Element:
+        return self.value.web_component()
 
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
@@ -113,12 +120,19 @@ class Rule0F(AbstractMinesClueRule):
 
 class ValueCircle(AbstractMinesValue):
     id = "O"
+
     def __init__(self, pos: 'Position', code: bytes = b'') -> None:
         super().__init__(pos, code)
         self.value = SingleImageValue("circle", is_mine=True)
 
     def __repr__(self) -> str:
         return "O"
+
+    def compose(self, board: 'Board') -> Element:
+        return self.value.compose()
+
+    def web_component(self, board: 'Board') -> Element:
+        return self.value.web_component()
 
     @classmethod
     def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
