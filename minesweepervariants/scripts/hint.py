@@ -19,7 +19,7 @@ from minesweepervariants.impl.summon.game import GameSession, Mode, UMode, max_d
 from minesweepervariants.size import Size
 from minesweepervariants.utils import tool
 from minesweepervariants.utils.image_create import draw_board
-from minesweepervariants.utils.tool import get_logger
+from minesweepervariants.utils.tool import get_logger, get_random
 
 defaults = {}
 defaults.update(DEFAULT_CONFIG)
@@ -77,10 +77,12 @@ def main(
     drop_r: bool,
     game_mode: str,
     total: int,
+    seed: int,
 ):
     DEFAULT_CONFIG["log_file_name"] = file_name
     tool.LOGGER = None
     logger = get_logger("hint", log_lv)
+    get_random(seed, new=True)
 
     if not board_code:
         log_path = os.path.join(DEFAULT_CONFIG.get("output_path", "output"), "demo.txt")
@@ -297,6 +299,7 @@ def main(
         clue_freq[minsize] += len(apply_hint)
         logger.info(f"clue freq now: {clue_freq}")
 
+        logger.info(f"推理前题板:\n{game.board}")
         for hint_because, hint_deduced in grouped_hints.items():
             logger.info(f"{hint_because} -> {hint_deduced}")
 
@@ -320,11 +323,11 @@ def main(
                 thread.start()
                 thread_list.append(thread)
                 hint_times += 1
-        logger.info(f"当前题板:\n{game.board}")
 
         for pos in pos_clues:
             imposs = game.answer_board.get_type(pos, special='raw')
             game.apply(pos, 0 if imposs == "C" else 1)
+        logger.info(f"当前题板:\n{game.board}")
 
     if not no_image:
         thread = threading.Thread(

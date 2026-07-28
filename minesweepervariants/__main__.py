@@ -134,6 +134,8 @@ parser_hint.add_argument("-t", "--total", type=int, default=-1,
                          help="总雷数的数量")
 parser_hint.add_argument("-W", "--workes-number", type=int, default=defaults.get("workes_number"),
                          help="多线程数量")
+parser_hint.add_argument("-S", "--seed", type=int, default=defaults.get("seed"),
+                         help=_("CLI_SEED"))
 
 parser_hint.add_argument("-B", "--board-class", default=defaults.get("board_class"),
                          help="题板的类名/题板的名称 通常使用默认值即可")
@@ -337,6 +339,7 @@ def main():
             no_image=args.no_image,
             game_mode=args.game_mode,
             total=args.total,
+            seed=args.seed,
         )
         return
 
