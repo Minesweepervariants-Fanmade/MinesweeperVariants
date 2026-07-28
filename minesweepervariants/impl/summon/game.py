@@ -889,6 +889,7 @@ class GameSession:
         with ThreadPoolExecutor(max_workers=(CONFIG["workes_number"])) as csp_exector:
             with ThreadPoolExecutor(max_workers=(CONFIG["workes_number"])) as executor:
                 # 提交任务
+                self.logger.debug(f"game random deduced: {deduced}")
                 for pos in deduced:
                     fut = executor.submit(
                         hint_by_csp, board,
