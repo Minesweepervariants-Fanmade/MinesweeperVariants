@@ -497,8 +497,17 @@ def draw_board(
                 txt = board.pos_label(pos)
                 if not txt:
                     continue
+                txt = board.pos_label(pos)
+                if not txt:
+                    continue
                 _, _, x, y = get_cell_box(pos, grid_type, x_offset, margin, cell_size, hex_metrics)
-                draw.text((x, y), txt, fill=pos_label_color, font=label_font, anchor="mm")
+                lines = txt.split("\n")
+                if len(lines) > 1:
+                    for i, line in enumerate(lines):
+                        parts = [" " if j != i else line for j in range(len(lines))]
+                        draw.text((x, y), "\n".join(parts), fill=pos_label_color, font=label_font, anchor="mm")
+                else:
+                    draw.text((x, y), txt, fill=pos_label_color, font=label_font, anchor="mm")
 
         # 内容渲染 - 使用ElementRenderer
         for pos, obj in board(mode="object", key=key):
