@@ -185,9 +185,9 @@ class Board:
     @overload
     def __call__(
         self, target: str = "always",
-        *args: object,
-        mode: Literal["position", "pos"],
+        mode: Literal["position", "pos"] = "pos",
         key: Optional[str] = None,
+        *args: object,
         **kwargs: object
     ) -> Generator[Position, None, None]:
         ...
@@ -195,9 +195,9 @@ class Board:
     @overload
     def __call__(
         self, target: str = "always",
-        *args: object,
-        mode: Literal["object", "obj"],
+        mode: Literal["object", "obj"] = "obj",
         key: Optional[str] = None,
+        *args: object,
         **kwargs: object
     ) -> Generator[Tuple[Position, Union['AbstractClueValue', 'AbstractMinesValue', None]], None, None]:
         ...
@@ -205,9 +205,9 @@ class Board:
     @overload
     def __call__(
         self, target: str = "always",
-        *args: object,
-        mode: Literal["type"],
+        mode: Literal["type"] = "type",
         key: Optional[str] = None,
+        *args: object,
         **kwargs: object
     ) -> Generator[Tuple[Position, str], None, None]:
         ...
@@ -215,9 +215,9 @@ class Board:
     @overload
     def __call__(
         self, target: str = "always",
-        *args: object,
-        mode: Literal["variable", "var"],
+        mode: Literal["variable", "var"] = "var",
         key: Optional[str] = None,
+        *args: object,
         **kwargs: object
     ) -> Generator[Tuple[Position, IntVar], None, None]:
         ...
@@ -225,9 +225,9 @@ class Board:
     @overload
     def __call__(
         self, target: str = "always",
-        *args: object,
-        mode: Literal["dye"],
+        mode: Literal["dye"] = "dye",
         key: Optional[str] = None,
+        *args: object,
         **kwargs: object
     ) -> Generator[Tuple[Position, bool], None, None]:
         ...
@@ -235,9 +235,9 @@ class Board:
     @overload
     def __call__(
         self, target: str = "always",
-        *args: object,
-        mode: Literal["none"],
+        mode: Literal["none"] = "none",
         key: Optional[str] = None,
+        *args: object,
         **kwargs: object
     ) -> Generator[
         Tuple[Position, None],
@@ -250,7 +250,7 @@ class Board:
         mode: Literal["object", "obj", "type", "variable", "var", "dye", "none", "position", "pos"] = "none",
         key: Optional[str] = None,
         *args: object,
-        **kwargs: object
+        **kwargs: object,
     ) -> Generator[
         Union[Tuple[
             Position,
