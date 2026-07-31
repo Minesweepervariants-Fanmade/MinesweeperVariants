@@ -636,7 +636,7 @@ class Board:
             self.board_data[key]["obj"][pos] = value
             self.board_data[key]["type"][pos] = self.type_value(value)
 
-    def get_dyed(self, pos: 'Position', *args: object, **kwargs: object) -> bool | None:
+    def get_dyed(self, pos: 'Position', *args: object, **kwargs: object) -> Optional[bool]:
         key = pos.board_key
         if self.is_valid(pos):
             return self.board_data[key]["dye"][pos]
@@ -646,7 +646,7 @@ class Board:
         if self.is_valid(pos):
             self.board_data[key]["dye"][pos] = dyed
 
-    def get_variable(self, pos: 'Position', special: str = '') -> IntVar | None:
+    def get_variable(self, pos: 'Position', special: str = '') -> Optional[IntVar]:
         special = special or self.default_special
 
         key = pos.board_key
