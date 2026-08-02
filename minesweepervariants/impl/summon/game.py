@@ -487,11 +487,13 @@ class GameSession:
             elif obj_type == "F":
                 board[pos] = MINES_TAG
 
-        chord_positions = self._deduced(board, [
-            self.summon.mines_clue_rule
-            if self.board.get_type(clue_pos, special='raw') == "F" else
-            self.summon.clue_rule,
-        ])
+        switch = Switch()
+        if self.board.get_type(clue_pos, special='raw') == "F":
+            self.summon.mines_clue_rule.create_constraints(board, switch)
+        else:
+            self.summon.clue_rule.create_constraints(board, switch)
+
+        chord_positions = self._deduced(board, [], switch=switch)
 
         self.logger.trace(f"chord pos: {clue_pos}, {self.board[clue_pos]}, {chord_positions}")
 
@@ -749,13 +751,14 @@ class GameSession:
             self.hint_queue.get()
             self.hint_queue.task_done()
 
-    def _deduced(self, board, all_rules):
+    def _deduced(self, board, all_rules, switch: Optional[Switch] = None):
         self.logger.trace("构建新模型")
         self.logger.trace(f"deduced all_rules: {all_rules}")
         self.logger.trace(f"deduced drop_r: {self.drop_r}")
         board.clear_variable()
         model = board.get_model()
-        switch = Switch()
+        if switch is None:
+            switch = Switch()
 
         # 2.获取所有规则约束
         for rule in all_rules:
