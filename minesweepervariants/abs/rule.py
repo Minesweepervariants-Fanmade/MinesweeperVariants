@@ -442,6 +442,11 @@ class AbstractValue(ABC):
     def __repr__(self) -> str:
         return "\x00"
 
+    def __str__(self) -> str:
+        if self.__repr__() == "\x00":
+            return self.value.__repr__()
+        return self.__repr__()
+
     def compose(self, board: 'Board') -> Element:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
         from minesweepervariants.abs.Rrule import AbstractClueValue
