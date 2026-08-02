@@ -440,19 +440,12 @@ class AbstractValue(ABC):
         self.pos = pos
 
     def __repr__(self) -> str:
-        return self.value.__repr__()
+        return "\x00"
 
     def compose(self, board: 'Board') -> Element:
         from minesweepervariants.utils.image_template import get_col, get_text, get_dummy
         from minesweepervariants.abs.Rrule import AbstractClueValue
         from minesweepervariants.abs.Mrule import AbstractMinesValue
-
-        if hasattr(self, 'value') and not isinstance(self.value, ValueTemplate):
-            if isinstance(self.value, ValueTemplate):
-                return self.value.compose()
-            # else:
-            #     assert hasattr(self, 'code')
-            #     return SingleIntValue(getattr(self, 'code')()[0]).compose()
 
         if isinstance(self, AbstractClueValue):
             color = ("#FFFFFF", "#000000")
@@ -461,24 +454,44 @@ class AbstractValue(ABC):
         else:
             color = ("#FFFFFF", "#000000")
 
+        if (
+            hasattr(self, 'value') and
+            not isinstance(self.value, ValueTemplate) and
+            self.__repr__() == "\x00"
+        ):
+            if isinstance(self.value, ValueTemplate):
+                return self.value.compose()
+            # else:
+            #     assert hasattr(self, 'code')
+            #     return SingleIntValue(getattr(self, 'code')()[0]).compose()
+
+        text = self.__repr__()
+        if text == "\x00":
+            text = self.value.__repr__()
         return get_col(
             get_dummy(height=0.3),
-            get_text(self.__repr__(), color=color),
+            get_text(text, color=color),
             get_dummy(height=0.3),
         )
 
     def web_component(self, board: 'Board') -> Element:
         from minesweepervariants.utils.web_template import Number
-        from minesweepervariants.utils.value_template import SingleValue
 
-        if hasattr(self, 'value') and not isinstance(self.value, SingleValue):
+        if (
+            hasattr(self, 'value') and
+            not isinstance(self.value, ValueTemplate) and
+            self.__repr__() == "\x00"
+        ):
             if isinstance(self.value, ValueTemplate):
                 return self.value.web_component()
             # else:
             #     assert hasattr(self, 'code')
             #     return SingleIntValue(getattr(self, 'code')()[0]).compose()
 
-        return Number(self.__repr__())
+        text = self.__repr__()
+        if text == "\x00":
+            text = self.value.__repr__()
+        return Number(text)
 
     def invalid(self, board: 'Board') -> bool:
         high_light = self.high_light(board)
