@@ -131,13 +131,23 @@ class Logger:
         s = f"<{self.get_time()}>" + f"[{log_type}]:" + f'{msg}{end}'
         if isinstance(file_arg, (list, tuple)):
             for file_obj in file_arg:
-                print(s, *args, **kwargs, end="", flush=flush, file=file_obj)
+                print(self._encode_safe(s, file_obj), *args, **kwargs, end="", flush=flush, file=file_obj)
         else:
-            print(s, *args, **kwargs, end="", flush=flush, file=file_arg)
+            print(self._encode_safe(s, file_arg), *args, **kwargs, end="", flush=flush, file=file_arg)
 
         # if (self.use_file and file_obj is not None and self.max_size != -1 and
         #         os.path.getsize(file_obj.name) > self.max_size):
         #     self.__create_file()
+
+    def _encode_safe(self, s, file_obj):
+        """避免非 UTF-8 控制台（如 GBK）打印 emoji 等字符时 UnicodeEncodeError 崩溃。"""
+        enc = getattr(file_obj, "encoding", None)
+        if enc and enc.lower() not in ("utf-8", "utf8"):
+            try:
+                s.encode(enc)
+            except UnicodeEncodeError:
+                s = s.encode(enc, "replace").decode(enc, "replace")
+        return s
 
     def start(self):
         if self.file is None or self.file.closed:
