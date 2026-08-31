@@ -298,7 +298,8 @@ class Summon:
                     break
             else:   # 未被依赖
                 v_rule_id = rule_instance.companion_id()
-                v_rule = get_rule(v_rule_id)(board=board, data=rule_id)
+                v_rule_data = rule_instance.companion_data()
+                v_rule = get_rule(v_rule_id)(board=board, data=v_rule_data)
                 if not isinstance(v_rule, AbstractClueRule):
                     ValueError(f"传入了一个非右线规则{v_rule_id}")
                 v_rule: AbstractClueRule

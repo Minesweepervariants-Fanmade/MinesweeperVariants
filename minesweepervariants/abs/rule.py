@@ -407,6 +407,14 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         """
         return "V'"
 
+    def companion_data(self) -> str:
+        """
+        返回与本规则配对的线索对象的传入参数。
+        当规则标记为 lib_only 且未被其他规则依赖时，出题器会自动调用此方法，
+        获取当前实现的 companion_id 并以当前规则的 companion_data 作为参数实例化该线索规则。
+        """
+        return self.id
+
 
 class AbstractValue(ABC):
     @property
