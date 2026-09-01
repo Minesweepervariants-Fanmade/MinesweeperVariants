@@ -58,8 +58,14 @@ class Summon:
         if self.raw_rules is None:
             return ''
         rule_text: list[str] = []
-        for rule, data in self.raw_rules:
-            rule_text.append(f"[{rule}{f':{data}' if data else ''}]")
+        from minesweepervariants.impl.impl_obj import _resolve_rule_alias
+        for raw_rule_id, raw_rule_data in self.raw_rules:
+            rule_id = _resolve_rule_alias(raw_rule_id)
+            for rule in [rule for rules in self.rules.values() for rule in rules]:
+                if not rule.id == rule_id:
+                    continue
+                rule_text.append(f"[{rule.get_name()}]")
+                break
 
         return ''.join(rule_text)
 
