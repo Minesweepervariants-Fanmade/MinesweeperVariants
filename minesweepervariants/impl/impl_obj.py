@@ -22,7 +22,7 @@ from minesweepervariants.utils.tool import get_logger
 
 from ..utils.impl_obj import POSITION_TAG, VALUE_QUESS, MINES_TAG, decode_singleton, serialize
 
-from ..abs.rule import AbstractValue, AbstractRule
+from ..abs.rule import AbstractValue, AbstractRule, I18n
 from minesweepervariants.board import Position
 from ..abs.Lrule import AbstractMinesRule
 from ..abs.Mrule import AbstractMinesClueRule, AbstractMinesValue
@@ -110,7 +110,19 @@ def _resolve_rule_alias(name: str) -> str:
 
         matched_base = None
         for cls in _iter_concrete_rule_classes():
-            aliases = getattr(cls, 'aliases', ()) or ()
+            aliases = list(getattr(cls, 'aliases', ()) or ())
+
+            name_attr = getattr(cls, 'name', None)
+            if name_attr is not None:
+                if isinstance(name_attr, I18n):
+                    for _, val in name_attr.items():
+                        if isinstance(val, str) and val:
+                            aliases.append(val)
+                    if isinstance(name_attr.default, str) and name_attr.default:
+                        aliases.append(name_attr.default)
+                elif isinstance(name_attr, str) and name_attr:
+                    aliases.append(name_attr)
+
             for ignore_case in (False, True):
                 for alias in aliases:
                     alias_name = alias[0] if isinstance(alias, tuple) else alias
