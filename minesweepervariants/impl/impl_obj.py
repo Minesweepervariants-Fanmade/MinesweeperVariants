@@ -123,6 +123,10 @@ def _resolve_rule_alias(name: str) -> str:
                 elif isinstance(name_attr, str) and name_attr:
                     aliases.append(name_attr)
 
+            id_attr = getattr(cls, 'id', None)
+            if id_attr is not None:
+                aliases.append(id_attr)
+
             for ignore_case in (False, True):
                 for alias in aliases:
                     alias_name = alias[0] if isinstance(alias, tuple) else alias
