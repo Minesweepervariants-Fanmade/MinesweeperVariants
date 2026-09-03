@@ -200,3 +200,4 @@ def main(
     logger.info(f"|[BOARD]: {compress(json_dumps(board_code))}|")
     logger.info(f"|[ANSWER_BOARD]: {compress(json_dumps(answer_code))}|")
     logger.info(f"|[TOTAL]: {total}|")
+    return _board
