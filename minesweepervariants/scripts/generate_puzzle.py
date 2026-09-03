@@ -63,6 +63,7 @@ def main(
     info_list = []
     print(rule_code)
     attempt_index = 0
+    last_error_info = ""
     while attempts == -1 or attempt_index < attempts:
         attempt_index += 1
         s = Summon(size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
@@ -76,7 +77,8 @@ def main(
             _board = s.create_puzzle()
         except ModelGenerateError:
             continue
-        except GenerateError:
+        except GenerateError as e:
+            last_error_info = str(e)
             continue
         b_time = time.time()
         if _board is None:
@@ -99,7 +101,10 @@ def main(
         break
 
     if not info_list:
-        raise ValueError("未在有效次数内得出结果")
+        error_message = "未在有效次数内得出结果"
+        if last_error_info:
+            error_message += ", 最后一次错误信息:" + last_error_info
+        raise ValueError(error_message)
 
     info_list.sort(key=lambda col: col[0])
     time_used, n_num, board_str, board_code, answer, answer_code, _board, answer_board = info_list[0]

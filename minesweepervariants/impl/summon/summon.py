@@ -401,8 +401,7 @@ class Summon:
     def create_puzzle(self):
         if self.summon_board() is None:
             self.logger.warn("生成失败 左线/雷数出现矛盾")
-            return None
-            # raise ValueError("生成失败 左线/雷数出现矛盾")
+            raise GenerateError("生成失败 左线/雷数出现矛盾")
         self.logger.info("题板初始化完毕")
         board_bytes = self.board.json()
 
@@ -932,7 +931,7 @@ class Summon:
         if state == 2:
             self.logger.warn("题板多解 可能是右线规则约束过弱 需要重试/+R")
             self.logger.warn("warn board:\n" + board.show_board())
-            return None
+            raise GenerateError("题板多解 可能是右线规则约束过弱 需要重试/+R")
 
         if DEFAULT_CONFIG["with_mus"]:
             if flag:

@@ -89,6 +89,7 @@ def main(
     if size_c > 1:
         rule_text += f"x{size_c}"
 
+    last_error_info = ""
     while True:
         s = Summon(
             size=size, total=total, rules=rule_code[:], early_rules=early_rules, board=board_class,
@@ -107,7 +108,8 @@ def main(
             _board = s.create_puzzle()
         except ModelGenerateError:
             continue
-        except GenerateError:
+        except GenerateError as e:
+            last_error_info = str(e)
             continue
         if _board is None:
             continue
@@ -207,3 +209,8 @@ def main(
         logger.info(f"|[ANSWER_BOARD]: {compress(json_dumps(answer_code))}|")
         logger.info(f"|[TOTAL]: {total}|")
         return
+
+    error_message = "未在有效次数内得出结果"
+    if last_error_info:
+        error_message += ", 最后一次错误信息:" + last_error_info
+    raise ValueError(error_message)
