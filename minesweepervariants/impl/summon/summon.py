@@ -431,6 +431,10 @@ class Summon:
             _board = self.fill_valid(self.board, self.total)
         if _board is None:
             return None
+        for rule in self.mines_rules.rules:
+            if isinstance(rule, Rule0R):
+                if rule.total == -2:
+                    rule.total = self.total
         for key in _board.get_board_keys():
             for pos, _ in _board("C", key=key):
                 from minesweepervariants.utils.impl_obj import VALUE_QUESS
