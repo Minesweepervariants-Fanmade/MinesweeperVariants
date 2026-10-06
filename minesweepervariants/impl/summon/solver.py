@@ -303,6 +303,18 @@ def solver_by_csp(
     if clue_rule is not None:
         all_rules.append(clue_rule)
 
+    # 需要唯一解的命名空间
+    special2only: list[str] = ['raw']
+    for rule in all_rules:
+        if rule.special is None:
+            continue
+        if isinstance(rule.special, str):
+            special2only.append(rule.special)
+        elif isinstance(rule.special, list):
+            special2only.extend(rule.special)
+        else:
+            raise ValueError(f"未知的命名空间类型: ({type(rule.special)}) {rule.special}")
+
     if model is None:
         logger.trace("求解器输入:\n" + board.show_board())
         logger.trace("构建新模型")
@@ -384,14 +396,14 @@ def solver_by_csp(
         model_alt = model.clone()
         current_solution = []
         logger.trace("设置预设不同值")
-        for key in board.get_interactive_keys():
-            for pos, _ in board("N", key=key):
-                value = 1 if answer_board.get_type(pos, special='raw') == "F" else 0
-                val = board.get_variable(pos, special='raw')
-                tmp = model_alt.new_bool_var(f"answer_tmp{pos}")
-                current_solution.append(tmp)
-                logger.trace(f"[{pos}]{val} != {value} ({answer_board.get_type(pos, special='raw')})")
-                model_alt.add(val != value).OnlyEnforceIf(tmp)
+        for special in special2only:
+            for key in board.get_interactive_keys():
+                for pos, var in board(mode="var", key=key, special=special):
+                    value = solver.value(var)
+                    tmp = model_alt.new_bool_var(f"answer_tmp{pos}")
+                    current_solution.append(tmp)
+                    logger.trace(f"[{special}][{pos}]{var} != {value}")
+                    model_alt.add(var != value).OnlyEnforceIf(tmp)
 
         if current_solution:
             model_alt.add_bool_or(current_solution)

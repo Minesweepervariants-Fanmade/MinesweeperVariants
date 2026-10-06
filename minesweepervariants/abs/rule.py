@@ -235,6 +235,7 @@ class AbstractRule(ABC, metaclass=I18nMeta):
     creation_time: str
 
     lib_only = False
+    special: Union[None, str, List[str]] = None   # 需要声明唯一解的命名空间
 
     def __init__(self, board: "Board | None" = None, data: str | None = None) -> None:
         self.__data = data
