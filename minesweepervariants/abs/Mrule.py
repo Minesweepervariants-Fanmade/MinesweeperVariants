@@ -105,7 +105,7 @@ class Rule0F(AbstractMinesClueRule):
         super().__init__(board, data)
         self.drop = data is None
 
-    def init_clear(self, board: 'Board') -> None:
+    def init_clear(self, board: 'Board', vice_board) -> None:
         if not self.drop:
             return
         for key in board.get_board_keys():

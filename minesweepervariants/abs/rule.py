@@ -362,8 +362,10 @@ class AbstractRule(ABC, metaclass=I18nMeta):
         用于生成answer.png 需要将题板填充至无空
         """
 
-    def init_clear(self, board: 'Board') -> None:
+    def init_clear(self, board: 'Board', vice_board: bool) -> None:
         """
+        vice_board: 为True表示输出题板需要携带默认的副板初始值
+            随后出题器将会尝试随机删除保留的初始值
         在题板生成阶段调用，用于删除题板上必须被清除的线索或对象。
         例如纸笔题目中，某些规则可能要求特定位置不能出现雷或线索。
         """

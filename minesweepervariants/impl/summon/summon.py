@@ -406,7 +406,7 @@ class Summon:
         board_bytes = self.board.json()
 
         for rule in self.mines_rules.rules + [self.clue_rule, self.mines_clue_rule]:
-            rule.init_clear(self.board)
+            rule.init_clear(self.board, self.vice_board)
         self.dynamic_dig_rounds = self._resolve_dynamic_dig_rounds()
         dig_fn = self.dig_unique
         if self.dynamic_dig_rounds > 0:
@@ -944,13 +944,28 @@ class Summon:
                 return self.unique_with_hint(model, board, switch)
         model.add_bool_and(switch.get_all_vars())
 
-        phases = max([value.weaker_times() for _, value in board("always", key=None, mode="object") if value is not None] + [0]) + 1
+        phases = max([
+            value.weaker_times()
+            for key in board.get_board_keys()
+            for _, value in board(key=key, mode="object")
+            if value is not None
+        ] + [0]) + 1
 
         # 初始统计
-        init_clues_count = len([None for _ in board('C')])
-        init_mines_count = len([None for _ in board('F')])
+        init_clues_count = len([
+            None for key in board.get_board_keys()
+            for _ in board('C', key=key)
+        ])
+        init_mines_count = len([
+            None for key in board.get_board_keys()
+            for _ in board('F', key=key)
+        ])
 
-        init_value_num = len([value for _, value in board("always", key=None, mode="object") if value is not None])
+        init_value_num = len([
+            value for key in board.get_board_keys()
+            for _, value in board(key=key, mode="obj")
+            if value is not None
+        ])
 
         # 共享状态
         progress_info = {
@@ -1038,9 +1053,15 @@ class Summon:
             #         thread.join()
             #         return None
 
-            c_poses = [(i, t, key) for key in
-                       [key for key in board.get_board_keys() if board.get_config(key, "interactive")]
-                       for i, t in board("CF", mode="type", key=key, special='raw')]
+            c_poses = [
+                (i, t, key) for key in [
+                    key for key in board.get_board_keys()
+                    if (
+                        board.get_config(key, "interactive") or
+                        self.vice_board
+                    )]
+                for i, t in board("CF", mode="type", key=key, special='raw')
+            ]
 
             get_random().shuffle(c_poses)
 

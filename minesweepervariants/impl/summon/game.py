@@ -348,7 +348,7 @@ class GameSession:
                      + [self.summon.clue_rule,
                         self.summon.mines_clue_rule])
         for rule in all_rules:
-            rule.init_clear(board)
+            rule.init_clear(board, self.summon.vice_board)
 
         # 初始化部分问号
         _board = board.clone()
