@@ -183,18 +183,19 @@ class MultiIntValue(ValueTemplate):
                 return None
 
     def compose(self) -> Dict:
+        color = ("#FFFF00", "#FF7F00") if self.is_mine else ("#FFFFFF", "#000000")
         if len(self.value) <= 1:
             value = 0
             if len(self.value) == 1:
                 value = self.value[0]
             return get_col(
                 get_dummy(height=0.175),
-                get_text(str(value)),
+                get_text(str(value), color=color),
                 get_dummy(height=0.175),
             )
         if len(self.value) == 2:
-            text_a = get_text(str(self.value[0]))
-            text_b = get_text(str(self.value[1]))
+            text_a = get_text(str(self.value[0]), color=color)
+            text_b = get_text(str(self.value[1]), color=color)
             return get_col(
                 get_dummy(height=0.175),
                 get_row(
@@ -204,9 +205,9 @@ class MultiIntValue(ValueTemplate):
                 get_dummy(height=0.175),
             )
         elif len(self.value) == 3:
-            text_a = get_text(str(self.value[0]))
-            text_b = get_text(str(self.value[1]))
-            text_c = get_text(str(self.value[2]))
+            text_a = get_text(str(self.value[0]), color=color)
+            text_b = get_text(str(self.value[1]), color=color)
+            text_c = get_text(str(self.value[2]), color=color)
             return get_col(
                 get_row(
                     text_a,
@@ -216,10 +217,10 @@ class MultiIntValue(ValueTemplate):
                 text_c,
             )
         elif len(self.value) == 4:
-            text_a = get_text(str(self.value[0]))
-            text_b = get_text(str(self.value[1]))
-            text_c = get_text(str(self.value[2]))
-            text_d = get_text(str(self.value[3]))
+            text_a = get_text(str(self.value[0]), color=color)
+            text_b = get_text(str(self.value[1]), color=color)
+            text_c = get_text(str(self.value[2]), color=color)
+            text_d = get_text(str(self.value[3]), color=color)
             return get_col(
                 get_row(
                     text_a,
@@ -232,7 +233,7 @@ class MultiIntValue(ValueTemplate):
             )
         else:
             # 我也不知道为什么会出现>5个数字的情况
-            return get_text("")
+            return get_text("", color=color)
 
     def web_component(self) -> Dict:
         if not self.value:
