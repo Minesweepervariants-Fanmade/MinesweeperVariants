@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING, Mapping, Union, List, Dict, Self
 
 from minesweepervariants.board import Board
 from minesweepervariants.json_object import JSONObject
@@ -116,6 +116,43 @@ class Rule0F(AbstractMinesClueRule):
 
     def fill(self, board: 'Board') -> 'Board':
         return board
+
+
+class Value0F(AbstractMinesValue):
+    id = Rule0F.id
+
+    def __init__(
+        self, pos: Position, values: Union[List[int], Dict[str, int]],
+        *args: object, **kwargs: object
+    ):
+        super().__init__(pos, *args, **kwargs)
+        self.values: Union[List[int], Dict[str, int]] = values
+
+    def __repr__(self):
+        if self.values:
+            return "雷" + '.'.join([str(i) for i in self.values])
+        return "雷"
+
+    @classmethod
+    def from_json(cls, pos: 'Position', data: 'JSONObject') -> 'AbstractValue':
+        return cls(pos, data["values"])
+
+    def json(self) -> dict:
+        return {"values": self.values}
+
+    def compose(self, board: 'Board') -> Element:
+        if not self.values:
+            from minesweepervariants.impl.impl_obj import MINES_TAG
+            return MINES_TAG.compose(board)
+        from minesweepervariants.utils.value_template import MultiIntValue
+        return MultiIntValue(self.values, is_mine=True).compose()
+
+    def web_component(self, board: 'Board') -> Element:
+        if not self.values:
+            from minesweepervariants.impl.impl_obj import MINES_TAG
+            return MINES_TAG.compose(board)
+        from minesweepervariants.utils.value_template import MultiIntValue
+        return MultiIntValue(self.values, is_mine=True).web_component()
 
 
 class ValueCircle(AbstractMinesValue):

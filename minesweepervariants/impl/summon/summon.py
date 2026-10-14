@@ -442,18 +442,47 @@ class Summon:
                     _board.set_value(pos, None)
         _board = self.clue_rule.fill(_board)
         _board = self.mines_clue_rule.fill(_board)
-        for rules in self.rules.values():
-            for rule in rules:
-                rule.init_board(_board)
-        self.answer_board_str = "\n" + _board.show_board()
-        self.answer_board_code = _board.json()
-        self.answer_board = _board.clone()
-        self.logger.info(f"题板生成完毕:\n{_board.show_board()}")
-        self.logger.debug("题板生成完毕:\n" + self.answer_board.show_board())
-        self.logger.debug(_board.json())
-        self.answer_board = _board
+        for rule in self.mines_rules.rules + [
+            self.clue_rule, self.mines_clue_rule
+        ]:
+            rule.init_board(_board)
         self.board = _board.clone()
-        return _board
+        self.answer_board = _board.clone()
+        # 尝试初始化雷值规则的答案题板
+        if any([r.lib_only for r in self.mines_rules.rules +
+                [self.clue_rule, self.mines_clue_rule]]) and (
+           self.mines_clue_rule.id == "F"
+        ):
+            model = self.answer_board.get_model()
+            switch = Switch()
+            for rule in self.mines_rules.rules + [self.clue_rule, self.mines_clue_rule]:
+                rule.create_constraints(self.answer_board, switch)
+            for _, obj in self.answer_board(mode="obj"):
+                if obj is None:
+                    continue
+                obj.create_constraints(self.answer_board, switch)
+            model.add_bool_and(switch.get_all_vars())
+            status, solver = solver_model(model, back_solver=True)
+            if status:
+                from minesweepervariants.abs.Mrule import Value0F
+                from minesweepervariants.impl.impl_obj import MINES_TAG
+                for key in self.answer_board.get_board_keys():
+                    all_special = list(self.answer_board.board_data[key]["variable_special"].keys())
+                    for pos, obj in self.answer_board("F", key=key, mode="obj"):
+                        if obj is not MINES_TAG:
+                            continue
+                        values = []
+                        for special in all_special:
+                            var = self.answer_board.get_variable(pos, special=special)
+                            values.append(solver.Value(var))
+                        self.answer_board[pos] = Value0F(pos, values)
+            else:
+                self.logger.warn("尝试解开雷值的具体值时出现无解")
+        self.logger.info(f"题板生成完毕:\n{self.answer_board.show_board()}")
+        self.logger.debug(_board.json())
+        self.answer_board_code = self.answer_board.json()
+        self.answer_board_str = "\n" + self.answer_board.show_board()
+        return self.answer_board
 
     def _supports_dynamic_dig(self) -> bool:
         if self.clue_rule is None:
