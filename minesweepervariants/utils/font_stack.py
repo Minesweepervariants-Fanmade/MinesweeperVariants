@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 import os
+import struct
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -46,18 +47,153 @@ def _load_freetype(path: str, size: int, index: int) -> ImageFont.FreeTypeFont:
 
 @lru_cache(maxsize=64)
 def _load_cmap(path: str, index: int) -> Optional[frozenset[int]]:
-    """读取字体的 Unicode 码位集合；失败时返回 None（视为全部支持）。"""
-    try:
-        from fontTools.ttLib import TTFont
+    """读取字体的 Unicode 码位集合；完全失败时返回 None。
 
-        with TTFont(path, fontNumber=index, lazy=True) as font:
-            cmap = font.getBestCmap()
-            if not cmap:
-                return None
-            return frozenset(cmap.keys())
-    except Exception as exc:  # fontTools 缺失、文件损坏等
-        get_logger().debug(f"[FontStack] 读取字体 cmap 失败 ({path}#{index}): {exc}")
+    优先使用 fontTools（若已安装），否则退回内置的 sfnt/TTC cmap 解析器。
+    注意：绝不能因为“读不出 cmap”就当成“支持全部字符”，否则字体回退会
+    静默失效（Copperplate 缺字形时会渲染成方框）。
+    """
+    if not path.startswith("<"):
+        try:
+            from fontTools.ttLib import TTFont
+
+            with TTFont(path, fontNumber=index, lazy=True) as font:
+                cmap = font.getBestCmap()
+                if cmap:
+                    return frozenset(cmap.keys())
+        except Exception as exc:  # fontTools 缺失、文件损坏等
+            get_logger().debug(
+                f"[FontStack] fontTools 读取 cmap 失败 ({path}#{index}): {exc}，改用内置解析器"
+            )
+
+    try:
+        return _read_cmap_codepoints(path, index)
+    except Exception as exc:  # 文件损坏 / 非 sfnt 容器
+        get_logger().debug(f"[FontStack] 内置 cmap 解析失败 ({path}#{index}): {exc}")
         return None
+
+
+def _read_cmap_codepoints(path: str, index: int) -> Optional[frozenset[int]]:
+    """纯 Python 解析 sfnt / TTC 的 cmap 表，返回 Unicode 码位集合。"""
+    with open(path, "rb") as fp:
+        data = fp.read()
+
+    sfnt_offset = 0
+    if data[:4] == b"ttcf":
+        num_fonts = struct.unpack(">I", data[8:12])[0]
+        if not 0 <= index < num_fonts:
+            return None
+        sfnt_offset = struct.unpack(
+            ">I", data[12 + 4 * index : 16 + 4 * index]
+        )[0]
+
+    num_tables = struct.unpack(
+        ">H", data[sfnt_offset + 4 : sfnt_offset + 6]
+    )[0]
+    cmap_offset: Optional[int] = None
+    for i in range(num_tables):
+        rec = sfnt_offset + 12 + 16 * i
+        if data[rec : rec + 4] == b"cmap":
+            cmap_offset = struct.unpack(">I", data[rec + 8 : rec + 12])[0]
+            break
+    if cmap_offset is None:
+        return None
+
+    return _parse_cmap_table(data, cmap_offset)
+
+
+def _parse_cmap_table(data: bytes, cmap_offset: int) -> Optional[frozenset[int]]:
+    """解析 cmap 表，挑选覆盖 Unicode 的子表（优先 format 12）。"""
+    num_subtables = struct.unpack(
+        ">H", data[cmap_offset + 2 : cmap_offset + 4]
+    )[0]
+
+    by_format: dict[int, list[int]] = {}
+    for i in range(num_subtables):
+        rec = cmap_offset + 4 + 8 * i
+        pid, eid, sub_off = struct.unpack(">HHI", data[rec : rec + 8])
+        if (pid, eid) not in _UNICODE_CMAP_IDS:
+            continue
+        sub = cmap_offset + sub_off
+        fmt = struct.unpack(">H", data[sub : sub + 2])[0]
+        by_format.setdefault(fmt, []).append(sub)
+
+    for fmt in (12, 4, 6, 0):
+        for sub in by_format.get(fmt, ()):
+            codes = _parse_cmap_subtable(data, sub, fmt)
+            if codes:
+                return frozenset(codes)
+    return None
+
+
+_UNICODE_CMAP_IDS = frozenset(
+    {(3, 10), (3, 1), (0, 6), (0, 4), (0, 3), (0, 2), (0, 1), (0, 0)}
+)
+
+
+def _parse_cmap_subtable(data: bytes, sub: int, fmt: int) -> set[int]:
+    codes: set[int] = set()
+
+    if fmt == 0:
+        for c in range(256):
+            if data[sub + 6 + c]:
+                codes.add(c)
+        return codes
+
+    if fmt == 6:
+        first = struct.unpack(">H", data[sub + 6 : sub + 8])[0]
+        count = struct.unpack(">H", data[sub + 8 : sub + 10])[0]
+        for i in range(count):
+            off = sub + 10 + 2 * i
+            if struct.unpack(">H", data[off : off + 2])[0]:
+                codes.add(first + i)
+        return codes
+
+    if fmt == 4:
+        seg_count = struct.unpack(">H", data[sub + 6 : sub + 8])[0] // 2
+        end_off = sub + 14
+        start_off = end_off + 2 * seg_count + 2
+        delta_off = start_off + 2 * seg_count
+        range_off = delta_off + 2 * seg_count
+        for i in range(seg_count):
+            end = struct.unpack(">H", data[end_off + 2 * i : end_off + 2 * i + 2])[0]
+            start = struct.unpack(
+                ">H", data[start_off + 2 * i : start_off + 2 * i + 2]
+            )[0]
+            delta = struct.unpack(
+                ">h", data[delta_off + 2 * i : delta_off + 2 * i + 2]
+            )[0]
+            ro = struct.unpack(
+                ">H", data[range_off + 2 * i : range_off + 2 * i + 2]
+            )[0]
+            if start > end or start == 0xFFFF:
+                continue
+            for c in range(start, end + 1):
+                if ro == 0:
+                    glyph = (c + delta) & 0xFFFF
+                else:
+                    idx = range_off + 2 * i + ro + 2 * (c - start)
+                    if idx + 2 > len(data):
+                        continue
+                    glyph = struct.unpack(">H", data[idx : idx + 2])[0]
+                    if glyph:
+                        glyph = (glyph + delta) & 0xFFFF
+                if glyph:
+                    codes.add(c)
+        return codes
+
+    if fmt == 12:
+        n_groups = struct.unpack(">I", data[sub + 12 : sub + 16])[0]
+        for i in range(n_groups):
+            off = sub + 16 + 12 * i
+            start, end, start_glyph = struct.unpack(">III", data[off : off + 12])
+            if start_glyph == 0 or end < start:
+                continue
+            for c in range(start, end + 1):
+                codes.add(c)
+        return codes
+
+    return codes
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +204,16 @@ def _load_cmap(path: str, index: int) -> Optional[frozenset[int]]:
 class FontFace:
     """封装单个字体文件，附带字形覆盖查询。"""
 
-    __slots__ = ("path", "index", "size", "font", "_cmap", "label")
+    __slots__ = (
+        "path",
+        "index",
+        "size",
+        "font",
+        "_cmap",
+        "_cmap_loaded",
+        "_glyph_cache",
+        "label",
+    )
 
     def __init__(self, path: Union[str, Path], size: int, index: int = 0) -> None:
         self.path = str(path)
@@ -77,6 +222,8 @@ class FontFace:
         self.label = Path(self.path).name
         self.font: ImageFont.FreeTypeFont = _load_freetype(self.path, self.size, self.index)
         self._cmap: Optional[frozenset[int]] = None
+        self._cmap_loaded = False
+        self._glyph_cache: dict[str, bool] = {}
 
     @classmethod
     def from_pillow_font(
@@ -90,20 +237,46 @@ class FontFace:
         face.label = label
         face.font = font
         face._cmap = None
+        face._cmap_loaded = True  # 内置位图字体视为全覆盖，不再尝试解析
+        face._glyph_cache = {}
         return face
 
     @property
     def cmap(self) -> Optional[frozenset[int]]:
-        if self._cmap is None:
+        if not self._cmap_loaded:
             self._cmap = _load_cmap(self.path, self.index)
+            self._cmap_loaded = True
         return self._cmap
 
     def has_char(self, ch: str) -> bool:
+        """判断字体是否包含该字符的字形。
+
+        cmap 解析成功时以 cmap 为准；解析失败时退化为“比较 Pillow 光栅化结果
+        与私用区字符的 .notdef 掩码”，绝不能默认“支持全部字符”，否则字体
+        回退会静默失效，缺字仍然画成方框。
+        """
         cmap = self.cmap
-        if cmap is None:
-            # 无法判定时保守认为支持，交由 Pillow 处理
-            return True
-        return ord(ch) in cmap
+        if cmap is not None:
+            return ord(ch) in cmap
+        return self._has_glyph_by_mask(ch)
+
+    # 私用区码位通常没有字形，用来取 .notdef 掩码做比对
+    _NOTDEF_PROBES = ("\ue000", "\ue001", "\uf8ff", "\U0010fffd")
+
+    def _has_glyph_by_mask(self, ch: str) -> bool:
+        cached = self._glyph_cache.get(ch)
+        if cached is not None:
+            return cached
+        try:
+            target = bytes(self.font.getmask(ch))
+            notdef_masks = [bytes(self.font.getmask(p)) for p in self._NOTDEF_PROBES]
+            # 与任意一个 notdef 掩码一致即视为缺字
+            result = all(target != m for m in notdef_masks if m)
+        except Exception as exc:  # 光栅化失败时不阻塞渲染
+            get_logger().debug(f"[FontStack] 字形探测失败 ({self.label} {ch!r}): {exc}")
+            result = True
+        self._glyph_cache[ch] = result
+        return result
 
     # 委托 Pillow 常用接口
     @property
