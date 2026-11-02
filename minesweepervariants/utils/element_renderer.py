@@ -2,18 +2,45 @@ import os
 import pathlib
 import traceback
 
-from typing import TYPE_CHECKING, Dict, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Sequence, Tuple
 
 import minesweepervariants
 from minesweepervariants.utils.tool import get_logger
+from minesweepervariants.utils.font_stack import (
+    FontStack,
+    draw_text as draw_stack_text,
+    resolve_fallback_fonts,
+)
 
 from PIL import Image, ImageDraw, ImageFont
+
+# 同一渲染进程内大量复用同尺寸字体，缓存 FontStack 避免重复解析 cmap
+_FONT_STACK_CACHE: Dict[Tuple[str, str, Tuple[str, ...], int], FontStack] = {}
+
+
+def _get_font_stack(
+    primary: pathlib.Path, assets: str, size: int,
+    fallback_paths: Optional[Tuple[str, ...]] = None,
+) -> FontStack:
+    """按 (主字体, 资源目录, 回退字体集合, 字号) 缓存 FontStack。"""
+    if not fallback_paths:
+        # 未配置或配置全部失效时自动探测，避免退化为“无回退”
+        fallback_paths = tuple(str(p) for p in resolve_fallback_fonts(assets))
+    key = (str(primary), assets, tuple(fallback_paths), int(size))
+    cached = _FONT_STACK_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    stack = FontStack.load(primary, size, fallback_paths)
+    _FONT_STACK_CACHE[key] = stack
+    return stack
 
 
 class Renderer:
     def __init__(self, cell_size: float, background_white: bool,
                  origin: Tuple[float, float], font_path: str,
-                 assets: str, debug=False):
+                 assets: str, debug=False,
+                 fallback_fonts: Optional[Sequence[str]] = None):
         from PIL import Image, ImageDraw, ImageFont
 
         self.cell_size = cell_size
@@ -24,8 +51,24 @@ class Renderer:
         self.font_path /= assets
         self.font_path /= font_path
 
+        # 解析回退字体：显式配置优先，否则自动探测
+        if fallback_fonts:
+            resolved: list[str] = []
+            for item in fallback_fonts:
+                p = pathlib.Path(item)
+                if not p.is_absolute():
+                    # 相对 assets 目录
+                    p = pathlib.Path(minesweepervariants.__path__[0]) / assets / p
+                if p.is_file():
+                    resolved.append(str(p))
+                else:
+                    get_logger().warning(f"[Renderer] 回退字体不存在，已忽略: {p}")
+            self.fallback_fonts: tuple[str, ...] = tuple(resolved)
+        else:
+            self.fallback_fonts = tuple(str(p) for p in resolve_fallback_fonts(assets))
+
         try:
-            ImageFont.truetype(self.font_path, 1)
+            self._font(1)
         except Exception as e:
             get_logger().error(traceback.format_exc())
             get_logger().error("Font loading failed. Path: {}".format(self.font_path))
@@ -38,6 +81,12 @@ class Renderer:
         self.element_sizes = {}
 
         self.debug = debug
+
+    def _font(self, size: int) -> FontStack:
+        """获取指定字号的字体栈（带缓存）。"""
+        return _get_font_stack(
+            self.font_path, self.assets_path, size, self.fallback_fonts
+        )
 
     def render(self, image: 'Image.Image', element: Dict):
         abs_x, abs_y = self.origin
@@ -198,10 +247,6 @@ class Renderer:
         if not text:
             return 0, 0
 
-        # 创建临时绘图对象
-        temp_img = Image.new('RGB', (1, 1))
-        draw = ImageDraw.Draw(temp_img)
-
         # 寻找最佳字体大小
         min_font_size = 1
         max_font_size = int(max_height * 2)  # 最大字体大小不超过高度的2倍
@@ -209,12 +254,12 @@ class Renderer:
         best_width = 0
         best_height = 0
 
-        # 使用二分查找找到最佳字体大小
+        # 使用二分查找找到最佳字体大小（测量走字体栈，保证缺字回退后宽度正确）
         low, high = min_font_size, max_font_size
         while low <= high:
             mid = (low + high) // 2
-            font = ImageFont.truetype(self.font_path, mid)
-            bbox = draw.textbbox((0, 0), text, font=font)
+            font = self._font(mid)
+            bbox = font.getbbox(text, anchor="la")
             width = bbox[2] - bbox[0]
             height = bbox[3] - bbox[1]
 
@@ -228,11 +273,10 @@ class Renderer:
                 # 当前字体大小太大，尝试更小的
                 high = mid - 1
 
-        # 如果没有找到可行的大小，使用最后可行的尺寸
+        # 如果没有找到可行的大小，使用最小字号测量结果
         if best_font_size == min_font_size and best_width == 0:
-            # 使用最小字体计算尺寸
-            font = ImageFont.truetype(self.font_path, min_font_size)
-            bbox = draw.textbbox((0, 0), text, font=font)
+            font = self._font(min_font_size)
+            bbox = font.getbbox(text, anchor="la")
             best_width = bbox[2] - bbox[0]
             best_height = bbox[3] - bbox[1]
 
@@ -354,35 +398,33 @@ class Renderer:
         temp_img = Image.new('RGBA', (int(text_width), int(text_height * 1.5)), (0, 0, 0, 0))
         draw = ImageDraw.Draw(temp_img)
 
-        # 动态调整字体大小
-        font_size = 1
-        font = ImageFont.truetype(self.font_path, font_size)
-        best_font = None
+        # 动态调整字体大小（使用字体栈，缺字自动回退）
+        best_font = self._font(1)
+        best_font_size = 1
+        max_font_size = int(max(min(box_h, 1000), 1))
 
         # 寻找最佳字体大小
-        for fs in range(1, int(min(box_h, 1000))):  # 设置合理上限
-            font = ImageFont.truetype(self.font_path, fs)
-            bbox = draw.textbbox((0, 0), text, font=font)
+        for fs in range(1, max_font_size + 1):  # 设置合理上限
+            font = self._font(fs)
+            bbox = font.getbbox(text, anchor="la")
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
 
             if text_w <= text_width and text_h <= text_height:
                 best_font = font
+                best_font_size = fs
             else:
                 break
 
-        if best_font is None:
-            best_font = ImageFont.truetype(self.font_path, int(max(min(box_h, 1000), 1)))
-
         # 计算文本位置
-        bbox = draw.textbbox((0, 0), text, font=best_font)
+        bbox = best_font.getbbox(text, anchor="la")
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
         text_x = (text_width - text_w) / 2
         text_y = (text_height * 0.4 - text_h) / 2
 
-        # 绘制文本
-        draw.text((text_x, text_y), text, font=best_font, fill=color)
+        # 绘制文本（逐段回退）
+        draw_stack_text(draw, best_font, (text_x, text_y), text, fill=color, anchor="la")
 
         # 计算在父容器中的位置（居中）
         elem_x = box_x + (box_w - text_width) / 2

@@ -7,17 +7,65 @@
 import math
 import os
 import pathlib
-from typing import Callable
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 from minesweepervariants.position import Position
 from minesweepervariants.size import Size
 from minesweepervariants.utils.image_template import get_dummy, get_text, hex_to_rgb, get_col
+from minesweepervariants.utils.font_stack import (
+    FontStack,
+    draw_text as draw_stack_text,
+    resolve_fallback_fonts,
+)
 
 from .tool import get_logger
 from .. import __path__ as basepath
 from minesweepervariants.board import Board
 from ..config.config import IMAGE_CONFIG, DEFAULT_CONFIG
 import minesweepervariants
+
+
+# 按 (主字体路径, 资源目录, 回退集合, 字号) 缓存字体栈，避免重复解析 cmap
+_FONT_STACK_CACHE: Dict[Tuple[str, str, Tuple[str, ...], int], FontStack] = {}
+
+
+def _resolve_fallback_fonts(
+    assets: str, configured: Optional[Sequence[str]]
+) -> Tuple[str, ...]:
+    """
+    把配置中的回退字体解析为绝对路径元组。
+
+    - ``configured`` 为 None 或空列表时自动探测（内置 msyh_boot.ttf + 系统字体）
+    - 相对路径按资源目录 ``assets`` 解析，绝对路径原样使用
+    """
+    if not configured:
+        return tuple(str(p) for p in resolve_fallback_fonts(assets))
+
+    resolved: list[str] = []
+    for item in configured:
+        p = pathlib.Path(item)
+        if not p.is_absolute():
+            p = pathlib.Path(minesweepervariants.__path__[0]) / assets / p
+        if p.is_file():
+            resolved.append(str(p))
+        else:
+            get_logger().warning(f"[image_create] 回退字体不存在，已忽略: {p}")
+    return tuple(resolved)
+
+
+def _load_font_stack(
+    primary: pathlib.Path,
+    assets: str,
+    fallback: Tuple[str, ...],
+    size: int,
+) -> FontStack:
+    key = (str(primary), assets, fallback, int(size))
+    cached = _FONT_STACK_CACHE.get(key)
+    if cached is not None:
+        return cached
+    stack = FontStack.load(primary, size, fallback)
+    _FONT_STACK_CACHE[key] = stack
+    return stack
 
 
 
@@ -136,14 +184,23 @@ def draw_board(
                 neighbors.append(npos)
         return neighbors
 
-    def load_font(size: int) -> ImageFont.FreeTypeFont:
-        path = pathlib.Path(basepath[0])
-        path /= CONFIG["assets"]
-        path /= CONFIG["font"]["name"]
+    # 主字体与回退字体列表（按 assets 目录解析，缺字时逐字符回退）
+    _primary_font_path = pathlib.Path(basepath[0]) / CONFIG["assets"] / CONFIG["font"]["name"]
+    _fallback_font_paths = _resolve_fallback_fonts(
+        CONFIG["assets"], CONFIG.get("font", {}).get("fallback")
+    )
+
+    def load_font(size: int) -> FontStack:
         try:
-            return ImageFont.truetype(path, size)
+            return _load_font_stack(
+                _primary_font_path, CONFIG["assets"], _fallback_font_paths, max(1, int(size))
+            )
         except OSError:
-            return ImageFont.load_default()
+            # 主字体不可用时退回 Pillow 内置位图字体（包装成单面字体栈）
+            get_logger().error(f"主字体加载失败，使用默认字体: {_primary_font_path}")
+            from minesweepervariants.utils.font_stack import FontFace
+            default_font = ImageFont.load_default(size=max(1, int(size)))
+            return FontStack([FontFace.from_pillow_font(default_font)])
 
     def cfg(_path):
         return hex_to_rgb(CONFIG[_path]["white_bg" if background_white else "black_bg"])
@@ -270,13 +327,12 @@ def draw_board(
             center_x = x_offset - cell_size * 0.3
 
             paste_y = int(margin * 0.5)
-            draw.text((center_x, paste_y),
-                      roman,
-                      fill=text_color,
-                      font=font,
-                      anchor="mm",
-                      stroke_width=1 if best <= 14 else 0,
-                      stroke_fill=stroke_color)
+            draw_stack_text(
+                draw, font, (center_x, paste_y), roman,
+                fill=text_color, anchor="mm",
+                stroke_width=1 if best <= 14 else 0,
+                stroke_fill=stroke_color,
+            )
 
         # 坐标轴标签
         if row_col:
@@ -292,7 +348,7 @@ def draw_board(
                 y = margin / 2
                 text = chr(64 + col // 26) if col > 25 else ''
                 text += chr(65 + col % 26)
-                draw.text((x, y), text, fill=text_color, font=axis_font, anchor="mm")
+                draw_stack_text(draw, axis_font, (x, y), text, fill=text_color, anchor="mm")
 
             for row in range(rows):
                 x = x_offset - cell_size * 0.25
@@ -301,7 +357,7 @@ def draw_board(
                     y = margin + row * y_spacing + (y_spacing / 2) + hex_height / 2
                 else:
                     y = margin + row * cell_size + cell_size / 2
-                draw.text((x, y), str(row + 1), fill=text_color, font=axis_font, anchor="mm")
+                draw_stack_text(draw, axis_font, (x, y), str(row + 1), fill=text_color, anchor="mm")
 
         # 绘制背景图片（如果配置指定）
         try:
@@ -505,9 +561,15 @@ def draw_board(
                 if len(lines) > 1:
                     for i, line in enumerate(lines):
                         parts = [" " if j != i else line for j in range(len(lines))]
-                        draw.text((x, y), "\n".join(parts), fill=pos_label_color, font=label_font, anchor="mm")
+                        draw_stack_text(
+                            draw, label_font, (x, y), "\n".join(parts),
+                            fill=pos_label_color, anchor="mm",
+                        )
                 else:
-                    draw.text((x, y), txt, fill=pos_label_color, font=label_font, anchor="mm")
+                    draw_stack_text(
+                        draw, label_font, (x, y), txt,
+                        fill=pos_label_color, anchor="mm",
+                    )
 
         # 内容渲染 - 使用ElementRenderer
         for pos, obj in board(mode="object", key=key):
@@ -516,13 +578,14 @@ def draw_board(
             if value is None and pos not in hint_deduced:
                 continue
 
-            # 创建元素渲染器
+            # 创建元素渲染器（缺字时按配置回退到其他字体）
             renderer = Renderer(
                 cell_size=cell_size,
                 background_white=background_white,
                 origin=(x0_cell, y0_cell),
                 font_path=CONFIG["font"]["name"],
-                assets=CONFIG["assets"]
+                assets=CONFIG["assets"],
+                fallback_fonts=CONFIG.get("font", {}).get("fallback") or None,
             )
 
             if value is not None:
@@ -550,9 +613,12 @@ def draw_board(
                     continue
 
                 mini_font = load_font(int(cell_size * mini_ratio))
-                draw.text((x1_cell - cell_size * 0.02, y1_cell + cell_size * 0.05),
-                          value.tag(board),
-                          fill=text_color, font=mini_font, anchor="rd")
+                draw_stack_text(
+                    draw, mini_font,
+                    (x1_cell - cell_size * 0.02, y1_cell + cell_size * 0.05),
+                    value.tag(board),
+                    fill=text_color, anchor="rd",
+                )
 
         x_offset += pixel_sizes[key][0] + margin
 
@@ -572,16 +638,16 @@ def draw_board(
                 high = mid - 1
 
         font = load_font(best)
-        h = font.getbbox(bottom_text)[3] - font.getbbox(bottom_text)[1]
+        _bbox = font.getbbox(bottom_text, anchor="la")
+        h = _bbox[3] - _bbox[1]
         y = bottom_y + (bottom_margin / 2) + (h / 4)
         y = min(y, total_height - h / 2)
-        draw.text((total_width / 2, y),
-                  bottom_text,
-                  fill=text_color,
-                  font=font,
-                  anchor="ms",
-                  stroke_width=1 if best <= 14 else 0,
-                  stroke_fill=stroke_color)
+        draw_stack_text(
+            draw, font, (total_width / 2, y), bottom_text,
+            fill=text_color, anchor="ms",
+            stroke_width=1 if best <= 14 else 0,
+            stroke_fill=stroke_color,
+        )
 
     # 最终题板图后处理回调（例如规则注入A/B融合并直接替换最终图）
     image = _apply_final_image_postprocess_callbacks(image, board, CONFIG)

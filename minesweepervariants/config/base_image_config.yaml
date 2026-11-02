@@ -30,6 +30,9 @@ pos_label:
 
 font:
   path: "assets/CopperplateCC-Heavy.ttf"
+  # 主字体缺少的字形将按顺序回退到这些字体（相对 assets 目录或绝对路径）
+  # 留空表示自动探测
+  fallback: []
 
 margin:
   top_left_right_ratio: 0.7

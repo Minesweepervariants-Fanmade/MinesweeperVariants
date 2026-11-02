@@ -99,7 +99,11 @@ IMAGE_CONFIG = config = {
 
     # 字体设置
     "font": {
-        "name": "CopperplateCC-Heavy.ttf"
+        "name": "CopperplateCC-Heavy.ttf",
+        # 主字体缺少的字形将按顺序回退到这些字体文件。
+        # 空列表表示自动探测（内置 msyh_boot.ttf + 系统 CJK/符号字体）。
+        # 可填写相对 assets 目录的文件名，或绝对路径。
+        "fallback": []
     },
 
     # 边距设置
